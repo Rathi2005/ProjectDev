@@ -286,7 +286,7 @@ export default function CreateAccount() {
           />
         ) : (
           <BillingAddress email={formData.email} firstName={formData.firstName} />
-        )}
+        )} 
       </div>
       <Footer />
     </div>

@@ -13,7 +13,7 @@ const BillingAddress = ({ email }) => {
     postcode: "",
     country: "",
     taxId: "",
-    contactNumber: "", // added to match the form field
+    contactNumber: "",
   });
 
   const [error, setError] = useState("");
@@ -27,7 +27,6 @@ const BillingAddress = ({ email }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Required field check
     if (
       !formData.companyName ||
       !formData.streetAddress ||
@@ -35,7 +34,6 @@ const BillingAddress = ({ email }) => {
       !formData.state ||
       !formData.postcode ||
       !formData.country ||
-      !formData.taxId ||
       !formData.contactNumber
     ) {
       setError("Please fill in all required fields.");
@@ -67,9 +65,8 @@ const BillingAddress = ({ email }) => {
 
       if (response.ok) {
         setSuccess(data.message || "Billing address saved successfully!");
-        // Wait 2 seconds before redirecting
         setTimeout(() => {
-          window.location.href = "/login";
+          navigate("/login");
         }, 2000);
       } else if (response.status === 400) {
         const messages = Object.values(data).join(", ");
@@ -87,13 +84,15 @@ const BillingAddress = ({ email }) => {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-center min-h-screen bg-[#0e1525] px-6 py-4">
-        <div className="w-full max-w-4xl bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-700 m-10">
+    <div className="min-h-screen bg-[#0e1525]">
+      <div className="container mx-auto px-2 sm:px-4 py-7 sm:py-8">
+        {/* Wider container on mobile, max-w-4xl on larger screens */}
+        <div className="w-full mx-auto bg-gray-800 p-3 sm:p-5 md:p-8 rounded-xl shadow-lg border border-gray-700 my-1 sm:my-3 md:my-8">
+          {/* Header */}
           <div className="flex items-center mb-6">
-            <div className="w-10 h-10 bg-[#4f46e5] rounded-lg flex items-center justify-center mr-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-[#4f46e5] rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
               <svg
-                className="w-6 h-6 text-white"
+                className="w-4 h-4 md:w-6 md:h-6 text-white"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -106,16 +105,17 @@ const BillingAddress = ({ email }) => {
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-white">Billing Address</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-white">
+              Billing Address
+            </h2>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* --- Form Fields (unchanged) --- */}
-            {/* Company Name */}
-            <div className="space-y-1">
-              <label className="flex items-center text-gray-300 text-sm">
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+            {/* Company Name - Full width */}
+            <div className="space-y-2">
+              <label className="flex items-center text-gray-300 text-sm font-medium">
                 <svg
-                  className="w-4 h-4 mr-2 text-blue-400"
+                  className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -134,17 +134,17 @@ const BillingAddress = ({ email }) => {
                 name="companyName"
                 value={formData.companyName}
                 onChange={handleChange}
-                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                 placeholder="Enter company name"
               />
             </div>
 
-            {/* Contact & Tax ID */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="flex items-center text-gray-300 text-sm">
+            {/* Contact & Tax ID - Better mobile layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+              <div className="space-y-2">
+                <label className="flex items-center text-gray-300 text-sm font-medium">
                   <svg
-                    className="w-4 h-4 mr-2 text-blue-400"
+                    className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -163,15 +163,15 @@ const BillingAddress = ({ email }) => {
                   name="contactNumber"
                   value={formData.contactNumber}
                   onChange={handleChange}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                   placeholder="Enter contact number"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="flex items-center text-gray-300 text-sm">
+              <div className="space-y-2">
+                <label className="flex items-center text-gray-300 text-sm font-medium">
                   <svg
-                    className="w-4 h-4 mr-2 text-blue-400"
+                    className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -183,23 +183,24 @@ const BillingAddress = ({ email }) => {
                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                  Tax ID (GSTIN) *
+                  Tax ID (GSTIN)
                 </label>
                 <input
                   type="text"
                   name="taxId"
                   value={formData.taxId}
                   onChange={handleChange}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  placeholder="Enter tax ID"
+                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
+                  placeholder="Enter tax ID (optional)"
                 />
               </div>
             </div>
-            {/* Address Row */}
-            <div className="space-y-1">
-              <label className="flex items-center text-gray-300 text-sm">
+
+            {/* Street Address - Full width */}
+            <div className="space-y-2">
+              <label className="flex items-center text-gray-300 text-sm font-medium">
                 <svg
-                  className="w-4 h-4 mr-2 text-blue-400"
+                  className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -224,15 +225,16 @@ const BillingAddress = ({ email }) => {
                 name="streetAddress"
                 value={formData.streetAddress}
                 onChange={handleChange}
-                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                 placeholder="Enter street address"
               />
             </div>
 
-            <div className="space-y-1">
+            {/* Street Address 2 - Full width */}
+            <div className="space-y-2">
               <label className="flex items-center text-gray-300 text-gray-400 text-sm">
                 <svg
-                  className="w-4 h-4 mr-2 text-blue-400"
+                  className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -251,17 +253,17 @@ const BillingAddress = ({ email }) => {
                 name="streetAddress2"
                 value={formData.streetAddress2}
                 onChange={handleChange}
-                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                 placeholder="Apartment, suite, unit, etc. (optional)"
               />
             </div>
 
-            {/* Location Row */}
-            <div className="grid grid-cols-4 gap-2">
-              <div className="space-y-1">
-                <label className="flex items-center text-gray-300 text-sm">
+            {/* Location Row - Optimized for mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
+              <div className="space-y-2">
+                <label className="flex items-center text-gray-300 text-sm font-medium">
                   <svg
-                    className="w-4 h-4 mr-2 text-blue-400"
+                    className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -280,15 +282,15 @@ const BillingAddress = ({ email }) => {
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                   placeholder="City"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="flex items-center text-gray-300 text-sm">
+              <div className="space-y-2">
+                <label className="flex items-center text-gray-300 text-sm font-medium">
                   <svg
-                    className="w-4 h-4 mr-2 text-blue-400"
+                    className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -307,15 +309,15 @@ const BillingAddress = ({ email }) => {
                   name="state"
                   value={formData.state}
                   onChange={handleChange}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                   placeholder="State"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="flex items-center text-gray-300 text-sm">
+              <div className="space-y-2">
+                <label className="flex items-center text-gray-300 text-sm font-medium">
                   <svg
-                    className="w-4 h-4 mr-2 text-blue-400"
+                    className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -334,15 +336,15 @@ const BillingAddress = ({ email }) => {
                   name="postcode"
                   value={formData.postcode}
                   onChange={handleChange}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                   placeholder="Postcode"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="flex items-center text-gray-300 text-sm">
+              <div className="space-y-2">
+                <label className="flex items-center text-gray-300 text-sm font-medium">
                   <svg
-                    className="w-4 h-4 mr-2 text-blue-400"
+                    className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -361,19 +363,17 @@ const BillingAddress = ({ email }) => {
                   name="country"
                   value={formData.country}
                   onChange={handleChange}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                   placeholder="Country"
                 />
               </div>
             </div>
 
-            {/* --- Rest of the form remains exactly the same --- */}
-
             {/* Error / Success Messages */}
             {error && (
-              <div className="flex items-center p-3 bg-red-900/20 border border-red-700 rounded-lg">
+              <div className="flex items-start p-4 bg-red-900/20 border border-red-700 rounded-lg">
                 <svg
-                  className="w-5 h-5 text-red-400 mr-2"
+                  className="w-5 h-5 text-red-400 mr-2 mt-0.5 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -390,9 +390,9 @@ const BillingAddress = ({ email }) => {
             )}
 
             {success && (
-              <div className="flex items-center p-3 bg-green-900/20 border border-green-700 rounded-lg">
+              <div className="flex items-start p-4 bg-green-900/20 border border-green-700 rounded-lg">
                 <svg
-                  className="w-5 h-5 text-green-400 mr-2"
+                  className="w-5 h-5 text-green-400 mr-2 mt-0.5 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -412,7 +412,7 @@ const BillingAddress = ({ email }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold transition-all duration-300 focus:ring-2 focus:ring-blue-300 focus:outline-none flex items-center justify-center"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white py-4 px-4 rounded-lg font-semibold transition-all duration-300 focus:ring-2 focus:ring-blue-300 focus:outline-none flex items-center justify-center text-base"
             >
               <svg
                 className="w-5 h-5 mr-2"

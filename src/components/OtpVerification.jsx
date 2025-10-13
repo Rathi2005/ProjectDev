@@ -109,7 +109,7 @@ const OtpVerification = ({ email, onVerified, toggle }) => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center bg-[#0e1525] text-white px-4">
+    <div className="flex flex-col min-h-full items-center justify-center bg-[#0e1525] text-white px-4">
       <div className="w-full max-w-lg bg-[#121a2a] rounded-2xl p-8 shadow-lg flex flex-col items-center text-center space-y-6">
         {/* ICON */}
         <div className="bg-indigo-600 p-3 rounded-full">
