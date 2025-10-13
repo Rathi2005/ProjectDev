@@ -2,10 +2,10 @@ import { useState } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useNavigate, Link } from "react-router-dom";
-import OtpVerification from "../components/OtpVerification"; // OTP component
+import OtpVerification from "../components/OtpVerification";
 
 const LOGIN_API = import.meta.env.VITE_LOGIN;
-const OTP_INITIATE_API = import.meta.env.VITE_LOGIN_OTP; // e.g., "https://somani-backend-b9c073c8ea97.herokuapp.com/api/login/otp/initiate"
+const OTP_INITIATE_API = import.meta.env.VITE_LOGIN_OTP;
 
 const LogoIcon = () => (
   <svg
@@ -29,9 +29,10 @@ const LogoIcon = () => (
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(""); // Added success state
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [showOtpForm, setShowOtpForm] = useState(false);
+  const [loginWithOtp, setLoginWithOtp] = useState(false);
 
   const navigate = useNavigate();
 
@@ -46,17 +47,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Step 1: Validate login credentials
-      const response = await fetch(LOGIN_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Step 2: Initiate OTP
+      if (loginWithOtp) {
+        // OTP login mode
         const otpRes = await fetch(OTP_INITIATE_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -66,18 +58,31 @@ export default function LoginPage() {
         const otpData = await otpRes.json();
 
         if (otpRes.ok) {
-          setSuccess(otpData.message || "OTP has been sent to your email.");
-          // Show OTP form after 1 second to let user see success
+          setSuccess(otpData.message || "OTP sent to your email.");
           setTimeout(() => setShowOtpForm(true), 1000);
         } else if (otpRes.status === 404) {
-          setError(otpData.message || "No account found with this email address.");
+          setError(otpData.message || "No account found with this email.");
         } else {
           setError("Failed to initiate OTP. Please try again.");
         }
-      } else if (response.status === 401) {
-        setError(data.message || "Incorrect email or password.");
       } else {
-        setError("Login failed. Please try again.");
+        // Normal login mode
+        const response = await fetch(LOGIN_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setSuccess(data.message || "Login successful!");
+          setTimeout(() => navigate("/dashboard"), 1500);
+        } else if (response.status === 401) {
+          setError(data.message || "Incorrect email or password.");
+        } else {
+          setError("Login failed. Please try again.");
+        }
       }
     } catch (err) {
       console.error("Login error:", err);
@@ -97,9 +102,13 @@ export default function LoginPage() {
               <div className="bg-indigo-600 p-3 rounded-lg mb-3">
                 <LogoIcon />
               </div>
-              <h1 className="text-2xl font-bold">Login to Your Account</h1>
+              <h1 className="text-2xl font-bold">
+                {loginWithOtp ? "Login with OTP" : "Login to Your Account"}
+              </h1>
               <p className="text-gray-400 text-center text-sm mt-1">
-                Enter your credentials to access your dashboard
+                {loginWithOtp
+                  ? "Enter your email to receive an OTP"
+                  : "Enter your credentials to access your dashboard"}
               </p>
             </div>
 
@@ -117,27 +126,28 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium">Password</label>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full mt-1 px-3 py-2 rounded-md bg-[#1c2538] text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+              {/* Show password field only if not in OTP login */}
+              {!loginWithOtp && (
+                <div>
+                  <label className="text-sm font-medium">Password</label>
+                  <input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    required
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full mt-1 px-3 py-2 rounded-md bg-[#1c2538] text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              )}
 
-              {/* ERROR MESSAGE */}
               {error && (
                 <div className="p-3 bg-red-900/20 border border-red-700/40 rounded-md">
                   <p className="text-red-400 text-center text-sm">{error}</p>
                 </div>
               )}
 
-              {/* SUCCESS MESSAGE */}
               {success && (
                 <div className="p-3 bg-green-900/20 border border-green-700/40 rounded-md">
                   <p className="text-green-400 text-center text-sm">{success}</p>
@@ -151,8 +161,23 @@ export default function LoginPage() {
                   loading ? "opacity-60 cursor-not-allowed" : ""
                 }`}
               >
-                {loading ? "Logging in..." : "Login"}
+                {loading
+                  ? loginWithOtp
+                    ? "Sending OTP..."
+                    : "Logging in..."
+                  : loginWithOtp
+                  ? "Send OTP"
+                  : "Login"}
               </button>
+
+              <p
+                onClick={() => setLoginWithOtp(!loginWithOtp)}
+                className="text-center text-sm text-indigo-400 hover:underline mt-3 cursor-pointer"
+              >
+                {loginWithOtp
+                  ? "Login with password instead"
+                  : "Login with OTP instead"}
+              </p>
 
               <p className="text-center text-sm text-gray-400 mt-3">
                 Don't have an account?{" "}
@@ -160,25 +185,13 @@ export default function LoginPage() {
                   Sign Up
                 </Link>
               </p>
-
-              <p className="text-center text-xs text-gray-500 mt-2">
-                By logging in, you agree to our{" "}
-                <a href="#" className="underline">
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a href="#" className="underline">
-                  Privacy Policy
-                </a>
-                .
-              </p>
             </form>
           </div>
         ) : (
           <OtpVerification
             email={formData.email}
             onVerified={() => navigate("/dashboard")}
-            toggle={1} // 1 -> login otp
+            toggle={1}
           />
         )}
       </div>
