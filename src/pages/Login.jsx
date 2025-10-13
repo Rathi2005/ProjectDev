@@ -3,9 +3,11 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useNavigate, Link } from "react-router-dom";
 import OtpVerification from "../components/OtpVerification";
+import ResetPassword from "../components/ResetPassword";
 
 const LOGIN_API = import.meta.env.VITE_LOGIN;
 const OTP_INITIATE_API = import.meta.env.VITE_LOGIN_OTP;
+const FORGET_PASSWORD_API = import.meta.env.VITE_FORGET_PASSWORD;
 
 const LogoIcon = () => (
   <svg
@@ -33,6 +35,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showOtpForm, setShowOtpForm] = useState(false);
   const [loginWithOtp, setLoginWithOtp] = useState(false);
+  const [resetPasswordMode, setResetPasswordMode] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetStep, setResetStep] = useState(1); // 1=OTP input, 2=Password input
 
   const navigate = useNavigate();
 
@@ -40,7 +47,7 @@ export default function LoginPage() {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -48,7 +55,6 @@ export default function LoginPage() {
 
     try {
       if (loginWithOtp) {
-        // OTP login mode
         const otpRes = await fetch(OTP_INITIATE_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -66,7 +72,6 @@ export default function LoginPage() {
           setError("Failed to initiate OTP. Please try again.");
         }
       } else {
-        // Normal login mode
         const response = await fetch(LOGIN_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -92,11 +97,48 @@ export default function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      setError("Please enter your email first.");
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        FORGET_PASSWORD_API,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formData.email }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccess(data.message || "OTP has been sent if the account exists.");
+        setResetPasswordMode(true); // show reset password form
+        setResetStep(1); // start with OTP step
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div>
       <Header />
       <div className="min-h-[calc(100vh-60px)] flex flex-col items-center justify-center bg-[#0e1525] text-white px-4">
-        {!showOtpForm ? (
+        {!resetPasswordMode && !showOtpForm ? (
           <div className="w-full max-w-md bg-[#121a2a] rounded-2xl shadow-lg p-8 m-8">
             <div className="flex flex-col items-center mb-6">
               <div className="bg-indigo-600 p-3 rounded-lg mb-3">
@@ -112,7 +154,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
+            <form className="space-y-4" onSubmit={handleLoginSubmit}>
               <div>
                 <label className="text-sm font-medium">Email Address</label>
                 <input
@@ -126,7 +168,6 @@ export default function LoginPage() {
                 />
               </div>
 
-              {/* Show password field only if not in OTP login */}
               {!loginWithOtp && (
                 <div>
                   <label className="text-sm font-medium">Password</label>
@@ -139,6 +180,12 @@ export default function LoginPage() {
                     onChange={handleChange}
                     className="w-full mt-1 px-3 py-2 rounded-md bg-[#1c2538] text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
+                  <p
+                    onClick={handleForgotPassword}
+                    className="text-sm text-indigo-400 hover:underline mt-2 cursor-pointer"
+                  >
+                    Forgot password?
+                  </p>
                 </div>
               )}
 
@@ -150,7 +197,9 @@ export default function LoginPage() {
 
               {success && (
                 <div className="p-3 bg-green-900/20 border border-green-700/40 rounded-md">
-                  <p className="text-green-400 text-center text-sm">{success}</p>
+                  <p className="text-green-400 text-center text-sm">
+                    {success}
+                  </p>
                 </div>
               )}
 
@@ -181,12 +230,17 @@ export default function LoginPage() {
 
               <p className="text-center text-sm text-gray-400 mt-3">
                 Don't have an account?{" "}
-                <Link to="/register" className="text-indigo-400 hover:underline">
+                <Link
+                  to="/register"
+                  className="text-indigo-400 hover:underline"
+                >
                   Sign Up
                 </Link>
               </p>
             </form>
           </div>
+        ) : resetPasswordMode ? (
+          <ResetPassword email={formData.email} />
         ) : (
           <OtpVerification
             email={formData.email}
