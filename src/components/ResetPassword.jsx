@@ -98,7 +98,7 @@ const ResetPassword = ({ email }) => {
   };
 
   return (
-    <div className="flex flex-col min-h-full items-center justify-center bg-[#0e1525] text-white px-4">
+    <div className="flex flex-col items-center mt-0 bg-[#0e1525] text-white px-4">
       <div className="w-full max-w-lg bg-[#121a2a] rounded-2xl p-8 shadow-lg flex flex-col items-center text-center space-y-6">
 
         <h2 className="text-2xl font-bold mb-1">Reset Password</h2>
@@ -107,11 +107,7 @@ const ResetPassword = ({ email }) => {
             Enter the 6-digit OTP sent to <br />
             <span className="text-white font-medium">{email}</span>
           </p>
-        ) : (
-          <p className="text-gray-400 text-sm">
-            Enter your new password
-          </p>
-        )}
+        ) : null }
 
         <form onSubmit={handleSubmit} className="w-full space-y-6">
           {resetStep === 1 ? (
@@ -135,7 +131,7 @@ const ResetPassword = ({ email }) => {
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 text-left">
               <div>
                 <label className="text-sm font-medium">New Password</label>
                 <input

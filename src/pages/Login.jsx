@@ -7,7 +7,7 @@ import ResetPassword from "../components/ResetPassword";
 
 const LOGIN_API = import.meta.env.VITE_LOGIN;
 const OTP_INITIATE_API = import.meta.env.VITE_LOGIN_OTP;
-const FORGET_PASSWORD_API = import.meta.env.VITE_FORGET_PASSWORD;
+const FORGET_PASSWORD_API = import.meta.env.VITE_FORGOT_PASSWORD;
 
 const LogoIcon = () => (
   <svg
@@ -108,23 +108,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        FORGET_PASSWORD_API,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: formData.email }),
-        }
-      );
+      const res = await fetch(FORGET_PASSWORD_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
 
-      const data = await res.json();
+      let data = {};
+      const text = await res.text();
+      if (text) data = JSON.parse(text);
 
       if (res.ok) {
         setSuccess(data.message || "OTP has been sent if the account exists.");
         setResetPasswordMode(true); // show reset password form
         setResetStep(1); // start with OTP step
       } else {
-        setError("Something went wrong. Please try again.");
+        setError(data.message || "Something went wrong. Please try again.");
       }
     } catch (err) {
       console.error("Forgot password error:", err);
