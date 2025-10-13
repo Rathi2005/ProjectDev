@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import Header from "./Header";
-import Footer from "./Footer";
+import { useNavigate } from "react-router-dom";
 const BILLING = import.meta.env.VITE_BILLING;
 
 const BillingAddress = ({ email }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     companyName: "",
     streetAddress: "",
