@@ -117,6 +117,8 @@ export default function LoginPage() {
       let data = {};
       const text = await res.text();
       if (text) data = JSON.parse(text);
+      console.log("Forgot password response:", text); // 👈 check this
+      
 
       if (res.ok) {
         setSuccess(data.message || "OTP has been sent if the account exists.");

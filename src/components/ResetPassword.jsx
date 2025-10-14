@@ -79,7 +79,7 @@ const ResetPassword = ({ email }) => {
 
         if (res.ok) {
           setSuccess(data.message || "Password reset successfully!");
-          setTimeout(() => navigate("/login"), 2000);
+          // setTimeout(() => navigate("/login"), 2000);
         } else if (res.status === 400) {
           if (data.field === "otp") setError(data.message);
           else if (data.field === "confirmPassword") setError(data.message);
