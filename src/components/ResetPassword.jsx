@@ -37,11 +37,32 @@ const ResetPassword = ({ email }) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text/plain").slice(0, 6);
     if (/^\d+$/.test(pasted)) {
-      const newOtpArr = pasted.split("").concat(Array(6 - pasted.length).fill(""));
+      const newOtpArr = pasted
+        .split("")
+        .concat(Array(6 - pasted.length).fill(""));
       setOtp(newOtpArr);
       inputRefs.current[Math.min(pasted.length, 5)].focus();
     }
   };
+
+  const LogoIcon = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="48"
+      height="48"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-indigo-400"
+    >
+      <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+      <path d="M2 17l10 5 10-5"></path>
+      <path d="M2 12l10 5 10-5"></path>
+    </svg>
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -100,14 +121,25 @@ const ResetPassword = ({ email }) => {
   return (
     <div className="flex flex-col items-center mt-0 bg-[#0e1525] text-white px-4">
       <div className="w-full max-w-lg bg-[#121a2a] rounded-2xl p-8 shadow-lg flex flex-col items-center text-center space-y-6">
+        {/* Centered logo */}
+        <div className="flex justify-center">
+          <div className="bg-indigo-600 p-3 rounded-lg inline-flex items-center justify-center shadow-md">
+            <LogoIcon />
+          </div>
+        </div>
 
         <h2 className="text-2xl font-bold mb-1">Reset Password</h2>
+
         {resetStep === 1 ? (
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-400 text-sm mt-0">
             Enter the 6-digit OTP sent to <br />
             <span className="text-white font-medium">{email}</span>
           </p>
-        ) : null }
+        ) : (
+          <p className="text-gray-400 text-sm mt-0">
+            Set your new password below.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="w-full space-y-6">
           {resetStep === 1 ? (
