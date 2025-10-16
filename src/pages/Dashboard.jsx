@@ -1,21 +1,54 @@
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
+import DashboardPage from "../components/dashboard/DashboardPage";
+import CreateServerPage from "../components/server/CreateServerPage";
+
 export default function Dashboard() {
   return (
     <div className="bg-[#0e1525] min-h-screen flex text-gray-100">
-      <Sidebar />
-      <div className="flex-1 flex flex-col ml-64">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0e1525] border-b border-indigo-900/30">
         <Header />
+      </div>
+
+      {/* Sidebar */}
+      <Sidebar />
+
+      {/* Main content area */}
+      <div
+        className="flex-1 flex flex-col ml-64"
+        style={{
+          height: "calc(100vh - 72px)",
+        }}
+      >
         <div
-          className="flex-1 flex flex-col overflow-y-auto scroll-smooth"
           id="main-content"
+          className="flex-1 mt-[50px]"
+          style={{
+            overflow: "hidden", // disables manual scroll
+            scrollBehavior: "smooth", // enables smooth programmatic scroll
+          }}
         >
+          {/* Sections */}
           <section id="dashboard" className="min-h-screen p-10">
-            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+            <DashboardPage />
           </section>
 
           <section id="servers" className="min-h-screen p-10">
-            <h1 className="text-3xl font-bold">Servers</h1>
+            <div id="create-server" className="mb-20">
+              <CreateServerPage />
+            </div>
+
+            <div id="server-image" className="min-h-screen p-10">
+              <h2 className="text-2xl font-semibold mb-4">Image</h2>
+              <p>Details about server images go here.</p>
+            </div>
+
+            <div id="server-type" className="min-h-screen p-10">
+              <h2 className="text-2xl font-semibold mb-4">Type</h2>
+              <p>Details about server types go here.</p>
+            </div>
           </section>
 
           <section id="security" className="min-h-screen p-10">
@@ -30,3 +63,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

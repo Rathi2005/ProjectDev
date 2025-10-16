@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import Header from "./Header";
+import Logout from "../Logout";
 import {
   Home,
   Server,
@@ -12,7 +12,11 @@ import {
 
 export default function Sidebar() {
   const [activeSection, setActiveSection] = useState("dashboard");
-  const [openMenu, setOpenMenu] = useState(true);
+  const [activeSubSection, setActiveSubSection] = useState(null);
+  const [openServersMenu, setOpenServersMenu] = useState(false);
+  const [openMoreOptions, setOpenMoreOptions] = useState(false);
+
+  const logout = Logout();
 
   const links = [
     { name: "Dashboard", icon: <Home size={18} />, id: "dashboard" },
@@ -21,83 +25,157 @@ export default function Sidebar() {
     { name: "Settings", icon: <Settings size={18} />, id: "settings" },
   ];
 
-  // 👇 Detect active section based on scroll position
+  const serversSubItems = [
+    { label: "Create a Server", id: "create-server" },
+    { label: "Image", id: "server-image" },
+    { label: "Type", id: "server-type" },
+  ];
+
+  const moreOptionsSubItems = [
+    { label: "System Logs" },
+    { label: "API Access" },
+    { label: "Storage" },
+  ];
+
+  // ✅ Scroll tracking only highlights, doesn't toggle dropdown
   useEffect(() => {
     const handleScroll = () => {
-      const sections = links.map((l) => document.getElementById(l.id));
-      const scrollY = window.scrollY + window.innerHeight / 3;
+      const scrollPos = window.scrollY + 100;
 
-      for (let section of sections) {
-        if (section && section.offsetTop <= scrollY && section.offsetTop + section.offsetHeight > scrollY) {
-          setActiveSection(section.id);
+      const sectionIds = [
+        "dashboard",
+        "servers",
+        "security",
+        "settings",
+        ...serversSubItems.map((item) => item.id),
+      ];
+
+      let foundSection = null;
+      let foundSub = null;
+
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const top = el.offsetTop;
+        const bottom = top + el.offsetHeight;
+        if (scrollPos >= top && scrollPos < bottom) {
+          if (serversSubItems.some((item) => item.id === id)) {
+            foundSub = id;
+            foundSection = "servers";
+          } else {
+            foundSection = id;
+          }
           break;
         }
       }
+
+      if (foundSection && foundSection !== activeSection) {
+        setActiveSection(foundSection);
+      }
+
+      if (foundSub !== activeSubSection) {
+        setActiveSubSection(foundSub);
+      }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [activeSection, activeSubSection, serversSubItems]);
 
-  const scrollToSection = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  const scrollTo = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const onClickSection = (id) => {
+    setActiveSection(id);
+
+    if (id === "servers") {
+      setOpenServersMenu((prev) => !prev); // ✅ Toggle submenu
+      if (!openServersMenu) {
+        const target = activeSubSection || "create-server";
+        setActiveSubSection(target);
+        scrollTo(target);
+      }
+    } else {
+      setOpenServersMenu(false);
+      setActiveSubSection(null);
+      scrollTo(id);
+    }
+  };
+
+  const onClickSubSection = (id) => {
+    setActiveSubSection(id);
+    scrollTo(id);
   };
 
   return (
-    <aside className="bg-[#121a2a] text-gray-300 w-64 h-screen flex flex-col border-r border-indigo-900/30 shadow-md fixed">
-      {/* Title */}
-      <div className="px-6 py-5 border-b border-indigo-900/30">
-        <h1 className="text-indigo-400 font-semibold text-lg tracking-wide flex items-center gap-2">
-          <span className="text-xl">✨</span> MyCloud
-        </h1>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-4 space-y-1 text-sm">
+    <aside className="bg-[#121a2a] text-gray-300 w-64 h-screen fixed border-r border-indigo-900/30">
+      <nav className="py-20 px-4 space-y-1 text-sm overflow-y-auto">
         {links.map((link) => (
-          <button
-            key={link.id}
-            onClick={() => scrollToSection(link.id)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors cursor-pointer ${
-              activeSection === link.id
-                ? "bg-indigo-600/30 text-white"
-                : "hover:bg-[#1c2538] text-gray-300"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {link.icon}
-              <span>{link.name}</span>
-            </div>
-          </button>
+          <div key={link.id}>
+            <button
+              onClick={() => onClickSection(link.id)}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                activeSection === link.id
+                  ? "bg-indigo-600/30 text-white"
+                  : "hover:bg-[#1c2538] text-gray-300"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {link.icon}
+                <span>{link.name}</span>
+              </div>
+              {link.id === "servers" &&
+                (openServersMenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+            </button>
+
+            {link.id === "servers" && openServersMenu && (
+              <div className="mt-1 ml-8 border-l border-indigo-700/40 pl-3 space-y-1">
+                {serversSubItems.map((sub) => (
+                  <SubItem
+                    key={sub.id}
+                    label={sub.label}
+                    active={activeSubSection === sub.id}
+                    onClick={() => onClickSubSection(sub.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         ))}
 
-        {/* Collapsible section */}
+        {/* More Options collapsible */}
         <div className="mt-2">
           <button
-            onClick={() => setOpenMenu(!openMenu)}
+            onClick={() => setOpenMoreOptions(!openMoreOptions)}
             className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
-              openMenu ? "bg-indigo-600/30 text-white" : "hover:bg-[#1c2538]"
+              openMoreOptions ? "bg-indigo-600/30 text-white" : "hover:bg-[#1c2538]"
             }`}
           >
             <div className="flex items-center gap-3">
               <Settings size={18} />
               <span>More Options</span>
             </div>
-            {openMenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {openMoreOptions ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </button>
-
-          {openMenu && (
+          {openMoreOptions && (
             <div className="mt-1 ml-8 border-l border-indigo-700/40 pl-3 space-y-1">
-              <SubItem label="System Logs" />
-              <SubItem label="API Access" />
-              <SubItem label="Storage" />
+              {moreOptionsSubItems.map(({ label }) => (
+                <SubItem key={label} label={label} />
+              ))}
             </div>
           )}
         </div>
       </nav>
 
-      {/* Footer */}
-      <div className="px-6 py-4 border-t border-indigo-900/30 flex items-center gap-3 cursor-pointer hover:text-red-400 transition-colors">
+      <div
+        className="px-6 py-4 border-t border-indigo-900/30 flex items-center gap-3 cursor-pointer hover:text-red-400"
+        onClick={logout}
+      >
         <LogOut size={18} />
         <span>Logout</span>
       </div>
@@ -105,9 +183,10 @@ export default function Sidebar() {
   );
 }
 
-function SubItem({ label, active }) {
+function SubItem({ label, active, onClick }) {
   return (
     <div
+      onClick={onClick}
       className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${
         active
           ? "bg-indigo-600 text-white"
