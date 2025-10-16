@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useNavigate, Link } from "react-router-dom";
@@ -43,6 +43,13 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/dashboard");
+    }
+  }, []);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
@@ -65,7 +72,7 @@ export default function LoginPage() {
 
         if (otpRes.ok) {
           setSuccess(otpData.message || "OTP sent to your email.");
-          setTimeout(() => setShowOtpForm(true), 1000);
+          setTimeout(() => setShowOtpForm(true), 100);
         } else if (otpRes.status === 404) {
           setError(otpData.message || "No account found with this email.");
         } else {
@@ -119,7 +126,6 @@ export default function LoginPage() {
       const text = await res.text();
       if (text) data = JSON.parse(text);
       console.log("Forgot password response:", text); // 👈 check this
-      
 
       if (res.ok) {
         setSuccess(data.message || "OTP has been sent if the account exists.");
