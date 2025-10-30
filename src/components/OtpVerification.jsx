@@ -66,6 +66,9 @@ const OtpVerification = ({ email, onVerified, toggle }) => {
       const data = await response.json();
 
       if (response.ok) {
+        if (data.token) {
+          localStorage.setItem("token", JSON.stringify(data.token));
+        }
         setSuccess("OTP verified successfully!");
         // Wait a moment to show success, then call onVerified
         setTimeout(() => {

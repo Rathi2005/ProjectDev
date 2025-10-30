@@ -256,6 +256,7 @@ export default function LoginPage() {
             toggle={1}
           />
         )}
+      
       </div>
       <Footer />
     </div>

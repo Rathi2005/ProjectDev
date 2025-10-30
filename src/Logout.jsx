@@ -17,21 +17,25 @@ export default function useLogout() {
         },
       });
 
-      const data = await response.text(); // 👈 read raw response text
+      // Read server response
+      await response.text();
+
+      // Always clear local data
       localStorage.removeItem("token");
-      window.location.reload();
 
-
-      // Optional: handle success/failure messages
-        if (response.ok) {
-          console.log("Logged out from server");
-          window.location.href = "/login";
-
-        } else {
+      if (response.ok) {
+        console.log("Logged out successfully from server");
+      } else {
         console.warn("Server logout failed, but clearing local data anyway.");
       }
+
+      // ✅ Redirect to login page using React Router
+      navigate("/login", { replace: true });
     } catch (error) {
       console.error("Logout error:", error);
+      // Even if there's an error, still redirect user
+      localStorage.removeItem("token");
+      navigate("/login", { replace: true });
     }
   };
 
