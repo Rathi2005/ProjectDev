@@ -5,11 +5,11 @@ import ProtectedRoute from "./ProtectedRoute";
 import AdminProtectedRoute from "./AdminProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard"; // optional for after login
+import Dashboard from "./pages/Dashboard";
 import AdminLoginPage from "./pages/admin/AdminLogin";
 import AdminDashboard from "./components/admin/adminDashboard";
-import OrdersPage from "./Pages/admin/OrdersPage";
-import InvoicesPage from "./Pages/admin/InvoicesPage";
+import OrdersPage from "./pages/admin/OrdersPage";
+import InvoicesPage from "./pages/admin/InvoicesPage";
 import ServersPage from "./pages/admin/ServersPage";
 
 export default function App() {
