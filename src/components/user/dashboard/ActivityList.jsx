@@ -27,7 +27,7 @@ const ActivityList = () => (
     <div className="bg-[#1e293b] rounded-md shadow-lg p-4 h-full">
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-sm font-semibold text-gray-400 tracking-wider">ACTIVITIES</h2>
-            <a href="#" className="text-sm text-red-500 hover:underline">View all ></a>
+            <a href="#" className="text-sm text-red-500 hover:underline">View all </a>
         </div>
         <ul className="space-y-4">
             {activities.map((activity, index) => (
