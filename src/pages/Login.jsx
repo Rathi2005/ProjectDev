@@ -59,7 +59,7 @@ export default function LoginPage() {
     setError("");
     setSuccess("");
     setLoading(true);
-
+    
     try {
       if (loginWithOtp) {
         const otpRes = await fetch(OTP_INITIATE_API, {

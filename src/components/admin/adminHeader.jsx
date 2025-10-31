@@ -37,13 +37,17 @@ const AdminHeader = () => {
             <LayoutDashboard className="w-4 h-4" />
             <span>Dashboard</span>
           </a>
-          <a href="/admin/users" className="flex items-center space-x-1 hover:text-[#22c55e] transition">
+          <a href="/admin/orders" className="flex items-center space-x-1 hover:text-[#22c55e] transition">
             <Users className="w-4 h-4" />
-            <span>Users</span>
+            <span>Orders</span>
           </a>
-          <a href="/admin/reports" className="flex items-center space-x-1 hover:text-[#22c55e] transition">
+          <a href="/admin/invoices" className="flex items-center space-x-1 hover:text-[#22c55e] transition">
             <FileBarChart className="w-4 h-4" />
-            <span>Reports</span>
+            <span>Invoices</span>
+          </a>
+          <a href="/admin/servers" className="flex items-center space-x-1 hover:text-[#22c55e] transition">
+            <FileBarChart className="w-4 h-4" />
+            <span>Servers</span>
           </a>
           <a href="/admin/settings" className="flex items-center space-x-1 hover:text-[#22c55e] transition">
             <Settings className="w-4 h-4" />

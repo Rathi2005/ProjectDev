@@ -6,8 +6,11 @@ import AdminProtectedRoute from "./AdminProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard"; // optional for after login
-import AdminLoginPage from "./pages/AdminLogin";
+import AdminLoginPage from "./pages/admin/AdminLogin";
 import AdminDashboard from "./components/admin/adminDashboard";
+import OrdersPage from "./Pages/admin/OrdersPage";
+import InvoicesPage from "./Pages/admin/InvoicesPage";
+import ServersPage from "./pages/admin/ServersPage";
 
 export default function App() {
   return (
@@ -31,6 +34,30 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <AdminProtectedRoute>
+              <OrdersPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/invoices"
+          element={
+            <AdminProtectedRoute>
+              <InvoicesPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/servers"
+          element={
+            <AdminProtectedRoute>
+              <ServersPage />
             </AdminProtectedRoute>
           }
         />

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import LoginForm from "../components/admin/LoginForm";
-import AdminHeader from "../components/admin/adminHeader";
-import AdminOtpVerification from "../components/admin/adminOtpVerification";
+import LoginForm from "../../components/admin/LoginForm";
+import AdminHeader from "../../components/admin/adminHeader";
+import AdminOtpVerification from "../../components/admin/adminOtpVerification";
 
 const ADMIN_LOGIN_API = import.meta.env.VITE_ADMIN_LOGIN;
 const ADMIN_OTP_VERIFY = import.meta.env.VITE_ADMIN_OTP_VERIFY;
