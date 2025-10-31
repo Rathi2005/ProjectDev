@@ -1,5 +1,6 @@
-public class vercel {
+public class vercel{
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
   ]
 }
+
