@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminHeader from "./AdminHeader";
+import AdminHeader from "./adminHeader";
 import Footer from "../user/Footer";
 
 export default function AdminDashboard() {
