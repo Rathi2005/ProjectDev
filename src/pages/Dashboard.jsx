@@ -1,7 +1,7 @@
-import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
-import DashboardPage from "../components/dashboard/DashboardPage";
-import CreateServerPage from "../components/server/CreateServerPage";
+import Sidebar from "../components/user/Sidebar";
+import Header from "../components/user/Header";
+import DashboardPage from "../components/user/dashboard/DashboardPage";
+import CreateServerPage from "../components/user/server/CreateServerPage";
 
 export default function Dashboard() {
   return (

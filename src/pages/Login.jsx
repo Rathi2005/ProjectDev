@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import Header from "../components/user/Header";
+import Footer from "../components/user/Footer";
 import { useNavigate, Link } from "react-router-dom";
-import OtpVerification from "../components/OtpVerification";
-import ResetPassword from "../components/ResetPassword";
+import OtpVerification from "../components/user/OtpVerification";
+import ResetPassword from "../components/user/ResetPassword";
 
 const LOGIN_API = import.meta.env.VITE_LOGIN;
 const OTP_INITIATE_API = import.meta.env.VITE_LOGIN_OTP;

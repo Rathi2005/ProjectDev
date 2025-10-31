@@ -1,8 +1,8 @@
 import { useState } from "react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import OtpVerification from "../components/OtpVerification";
-import BillingAddress from "../components/BillingAddress";
+import Header from "../components/user/Header";
+import Footer from "../components/user/Footer";
+import OtpVerification from "../components/user/OtpVerification";
+import BillingAddress from "../components/user/BillingAddress";
 import { Link } from "react-router-dom";
 
 const VALIDATE_EMAIL = import.meta.env.VITE_VALIDATE;
