@@ -11,6 +11,8 @@ import AdminDashboard from "./components/admin/adminDashboard";
 import OrdersPage from "./pages/admin/OrdersPage";
 import InvoicesPage from "./pages/admin/InvoicesPage";
 import ServersPage from "./pages/admin/ServersPage";
+import IPsPage from "./pages/admin/IPs";
+import IsosPage from "./pages/admin/ISOs";
 
 export default function App() {
   return (
@@ -58,6 +60,22 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <ServersPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/servers/:id/ips"
+          element={
+            <AdminProtectedRoute>
+              <IPsPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/servers/:id/isos"
+          element={
+            <AdminProtectedRoute>
+              <IsosPage />
             </AdminProtectedRoute>
           }
         />
