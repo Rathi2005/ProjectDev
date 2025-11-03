@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 import LoginForm from "../../components/admin/LoginForm";
 import AdminHeader from "../../components/admin/adminHeader";
 import AdminOtpVerification from "../../components/admin/adminOtpVerification";
@@ -14,6 +15,19 @@ export default function AdminLoginPage() {
   const [success, setSuccess] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const navigate = useNavigate();
+  const adminToken = localStorage.getItem("adminToken");
+
+  if (adminToken) {
+    try {
+      const decoded = jwtDecode(adminToken);
+      if (decoded.exp * 1000 > Date.now()) {
+        // Already logged in and token valid
+        return <Navigate to="/admin/dashboard" replace />;
+      }
+    } catch {
+      localStorage.removeItem("adminToken");
+    }
+  }
 
   // Step 1: Send OTP
   const handleSendOtp = async (e) => {
@@ -71,6 +85,7 @@ export default function AdminLoginPage() {
       setLoading(false);
     }
   };
+  
 
   return (
     <div className="min-h-screen bg-[#0e1420] text-white flex flex-col">
