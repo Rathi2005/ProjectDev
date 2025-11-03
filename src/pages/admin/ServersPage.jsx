@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ServersPage() {
@@ -9,6 +9,7 @@ export default function ServersPage() {
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
+    name: "",
     ip: "",
     location: "",
     node: "",
@@ -17,9 +18,9 @@ export default function ServersPage() {
   });
   const navigate = useNavigate();
 
-  const FETCH_SERVERS = import.meta.env.VITE_ALL_SERVERS;
+  const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
 
-  // Fetch servers from backend
+  // Fetch servers (GET)
   useEffect(() => {
     const fetchServers = async () => {
       const token = localStorage.getItem("adminToken");
@@ -36,12 +37,10 @@ export default function ServersPage() {
 
         if (!res.ok) {
           console.error("Failed to fetch servers:", res.status, res.statusText);
-          setLoading(false);
           return;
         }
 
         const data = await res.json();
-        console.log("Fetched servers:", data);
         setServers(data);
       } catch (err) {
         console.error("Error fetching servers:", err);
@@ -69,17 +68,40 @@ export default function ServersPage() {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e) => {
+  // POST request when form is submitted
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("New Server Data:", formData);
-    setShowModal(false);
-    setFormData({
-      ip: "",
-      location: "",
-      node: "",
-      token_id: "",
-      token_secret: "",
-    });
+    const token = localStorage.getItem("adminToken");
+
+    try {
+      const res = await fetch(FETCH_SERVERS, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to add server:", res.status, res.statusText);
+        return;
+      }
+
+      const newServer = await res.json();
+      setServers((prev) => [...prev, newServer]); // Add new server to list
+      setShowModal(false);
+      setFormData({
+        name: "",
+        ip: "",
+        location: "",
+        node: "",
+        tokenId: "",
+        tokenSecret: "",
+      });
+    } catch (err) {
+      console.error("Error adding server:", err);
+    }
   };
 
   return (
@@ -116,30 +138,58 @@ export default function ServersPage() {
             <table className="min-w-full text-left border-collapse">
               <thead className="bg-[#151c2f] text-gray-300 uppercase text-sm tracking-wider">
                 <tr>
-                  <th className="px-6 py-4 font-semibold text-sm border-b border-indigo-900/40">Server ID</th>
-                  <th className="px-6 py-4 font-semibold text-sm border-b border-indigo-900/40">Name</th>
-                  <th className="px-6 py-4 font-semibold text-sm border-b border-indigo-900/40">IP Address</th>
-                  <th className="px-6 py-4 font-semibold text-sm border-b border-indigo-900/40">Location</th>
-                  <th className="px-6 py-4 font-semibold text-sm border-b border-indigo-900/40">Node</th>
-                  <th className="px-6 py-4 font-semibold text-sm border-b border-indigo-900/40">Token ID</th>
-                  <th className="px-6 py-4 font-semibold text-sm border-b border-indigo-900/40">Status</th>
-                  <th className="px-6 py-4 font-semibold text-sm border-b border-indigo-900/40 text-center">Actions</th>
+                  <th className="px-6 py-4 border-b border-indigo-900/40">
+                    Server ID
+                  </th>
+                  <th className="px-6 py-4 border-b border-indigo-900/40">
+                    Name
+                  </th>
+                  <th className="px-6 py-4 border-b border-indigo-900/40">
+                    IP
+                  </th>
+                  <th className="px-6 py-4 border-b border-indigo-900/40">
+                    Location
+                  </th>
+                  <th className="px-6 py-4 border-b border-indigo-900/40">
+                    Node
+                  </th>
+                  <th className="px-6 py-4 border-b border-indigo-900/40">
+                    Token ID
+                  </th>
+                  <th className="px-6 py-4 border-b border-indigo-900/40">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 border-b border-indigo-900/40 text-center">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {servers.map((server, index) => (
                   <tr
-                    key={server.id}
-                    className={`transition-all duration-300 ${
+                    key={server.id || index}
+                    className={`${
                       index % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"
-                    } hover:bg-indigo-900/20 hover:shadow-md hover:shadow-indigo-800/20`}
+                    } hover:bg-indigo-900/20 transition-all duration-300`}
                   >
-                    <td className="px-6 py-4 border-b border-indigo-900/30 text-indigo-300 font-semibold">{server.id || "—"}</td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">{server.name || "—"}</td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">{server.ip || "—"}</td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">{server.location || "—"}</td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">{server.node || "—"}</td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">{server.tokenId || "—"}</td>
+                    <td className="px-6 py-4 border-b border-indigo-900/30 text-indigo-300 font-semibold">
+                      {server.id || "—"}
+                    </td>
+                    <td className="px-6 py-4 border-b border-indigo-900/30">
+                      {server.name || "—"}
+                    </td>
+                    <td className="px-6 py-4 border-b border-indigo-900/30">
+                      {server.ip || "—"}
+                    </td>
+                    <td className="px-6 py-4 border-b border-indigo-900/30">
+                      {server.location || "—"}
+                    </td>
+                    <td className="px-6 py-4 border-b border-indigo-900/30">
+                      {server.node || "—"}
+                    </td>
+                    <td className="px-6 py-4 border-b border-indigo-900/30">
+                      {server.tokenId || "—"}
+                    </td>
                     <td className="px-6 py-4 border-b border-indigo-900/30">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
@@ -151,14 +201,18 @@ export default function ServersPage() {
                     </td>
                     <td className="px-6 py-4 border-b border-indigo-900/30 text-center space-x-3">
                       <button
-                        onClick={() => navigate(`/admin/servers/${server.id}/ips`)}
-                        className="bg-green-600 hover:bg-green-700 text-white text-sm px-5 py-1 rounded-md transition-all duration-300 shadow-md"
+                        onClick={() =>
+                          navigate(`/admin/servers/${server.id}/ips`)
+                        }
+                        className="bg-green-600 hover:bg-green-700 text-white text-sm px-5 py-1 rounded-md"
                       >
                         Add IPs
                       </button>
                       <button
-                        onClick={() => navigate(`/admin/servers/${server.id}/isos`)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-5 py-1 rounded-md transition-all duration-300 shadow-md"
+                        onClick={() =>
+                          navigate(`/admin/servers/${server.id}/isos`)
+                        }
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-5 py-1 rounded-md"
                       >
                         Add ISOs
                       </button>
@@ -174,31 +228,110 @@ export default function ServersPage() {
       {/* Add Server Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] p-8 rounded-2xl w-[400px] shadow-2xl border border-indigo-900/40 relative">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {["ip", "location", "node", "token_id", "token_secret"].map(
-                (field) => (
-                  <div key={field}>
-                    <label className="block text-sm text-gray-400 mb-1 capitalize">
-                      {field.replace("_", " ")}
-                    </label>
-                    <input
-                      type="text"
-                      name={field}
-                      value={formData[field]}
-                      onChange={handleChange}
-                      required
-                      className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                    />
-                  </div>
-                )
-              )}
-              <button
-                type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl font-medium transition-all duration-300 mt-3"
-              >
-                Save Server
-              </button>
+          <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] p-4 rounded-2xl w-[500px] shadow-2xl border border-indigo-900/40 relative">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <form
+              onSubmit={handleSubmit}
+              className="mt-4 bg-[#0e1525]/60 p-6 rounded-2xl border border-indigo-900/40 shadow-[0_0_25px_-8px_rgba(99,102,241,0.5)] backdrop-blur-md space-y-5 max-w-5xl mx-auto"
+            >
+              <h2 className="text-center text-2xl font-semibold text-indigo-400 mb-2">
+                Add New Server
+              </h2>
+
+              {/* Server Name - full width */}
+              <div>
+                <label className="block text-sm text-gray-400 font-medium mb-1">
+                  Server Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter Server Name"
+                  className="w-full bg-[#141b2e] border border-indigo-900/40 text-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-500"
+                />
+              </div>
+
+              {/* Location + IP side by side */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm text-gray-400 font-medium mb-1">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    required
+                    placeholder="Enter Location"
+                    className="w-full bg-[#141b2e] border border-indigo-900/40 text-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-400 font-medium mb-1">
+                    IP Address
+                  </label>
+                  <input
+                    type="text"
+                    name="ip"
+                    value={formData.ip}
+                    onChange={handleChange}
+                    required
+                    placeholder="Enter IP Address"
+                    className="w-full bg-[#141b2e] border border-indigo-900/40 text-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-500"
+                  />
+                </div>
+              </div>
+
+              {/* Remaining full-width fields */}
+              {[
+                { name: "node", label: "Node" },
+                { name: "tokenId", label: "Token ID" },
+                { name: "tokenSecret", label: "Token Secret" },
+              ].map((field, i) => (
+                <div key={i}>
+                  <label className="block text-sm text-gray-400 font-medium mb-1">
+                    {field.label}
+                  </label>
+                  <input
+                    type="text"
+                    name={field.name}
+                    value={formData[field.name]}
+                    onChange={handleChange}
+                    required
+                    placeholder={`Enter ${field.label}`}
+                    className="w-full bg-[#141b2e] border border-indigo-900/40 text-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-500"
+                  />
+                </div>
+              ))}
+
+              {/* Buttons */}
+              <div className="flex gap-3 mt-6 justify-center">
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-6 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_0_15px_-3px_rgba(99,102,241,0.8)]"
+                >
+                  Save Server
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="bg-gray-700 hover:bg-gray-800 text-gray-300 py-2.5 px-6 rounded-xl font-semibold transition-all duration-300"
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           </div>
         </div>
