@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
-import { PlusCircle, Loader2, X } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ServersPage() {
@@ -19,6 +19,7 @@ export default function ServersPage() {
   const navigate = useNavigate();
 
   const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
+  const BASE_URL = import.meta.env.VITE_BASE_URL;
 
   // Fetch servers (GET)
   useEffect(() => {
@@ -41,7 +42,11 @@ export default function ServersPage() {
         }
 
         const data = await res.json();
-        setServers(data);
+
+        const serversWithCounts = data.map((srv) => ({ ...srv, vmCount: null }));
+        setServers(serversWithCounts);
+
+        serversWithCounts.forEach((srv) => fetchVmCount(srv.id, token));
       } catch (err) {
         console.error("Error fetching servers:", err);
       } finally {
@@ -51,6 +56,34 @@ export default function ServersPage() {
 
     fetchServers();
   }, [FETCH_SERVERS]);
+
+  // Fetch VM count per server
+  const fetchVmCount = async (serverId, token) => {
+    try {
+      const res = await fetch(`${BASE_URL}/admin/servers/${serverId}/vms/counts`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error(`Failed to fetch VM count for server ${serverId}`);
+        return;
+      }
+
+      const { count } = await res.json();
+
+      setServers((prev) =>
+        prev.map((srv) =>
+          srv.id === serverId ? { ...srv, vmCount: count } : srv
+        )
+      );
+    } catch (err) {
+      console.error("Error fetching VM count:", err);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -68,7 +101,6 @@ export default function ServersPage() {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // POST request when form is submitted
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem("adminToken");
@@ -89,15 +121,15 @@ export default function ServersPage() {
       }
 
       const newServer = await res.json();
-      setServers((prev) => [...prev, newServer]); // Add new server to list
+      setServers((prev) => [...prev, { ...newServer, vmCount: 0 }]);
       setShowModal(false);
       setFormData({
         name: "",
         ip: "",
         location: "",
         node: "",
-        tokenId: "",
-        tokenSecret: "",
+        token_id: "",
+        token_secret: "",
       });
     } catch (err) {
       console.error("Error adding server:", err);
@@ -112,19 +144,20 @@ export default function ServersPage() {
       </div>
 
       {/* Main */}
-      <main className="flex-1 mt-[72px] p-10 space-y-8">
-        <div className="flex items-center justify-between">
+      <main className="flex-1 mt-[72px] p-4 sm:p-10 space-y-8">
+        {/* Title & Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-wide">Servers</h1>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl shadow-md hover:shadow-indigo-600/30 transition-all duration-300"
+            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl shadow-md hover:shadow-indigo-600/30 transition-all duration-300 text-sm sm:text-base"
           >
             <PlusCircle className="w-5 h-5" />
             Add Server
           </button>
         </div>
 
-        {/* Server Table */}
+        {/* Responsive Scroll Table */}
         <div className="overflow-x-auto rounded-2xl border border-indigo-900/40 shadow-lg">
           {loading ? (
             <div className="flex justify-center items-center py-16">
@@ -135,207 +168,93 @@ export default function ServersPage() {
               No servers found.
             </div>
           ) : (
-            <table className="min-w-full text-left border-collapse">
-              <thead className="bg-[#151c2f] text-gray-300 uppercase text-sm tracking-wider">
-                <tr>
-                  <th className="px-6 py-4 border-b border-indigo-900/40">
-                    Server ID
-                  </th>
-                  <th className="px-6 py-4 border-b border-indigo-900/40">
-                    Name
-                  </th>
-                  <th className="px-6 py-4 border-b border-indigo-900/40">
-                    IP
-                  </th>
-                  <th className="px-6 py-4 border-b border-indigo-900/40">
-                    Location
-                  </th>
-                  <th className="px-6 py-4 border-b border-indigo-900/40">
-                    Node
-                  </th>
-                  <th className="px-6 py-4 border-b border-indigo-900/40">
-                    Token ID
-                  </th>
-                  <th className="px-6 py-4 border-b border-indigo-900/40">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 border-b border-indigo-900/40 text-center">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {servers.map((server, index) => (
-                  <tr
-                    key={server.id || index}
-                    className={`${
-                      index % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"
-                    } hover:bg-indigo-900/20 transition-all duration-300`}
-                  >
-                    <td className="px-6 py-4 border-b border-indigo-900/30 text-indigo-300 font-semibold">
-                      {server.id || "—"}
-                    </td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">
-                      {server.name || "—"}
-                    </td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">
-                      {server.ip || "—"}
-                    </td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">
-                      {server.location || "—"}
-                    </td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">
-                      {server.node || "—"}
-                    </td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">
-                      {server.tokenId || "—"}
-                    </td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
-                          server.status || "Inactive"
-                        )}`}
-                      >
-                        {server.status || "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 border-b border-indigo-900/30 text-center space-x-3">
-                      <button
-                        onClick={() =>
-                          navigate(`/admin/servers/${server.id}/ips`)
-                        }
-                        className="bg-green-600 hover:bg-green-700 text-white text-sm px-5 py-1 rounded-md"
-                      >
-                        Add IPs
-                      </button>
-                      <button
-                        onClick={() =>
-                          navigate(`/admin/servers/${server.id}/isos`)
-                        }
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-5 py-1 rounded-md"
-                      >
-                        Add ISOs
-                      </button>
-                    </td>
+            <div className="w-full min-w-[900px]">
+              <table className="w-full text-left border-collapse text-sm sm:text-base">
+                <thead className="bg-[#151c2f] text-gray-300 uppercase tracking-wider text-xs sm:text-sm">
+                  <tr>
+                    <th className="px-4 py-3 sm:px-6">Server ID</th>
+                    <th className="px-4 py-3 sm:px-6">Name</th>
+                    <th className="px-4 py-3 sm:px-6">IP</th>
+                    <th className="px-4 py-3 sm:px-6">Location</th>
+                    <th className="px-4 py-3 sm:px-6">Node</th>
+                    <th className="px-4 py-3 sm:px-6">Token ID</th>
+                    <th className="px-4 py-3 sm:px-6 text-center">VMs</th>
+                    <th className="px-4 py-3 sm:px-6">Status</th>
+                    <th className="px-4 py-3 sm:px-6 text-center">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {servers.map((server, index) => (
+                    <tr
+                      key={server.id || index}
+                      className={`${
+                        index % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"
+                      } hover:bg-indigo-900/20 transition-all duration-300`}
+                    >
+                      <td className="px-4 py-3 sm:px-6 text-indigo-300 font-semibold whitespace-nowrap">
+                        {server.id || "—"}
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                        {server.name || "—"}
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                        {server.ip || "—"}
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                        {server.location || "—"}
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                        {server.node || "—"}
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                        {server.tokenId || "—"}
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 text-center whitespace-nowrap">
+                        {server.vmCount === null ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-indigo-400 inline" />
+                        ) : (
+                          <span className="text-indigo-300 font-semibold">
+                            {server.vmCount || "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
+                            server.status || "Inactive"
+                          )}`}
+                        >
+                          {server.status || "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 text-center whitespace-nowrap">
+                        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                          <button
+                            onClick={() =>
+                              navigate(`/admin/servers/${server.id}/ips`)
+                            }
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md"
+                          >
+                            Add IPs
+                          </button>
+                          <button
+                            onClick={() =>
+                              navigate(`/admin/servers/${server.id}/isos`)
+                            }
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md"
+                          >
+                            Add ISOs
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </main>
-
-      {/* Add Server Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] p-4 rounded-2xl w-[500px] shadow-2xl border border-indigo-900/40 relative">
-            {/* Close Button */}
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <form
-              onSubmit={handleSubmit}
-              className="mt-4 bg-[#0e1525]/60 p-6 rounded-2xl border border-indigo-900/40 shadow-[0_0_25px_-8px_rgba(99,102,241,0.5)] backdrop-blur-md space-y-5 max-w-5xl mx-auto"
-            >
-              <h2 className="text-center text-2xl font-semibold text-indigo-400 mb-2">
-                Add New Server
-              </h2>
-
-              {/* Server Name - full width */}
-              <div>
-                <label className="block text-sm text-gray-400 font-medium mb-1">
-                  Server Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  placeholder="Enter Server Name"
-                  className="w-full bg-[#141b2e] border border-indigo-900/40 text-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-500"
-                />
-              </div>
-
-              {/* Location + IP side by side */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm text-gray-400 font-medium mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter Location"
-                    className="w-full bg-[#141b2e] border border-indigo-900/40 text-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-gray-400 font-medium mb-1">
-                    IP Address
-                  </label>
-                  <input
-                    type="text"
-                    name="ip"
-                    value={formData.ip}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter IP Address"
-                    className="w-full bg-[#141b2e] border border-indigo-900/40 text-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-500"
-                  />
-                </div>
-              </div>
-
-              {/* Remaining full-width fields */}
-              {[
-                { name: "node", label: "Node" },
-                { name: "tokenId", label: "Token ID" },
-                { name: "tokenSecret", label: "Token Secret" },
-              ].map((field, i) => (
-                <div key={i}>
-                  <label className="block text-sm text-gray-400 font-medium mb-1">
-                    {field.label}
-                  </label>
-                  <input
-                    type="text"
-                    name={field.name}
-                    value={formData[field.name]}
-                    onChange={handleChange}
-                    required
-                    placeholder={`Enter ${field.label}`}
-                    className="w-full bg-[#141b2e] border border-indigo-900/40 text-gray-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-300 placeholder-gray-500"
-                  />
-                </div>
-              ))}
-
-              {/* Buttons */}
-              <div className="flex gap-3 mt-6 justify-center">
-                <button
-                  type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-6 rounded-xl font-semibold transition-all duration-300 hover:shadow-[0_0_15px_-3px_rgba(99,102,241,0.8)]"
-                >
-                  Save Server
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="bg-gray-700 hover:bg-gray-800 text-gray-300 py-2.5 px-6 rounded-xl font-semibold transition-all duration-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <Footer />

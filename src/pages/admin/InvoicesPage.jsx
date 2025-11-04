@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import { FileText, CheckCircle, Clock, XCircle } from "lucide-react";
@@ -11,9 +11,21 @@ export default function InvoicesPage() {
     { id: "#INV-003", customer: "Aman Singh", date: "14 Feb, 2024", amount: "$250.00", status: "Overdue", paymentMethod: "Bank Transfer", server: "Server C", dueDate: "20 Feb, 2024" },
     { id: "#INV-004", customer: "Priya Mehta", date: "16 Feb, 2024", amount: "$175.00", status: "Paid", paymentMethod: "Debit Card", server: "Server D", dueDate: "22 Feb, 2024" },
     { id: "#INV-005", customer: "Anuj Kumar", date: "18 Feb, 2024", amount: "$300.00", status: "Cancelled", paymentMethod: "UPI", server: "Server E", dueDate: "25 Feb, 2024" },
+    { id: "#INV-006", customer: "Riya Sen", date: "20 Feb, 2024", amount: "$210.00", status: "Pending", paymentMethod: "Credit Card", server: "Server F", dueDate: "27 Feb, 2024" },
+    { id: "#INV-007", customer: "Arjun Patel", date: "22 Feb, 2024", amount: "$150.00", status: "Overdue", paymentMethod: "Debit Card", server: "Server G", dueDate: "01 Mar, 2024" },
   ];
 
-  // Dynamic Insights
+  // Pagination logic
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentInvoices = invoices.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePrev = () => currentPage > 1 && setCurrentPage(currentPage - 1);
+  const handleNext = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
+
+  // Insights
   const totalInvoices = invoices.length;
   const paidInvoices = invoices.filter((i) => i.status === "Paid").length;
   const pendingInvoices = invoices.filter((i) => i.status === "Pending").length;
@@ -50,11 +62,11 @@ export default function InvoicesPage() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 mt-[72px] p-10 space-y-8">
+      <main className="flex-1 mt-[72px] p-6 sm:p-10 space-y-8">
         <h1 className="text-3xl font-bold mb-4 tracking-wide">Invoices</h1>
 
         {/* Insights Section */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {insights.map((insight, i) => (
             <div
               key={i}
@@ -91,7 +103,7 @@ export default function InvoicesPage() {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((invoice) => (
+              {currentInvoices.map((invoice) => (
                 <tr
                   key={invoice.id}
                   className="border-t border-indigo-900/30 hover:bg-indigo-900/20 hover:shadow-lg hover:shadow-indigo-700/20 transition-all duration-300"
@@ -104,7 +116,9 @@ export default function InvoicesPage() {
                   <td className="py-4 px-6">{invoice.amount}</td>
                   <td className="py-4 px-6">{invoice.paymentMethod}</td>
                   <td className="py-4 px-6">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(invoice.status)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(invoice.status)}`}
+                    >
                       {invoice.status}
                     </span>
                   </td>
@@ -112,6 +126,53 @@ export default function InvoicesPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-3">
+          <p className="text-sm text-gray-400">
+            Showing {startIndex + 1} - {Math.min(startIndex + itemsPerPage, invoices.length)} of {invoices.length} invoices
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrev}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 rounded-lg border border-indigo-800 text-sm transition-all duration-200 ${
+                currentPage === 1
+                  ? "text-gray-500 border-gray-700 cursor-not-allowed"
+                  : "text-indigo-400 hover:bg-indigo-800/20"
+              }`}
+            >
+              Previous
+            </button>
+
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 rounded-md border ${
+                  currentPage === i + 1
+                    ? "bg-indigo-600 border-indigo-600 text-white"
+                    : "border-indigo-900/50 text-gray-400 hover:bg-indigo-900/20"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+              className={`px-4 py-2 rounded-lg border border-indigo-800 text-sm transition-all duration-200 ${
+                currentPage === totalPages
+                  ? "text-gray-500 border-gray-700 cursor-not-allowed"
+                  : "text-indigo-400 hover:bg-indigo-800/20"
+              }`}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </main>
 
