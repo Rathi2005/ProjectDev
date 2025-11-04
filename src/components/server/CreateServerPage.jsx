@@ -1,4 +1,4 @@
-import LocationSelector from "./LocationSelector";
+import LocationSelector from "./TypeSelector";
 import ImageSelector from "./ImageSelector";
 import SummarySidebar from "./SummarySidebar";
 

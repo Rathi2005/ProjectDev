@@ -2,6 +2,8 @@ import Sidebar from "../components/user/Sidebar";
 import Header from "../components/user/Header";
 import DashboardPage from "../components/user/dashboard/DashboardPage";
 import CreateServerPage from "../components/user/server/CreateServerPage";
+import ImageSelector from "../components/server/ImageSelector";
+import TypeSelector from "../components/server/TypeSelector";
 
 export default function Dashboard() {
   return (
@@ -39,14 +41,12 @@ export default function Dashboard() {
               <CreateServerPage />
             </div>
 
-            <div id="server-image" className="min-h-screen p-10">
-              <h2 className="text-2xl font-semibold mb-4">Image</h2>
-              <p>Details about server images go here.</p>
+            <div id="server-image" className="mb-20 -ml-2">
+              <ImageSelector />
             </div>
 
-            <div id="server-type" className="min-h-screen p-10">
-              <h2 className="text-2xl font-semibold mb-4">Type</h2>
-              <p>Details about server types go here.</p>
+            <div id="server-type" className="mb-20 -ml-2">
+              <TypeSelector />
             </div>
           </section>
 
