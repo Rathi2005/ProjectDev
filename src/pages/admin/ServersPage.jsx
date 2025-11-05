@@ -49,7 +49,9 @@ export default function ServersPage() {
         }));
         setServers(serversWithCounts);
 
-        serversWithCounts.forEach((srv) => fetchVmCount(srv.id, token));
+        serversWithCounts.forEach((srv) => {
+          if (srv.id) fetchVmCount(srv.id, token);
+        });
       } catch (err) {
         console.error("Error fetching servers:", err);
       } finally {
@@ -62,36 +64,43 @@ export default function ServersPage() {
 
   // Fetch VM count per server
   const fetchVmCount = async (serverId, token) => {
-    try {
-      const res = await fetch(
-        `${BASE_URL}/admin/servers/${serverId}/vms/counts`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+  try {
+    const res = await fetch(`${BASE_URL}/admin/servers/${serverId}/vms/counts`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-      if (!res.ok) {
-        console.error(`Failed to fetch VM count for server ${serverId}`);
-        return;
-      }
-
-      const data = await res.json();
-
+    if (!res.ok) {
+      console.warn(`VM count fetch failed for server ${serverId}: ${res.status}`);
       setServers((prev) =>
         prev.map((srv) =>
-          srv.id === serverId
-            ? { ...srv, vmCount: data.total || 0 } // use data.total or whichever you want
-            : srv
+          srv.id === serverId ? { ...srv, vmCount: 0 } : srv
         )
       );
-    } catch (err) {
-      console.error("Error fetching VM count:", err);
+      return;
     }
-  };
+
+    const data = await res.json();
+    const count = data?.total ?? data?.count ?? 0;
+
+    setServers((prev) =>
+      prev.map((srv) =>
+        srv.id === serverId ? { ...srv, vmCount: count } : srv
+      )
+    );
+  } catch (err) {
+    console.error(`Error fetching VM count for server ${serverId}:`, err);
+    setServers((prev) =>
+      prev.map((srv) =>
+        srv.id === serverId ? { ...srv, vmCount: 0 } : srv
+      )
+    );
+  }
+};
+
 
   const getStatusColor = (status) => {
     switch (status) {
