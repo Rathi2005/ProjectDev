@@ -13,8 +13,8 @@ export default function ServersPage() {
     ip: "",
     location: "",
     node: "",
-    token_id: "",
-    token_secret: "",
+    tokenId: "",
+    tokenSecret: "",
   });
   const navigate = useNavigate();
 
@@ -80,7 +80,6 @@ export default function ServersPage() {
       }
 
       const data = await res.json();
-      console.log("VM Count Response:", data);
 
       setServers((prev) =>
         prev.map((srv) =>
@@ -121,11 +120,24 @@ export default function ServersPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          ip: formData.ip,
+          location: formData.location,
+          node: formData.node,
+          tokenId: formData.tokenId,
+          tokenSecret: formData.tokenSecret,
+        }),
       });
 
       if (!res.ok) {
-        console.error("Failed to add server:", res.status, res.statusText);
+        const errorText = await res.text();
+        console.error(
+          "Failed to add server:",
+          res.status,
+          res.statusText,
+          errorText
+        );
         return;
       }
 
@@ -137,8 +149,8 @@ export default function ServersPage() {
         ip: "",
         location: "",
         node: "",
-        token_id: "",
-        token_secret: "",
+        tokenId: "",
+        tokenSecret: "",
       });
     } catch (err) {
       console.error("Error adding server:", err);
@@ -283,6 +295,148 @@ export default function ServersPage() {
           )}
         </div>
       </main>
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fadeIn">
+          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl p-8 sm:p-10">
+            {/* Title */}
+            <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-300 mb-6 flex items-center gap-2">
+              <PlusCircle className="w-6 h-6 text-indigo-400" />
+              Add New Server
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Server Name */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Server Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="e.g. Production Server"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                />
+              </div>
+
+              {/* IP Address + Location (side by side) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    IP Address
+                  </label>
+                  <input
+                    type="text"
+                    name="ip"
+                    placeholder="e.g. 192.168.0.10"
+                    value={formData.ip}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    placeholder="e.g. Singapore Data Center"
+                    value={formData.location}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Node */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Node</label>
+                <input
+                  type="text"
+                  name="node"
+                  placeholder="e.g. Node-01"
+                  value={formData.node}
+                  onChange={handleChange}
+                  required
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                />
+              </div>
+
+              {/* Token ID */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Token ID
+                </label>
+                <input
+                  type="text"
+                  name="tokenId"
+                  placeholder="Enter API Token ID"
+                  value={formData.tokenId}
+                  onChange={handleChange}
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                />
+              </div>
+
+              {/* Token Secret */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Token Secret
+                </label>
+                <input
+                  type="password"
+                  name="tokenSecret"
+                  placeholder="Enter Token Secret"
+                  value={formData.tokenSecret}
+                  onChange={handleChange}
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-indigo-900/40 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-5 py-2.5 rounded-md border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-all duration-200 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-4 h-4" /> Add Server
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-5 right-6 text-gray-400 hover:text-red-400 transition-colors text-xl"
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <Footer />
