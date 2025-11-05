@@ -222,9 +222,18 @@ export default function ServersPage() {
                         {server.vmCount === null ? (
                           <Loader2 className="w-4 h-4 animate-spin text-indigo-400 inline" />
                         ) : (
-                          <span className="text-indigo-300 font-semibold">
-                            {server.vmCount || "—"}
-                          </span>
+                          <button
+                            onClick={() =>
+                              navigate(`/admin/servers/${server.id}/vms`)
+                            }
+                            className="flex items-center justify-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/40 
+             text-indigo-300 hover:text-white font-semibold px-3 py-1 rounded-full 
+             transition-all duration-300 text-xs shadow-sm hover:shadow-indigo-700/30"
+                            title="View all virtual machines for this server"
+                          >
+                            <span>{server.vmCount ?? "—"}</span>
+                            <span className="text-[10px] opacity-80">VMs</span>
+                          </button>
                         )}
                       </td>
                       <td className="px-4 py-3 sm:px-6 whitespace-nowrap">

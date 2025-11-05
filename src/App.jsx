@@ -15,6 +15,7 @@ import ServersPage from "./pages/admin/ServersPage";
 // import IsosPage from "../../../BIn/ISOs";
 // import DiskPage from "../../../BIn/Disk";
 import ManageResourcesPage from "./pages/admin/ManageResources";
+import VMsPage from "./pages/admin/VMs";
 
 export default function App() {
   return (
@@ -92,44 +93,58 @@ export default function App() {
         <Route
           path="/admin/servers/:id/ips"
           element={
-            <ManageResourcesPage
-              title="Manage IPs"
-              endpoint="/ips"
-              fields={[
-                { name: "ip", label: "IP Address", type: "text" },
-                { name: "mac", label: "MAC Address", type: "text" },
-                { name: "is_in_use", label: "In Use", type: "checkbox" },
-              ]}
-            />
+            <AdminProtectedRoute>
+              <ManageResourcesPage
+                title="Manage IPs"
+                endpoint="/ips"
+                fields={[
+                  { name: "ip", label: "IP Address", type: "text" },
+                  { name: "mac", label: "MAC Address", type: "text" },
+                  { name: "is_in_use", label: "In Use", type: "checkbox" },
+                ]}
+              />
+            </AdminProtectedRoute>
           }
         />
 
         <Route
           path="/admin/servers/:id/isos"
           element={
-            <ManageResourcesPage
-              title="Manage ISOs"
-              endpoint="/isos"
-              fields={[
-                { name: "iso", label: "ISO Name", type: "text" },
-                { name: "vmid", label: "VM ID", type: "text" },
-                { name: "is_in_use", label: "In Use", type: "checkbox" },
-              ]}
-            />
+            <AdminProtectedRoute>
+              <ManageResourcesPage
+                title="Manage ISOs"
+                endpoint="/isos"
+                fields={[
+                  { name: "iso", label: "ISO Name", type: "text" },
+                  { name: "vmid", label: "VM ID", type: "text" },
+                  { name: "is_in_use", label: "In Use", type: "checkbox" },
+                ]}
+              />
+            </AdminProtectedRoute>
           }
         />
 
         <Route
           path="/admin/servers/:id/disks"
           element={
-            <ManageResourcesPage
-              title="Manage Disks"
-              endpoint="/disks"
-              fields={[
-                { name: "disk_name", label: "Disk Name", type: "text" },
-                { name: "is_in_use", label: "In Use", type: "checkbox" },
-              ]}
-            />
+            <AdminProtectedRoute>
+              <ManageResourcesPage
+                title="Manage Disks"
+                endpoint="/disks"
+                fields={[
+                  { name: "disk_name", label: "Disk Name", type: "text" },
+                  { name: "is_in_use", label: "In Use", type: "checkbox" },
+                ]}
+              />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/servers/:id/vms"
+          element={
+            <AdminProtectedRoute>
+              <VMsPage />
+            </AdminProtectedRoute>
           }
         />
       </Routes>
