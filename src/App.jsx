@@ -133,6 +133,8 @@ export default function App() {
                 endpoint="/disks"
                 fields={[
                   { name: "disk_name", label: "Disk Name", type: "text" },
+                  { name: "maximum_storage", label: "Maximum Storage", type: "number" },
+                  { name: "maximum_vms", label: "Maximum VMs", type: "number" },
                   { name: "is_in_use", label: "In Use", type: "checkbox" },
                 ]}
               />
