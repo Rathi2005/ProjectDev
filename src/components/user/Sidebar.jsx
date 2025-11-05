@@ -29,6 +29,7 @@ export default function Sidebar() {
     { label: "Create a Server", id: "create-server" },
     { label: "Image", id: "server-image" },
     { label: "Type", id: "server-type" },
+    { label: "Resources", id: "server-resources" },
   ];
 
   const moreOptionsSubItems = [

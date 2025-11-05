@@ -2,8 +2,9 @@ import Sidebar from "../components/user/Sidebar";
 import Header from "../components/user/Header";
 import DashboardPage from "../components/user/dashboard/DashboardPage";
 import CreateServerPage from "../components/user/server/CreateServerPage";
-import ImageSelector from "../components/server/ImageSelector";
-import TypeSelector from "../components/server/TypeSelector";
+import ImageSelector from "../components/user/server/ImageSelector";
+import TypeSelector from "../components/user/server/TypeSelector";
+import ResourcesSelector from "../components/user/server/ResourcesSelector";
 
 export default function Dashboard() {
   return (
@@ -41,13 +42,18 @@ export default function Dashboard() {
               <CreateServerPage />
             </div>
 
-            <div id="server-image" className="mb-20 -ml-2">
+            <div id="server-image" className="min-h-screen mb-20 -ml-2">
               <ImageSelector />
             </div>
 
-            <div id="server-type" className="mb-20 -ml-2">
+            <div id="server-type" className="min-h-screen mb-20 -ml-2">
               <TypeSelector />
             </div>
+
+            <div id="server-resources" className="min-h-screen mb-20 -ml-2">
+              <ResourcesSelector/>
+            </div>
+
           </section>
 
           <section id="security" className="min-h-screen p-10">

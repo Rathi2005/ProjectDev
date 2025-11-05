@@ -43,7 +43,10 @@ export default function ServersPage() {
 
         const data = await res.json();
 
-        const serversWithCounts = data.map((srv) => ({ ...srv, vmCount: null }));
+        const serversWithCounts = data.map((srv) => ({
+          ...srv,
+          vmCount: null,
+        }));
         setServers(serversWithCounts);
 
         serversWithCounts.forEach((srv) => fetchVmCount(srv.id, token));
@@ -60,24 +63,30 @@ export default function ServersPage() {
   // Fetch VM count per server
   const fetchVmCount = async (serverId, token) => {
     try {
-      const res = await fetch(`${BASE_URL}/admin/servers/${serverId}/vms/counts`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetch(
+        `${BASE_URL}/admin/servers/${serverId}/vms/counts`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!res.ok) {
         console.error(`Failed to fetch VM count for server ${serverId}`);
         return;
       }
 
-      const { count } = await res.json();
+      const data = await res.json();
+      console.log("VM Count Response:", data);
 
       setServers((prev) =>
         prev.map((srv) =>
-          srv.id === serverId ? { ...srv, vmCount: count } : srv
+          srv.id === serverId
+            ? { ...srv, vmCount: data.total || 0 } // use data.total or whichever you want
+            : srv
         )
       );
     } catch (err) {
@@ -233,17 +242,27 @@ export default function ServersPage() {
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/ips`)
                             }
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300"
                           >
                             Add IPs
                           </button>
+
                           <button
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/isos`)
                             }
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300"
                           >
                             Add ISOs
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              navigate(`/admin/servers/${server.id}/disks`)
+                            }
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300"
+                          >
+                            Add Disk
                           </button>
                         </div>
                       </td>
