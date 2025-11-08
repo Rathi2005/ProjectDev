@@ -1,21 +1,21 @@
 import ActivityList from "./ActivityList";
 import LocationMap from "./LocationMap";
 import ResourceGrid from "./ResourceGrid";
-import img from "../../../assets/map3.jpg"
+import img from "../../../assets/IndiaMap.png"
 import {
-  FaServer,
-  FaMapMarkerAlt,
-  FaHdd,
-  FaShieldAlt,
-  FaBoxOpen,
-  FaNetworkWired,
-  FaGlobe,
-  FaWater,
-  FaCube,
-  FaCloud,
-  FaMap,
-  FaCog,
-  FaChevronDown,
+    FaServer,
+    FaMapMarkerAlt,
+    FaHdd,
+    FaShieldAlt,
+    FaBoxOpen,
+    FaNetworkWired,
+    FaGlobe,
+    FaWater,
+    FaCube,
+    FaCloud,
+    FaMap,
+    FaCog,
+    FaChevronDown,
 } from "react-icons/fa";
 
 const DashboardHeader = () => (
@@ -45,7 +45,7 @@ const DashboardPage = () => {
             <main className="flex flex-col lg:flex-row gap-6">
                 {/* Column 1: Map (Takes up ~50% width) */}
                 <div className="w-full lg:w-6/12">
-                    <LocationMap img={img}/>
+                    <LocationMap img={img} />
                 </div>
 
                 {/* Column 2: Resources (Takes up ~25% width) */}
