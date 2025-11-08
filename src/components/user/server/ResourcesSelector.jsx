@@ -21,10 +21,10 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
   const getApiEndpoints = (type) => {
     const basePath = type === "Dedicated vCPU" ? "dedicated" : "shared";
     const endpoints = {
-      vcpu: `${API_BASE}/admin/pricing/${basePath}/cpu`,
-      ram: `${API_BASE}/admin/pricing/${basePath}/ram`,
-      disk: `${API_BASE}/admin/pricing/${basePath}/disk`,
-      bandwidth: `${API_BASE}/admin/pricing/${basePath}/bandwidth`,
+      vcpu: `${API_BASE}/pricing/${basePath}/cpu`,
+      ram: `${API_BASE}/pricing/${basePath}/ram`,
+      disk: `${API_BASE}/pricing/${basePath}/disk`,
+      bandwidth: `${API_BASE}/pricing/${basePath}/bandwidth`,
     };
     return endpoints;
   };
