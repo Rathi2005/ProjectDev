@@ -8,16 +8,20 @@ export default function ServersPage() {
   const [showModal, setShowModal] = useState(false);
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false); // ✅ separate submit state
+
   const [formData, setFormData] = useState({
     name: "",
     ip: "",
     location: "",
     node: "",
+    port: 8006,
+    networkBridge: "vmbr0",
     tokenId: "",
     tokenSecret: "",
   });
-  const navigate = useNavigate();
 
+  const navigate = useNavigate();
   const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -42,7 +46,6 @@ export default function ServersPage() {
         }
 
         const data = await res.json();
-
         const serversWithCounts = data.map((srv) => ({
           ...srv,
           vmCount: null,
@@ -64,43 +67,39 @@ export default function ServersPage() {
 
   // Fetch VM count per server
   const fetchVmCount = async (serverId, token) => {
-  try {
-    const res = await fetch(`${BASE_URL}/admin/servers/${serverId}/vms/counts`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    try {
+      const res = await fetch(
+        `${BASE_URL}/admin/servers/${serverId}/vms/counts`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    if (!res.ok) {
-      console.warn(`VM count fetch failed for server ${serverId}: ${res.status}`);
+      if (!res.ok) {
+        setServers((prev) =>
+          prev.map((srv) =>
+            srv.id === serverId ? { ...srv, vmCount: 0 } : srv
+          )
+        );
+        return;
+      }
+
+      const data = await res.json();
+      const count = data?.total ?? data?.count ?? 0;
+
       setServers((prev) =>
         prev.map((srv) =>
-          srv.id === serverId ? { ...srv, vmCount: 0 } : srv
+          srv.id === serverId ? { ...srv, vmCount: count } : srv
         )
       );
-      return;
+    } catch (err) {
+      console.error(`Error fetching VM count for server ${serverId}:`, err);
     }
-
-    const data = await res.json();
-    const count = data?.total ?? data?.count ?? 0;
-
-    setServers((prev) =>
-      prev.map((srv) =>
-        srv.id === serverId ? { ...srv, vmCount: count } : srv
-      )
-    );
-  } catch (err) {
-    console.error(`Error fetching VM count for server ${serverId}:`, err);
-    setServers((prev) =>
-      prev.map((srv) =>
-        srv.id === serverId ? { ...srv, vmCount: 0 } : srv
-      )
-    );
-  }
-};
-
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -121,6 +120,7 @@ export default function ServersPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem("adminToken");
+    setSubmitting(true);
 
     try {
       const res = await fetch(FETCH_SERVERS, {
@@ -134,6 +134,8 @@ export default function ServersPage() {
           ip: formData.ip,
           location: formData.location,
           node: formData.node,
+          port: Number(formData.port) || 8006,
+          networkBridge: formData.networkBridge || "vmbr0",
           tokenId: formData.tokenId,
           tokenSecret: formData.tokenSecret,
         }),
@@ -141,28 +143,32 @@ export default function ServersPage() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(
-          "Failed to add server:",
-          res.status,
-          res.statusText,
-          errorText
-        );
+        alert(`❌ Failed to add server: ${res.status} ${errorText}`);
+        console.error("Failed to add server:", res.status, errorText);
         return;
       }
 
       const newServer = await res.json();
       setServers((prev) => [...prev, { ...newServer, vmCount: 0 }]);
       setShowModal(false);
+      alert("✅ Server added successfully!");
+
+      // reset with defaults
       setFormData({
         name: "",
         ip: "",
         location: "",
         node: "",
+        port: 8006,
+        networkBridge: "vmbr0",
         tokenId: "",
         tokenSecret: "",
       });
     } catch (err) {
+      alert("Error adding server!");
       console.error("Error adding server:", err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -175,7 +181,6 @@ export default function ServersPage() {
 
       {/* Main */}
       <main className="flex-1 mt-[72px] p-4 sm:p-10 space-y-8">
-        {/* Title & Button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-wide">Servers</h1>
           <button
@@ -187,7 +192,7 @@ export default function ServersPage() {
           </button>
         </div>
 
-        {/* Responsive Scroll Table */}
+        {/* Table */}
         <div className="overflow-x-auto rounded-2xl border border-indigo-900/40 shadow-lg">
           {loading ? (
             <div className="flex justify-center items-center py-16">
@@ -247,10 +252,7 @@ export default function ServersPage() {
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/vms`)
                             }
-                            className="flex items-center justify-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/40 
-             text-indigo-300 hover:text-white font-semibold px-3 py-1 rounded-full 
-             transition-all duration-300 text-xs shadow-sm hover:shadow-indigo-700/30"
-                            title="View all virtual machines for this server"
+                            className="flex items-center justify-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white font-semibold px-3 py-1 rounded-full transition-all duration-300 text-xs shadow-sm hover:shadow-indigo-700/30"
                           >
                             <span>{server.vmCount ?? "—"}</span>
                             <span className="text-[10px] opacity-80">VMs</span>
@@ -276,7 +278,6 @@ export default function ServersPage() {
                           >
                             Add IPs
                           </button>
-
                           <button
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/isos`)
@@ -285,7 +286,6 @@ export default function ServersPage() {
                           >
                             Add ISOs
                           </button>
-
                           <button
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/disks`)
@@ -304,10 +304,11 @@ export default function ServersPage() {
           )}
         </div>
       </main>
+
+      {/* ✅ Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fadeIn">
           <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl p-8 sm:p-10">
-            {/* Title */}
             <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-300 mb-6 flex items-center gap-2">
               <PlusCircle className="w-6 h-6 text-indigo-400" />
               Add New Server
@@ -326,11 +327,11 @@ export default function ServersPage() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
 
-              {/* IP Address + Location (side by side) */}
+              {/* IP + Location */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">
@@ -343,10 +344,9 @@ export default function ServersPage() {
                     value={formData.ip}
                     onChange={handleChange}
                     required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">
                     Location
@@ -358,26 +358,74 @@ export default function ServersPage() {
                     value={formData.location}
                     onChange={handleChange}
                     required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
               </div>
 
-              {/* Node */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Node</label>
-                <input
-                  type="text"
-                  name="node"
-                  placeholder="e.g. Node-01"
-                  value={formData.node}
-                  onChange={handleChange}
-                  required
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
-                />
+              {/* Node + Port */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Node
+                  </label>
+                  <input
+                    type="text"
+                    name="node"
+                    placeholder="e.g. Node-01"
+                    value={formData.node}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Port
+                  </label>
+                  <input
+                    type="number"
+                    name="port"
+                    placeholder="8006"
+                    value={formData.port}
+                    onChange={handleChange}
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
               </div>
 
-              {/* Token ID */}
+              {/* Network Bridge + Token Secret (side by side) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Network Bridge
+                  </label>
+                  <input
+                    type="text"
+                    name="networkBridge"
+                    placeholder="vmbr0"
+                    value={formData.networkBridge}
+                    onChange={handleChange}
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Token Secret
+                  </label>
+                  <input
+                    type="password"
+                    name="tokenSecret"
+                    placeholder="Enter Token Secret"
+                    value={formData.tokenSecret}
+                    onChange={handleChange}
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Token ID (below) */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">
                   Token ID
@@ -388,22 +436,7 @@ export default function ServersPage() {
                   placeholder="Enter API Token ID"
                   value={formData.tokenId}
                   onChange={handleChange}
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
-                />
-              </div>
-
-              {/* Token Secret */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Token Secret
-                </label>
-                <input
-                  type="password"
-                  name="tokenSecret"
-                  placeholder="Enter Token Secret"
-                  value={formData.tokenSecret}
-                  onChange={handleChange}
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-500 transition-all"
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
 
@@ -416,13 +449,12 @@ export default function ServersPage() {
                 >
                   Cancel
                 </button>
-
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={submitting}
                   className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-all duration-200 disabled:opacity-50"
                 >
-                  {loading ? (
+                  {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" /> Saving...
                     </>
@@ -435,7 +467,6 @@ export default function ServersPage() {
               </div>
             </form>
 
-            {/* Close button */}
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-5 right-6 text-gray-400 hover:text-red-400 transition-colors text-xl"
@@ -447,7 +478,6 @@ export default function ServersPage() {
         </div>
       )}
 
-      {/* Footer */}
       <Footer />
     </div>
   );
