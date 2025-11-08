@@ -24,6 +24,7 @@ export default function ManageResourcesPage({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // keep for structure
   const [maxStorage, setMaxStorage] = useState("");
   const [maxVMs, setMaxVMs] = useState("");
 
@@ -58,26 +59,47 @@ export default function ManageResourcesPage({
     e.preventDefault();
     const token = localStorage.getItem("adminToken");
     setSaving(true);
+
     try {
       for (const row of rows) {
-        const res = await fetch(`${BASE_URL}/admin/servers/${id}${endpoint}`, {
+        // prepare cleaned payload
+        const payload =
+          extraForm === "disks"
+            ? {
+                diskName: row.diskName,
+                maxVms: Number(row.maxVms),
+                usableDiskPercentage: Number(row.usableDiskPercentage),
+              }
+            : row;
+
+        const postUrl =
+          extraForm === "disks"
+            ? `${BASE_URL}/admin/servers/${id}/storage`
+            : `${BASE_URL}/admin/servers/${id}${endpoint}`;
+
+        const res = await fetch(postUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ ...row, server_id: id }),
+          body: JSON.stringify(payload),
         });
+
         if (!res.ok) throw new Error("Failed to add item");
       }
 
       alert(`${title} added successfully!`);
 
-      // ✅ Clear input fields after saving
+      // reset form
       setRows([Object.fromEntries(fields.map((f) => [f.name, ""]))]);
+      // refresh existing
+      const refetchUrl =
+        extraForm === "disks"
+          ? `${BASE_URL}/admin/servers/${id}/disk-details`
+          : `${BASE_URL}/admin/servers/${id}${endpoint}`;
 
-      // Refresh existing data
-      const res = await fetch(`${BASE_URL}/admin/servers/${id}${endpoint}`, {
+      const res = await fetch(refetchUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setExisting(await res.json());
@@ -88,37 +110,35 @@ export default function ManageResourcesPage({
     }
   };
 
-  const handleDiskConfigSave = async () => {
-    const token = localStorage.getItem("adminToken");
-    setConfigSaving(true);
-    try {
-      const res = await fetch(
-        `${BASE_URL}/admin/servers/${id}/resource-limits`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            maxVms: Number(maxVMs),
-            maxDiskSize: Number(maxStorage),
-          }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to save disk config");
-
-      alert("Disk configuration saved successfully!");
-
-      // ✅ Clear the disk config input fields after saving
-      setMaxStorage("");
-      setMaxVMs("");
-    } catch (err) {
-      console.error("Error saving disk config:", err);
-    } finally {
-      setConfigSaving(false);
-    }
-  };
+  // retained (used by other forms)
+  // const handleDiskConfigSave = async () => {
+  //   const token = localStorage.getItem("adminToken");
+  //   setConfigSaving(true);
+  //   try {
+  //     const res = await fetch(
+  //       `${BASE_URL}/admin/servers/${id}/resource-limits`,
+  //       {
+  //         method: "PUT",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify({
+  //           maxVms: Number(maxVMs),
+  //           maxDiskSize: Number(maxStorage),
+  //         }),
+  //       }
+  //     );
+  //     if (!res.ok) throw new Error("Failed to save disk config");
+  //     alert("Disk configuration saved successfully!");
+  //     setMaxStorage("");
+  //     setMaxVMs("");
+  //   } catch (err) {
+  //     console.error("Error saving disk config:", err);
+  //   } finally {
+  //     setConfigSaving(false);
+  //   }
+  // };
 
   const totalPages = Math.ceil(existing.length / itemsPerPage);
   const displayed = existing.slice(
@@ -137,71 +157,7 @@ export default function ManageResourcesPage({
           {title} for Server #{id}
         </h1>
 
-        {/* Disk Config Section */}
-        {extraForm === "disks" && (
-          <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-6 shadow-2xl border border-indigo-900/40">
-            <h2 className="text-2xl font-semibold text-indigo-400 mb-4">
-              Disk Configuration
-            </h2>
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-[#151c2f] text-gray-300 uppercase text-sm tracking-wider">
-                <tr>
-                  <th className="px-6 py-3 border-b border-indigo-900/40">
-                    Max Storage (GB)
-                  </th>
-                  <th className="px-6 py-3 border-b border-indigo-900/40">
-                    Max VMs
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="bg-[#141b2e]">
-                  <td className="px-6 py-3 border-b border-indigo-900/30">
-                    <input
-                      type="number"
-                      value={maxStorage}
-                      onChange={(e) => setMaxStorage(e.target.value)}
-                      placeholder="Enter Max Storage"
-                      className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </td>
-                  <td className="px-6 py-3 border-b border-indigo-900/30">
-                    <input
-                      type="number"
-                      value={maxVMs}
-                      onChange={(e) => setMaxVMs(e.target.value)}
-                      placeholder="Enter Max VMs"
-                      className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={handleDiskConfigSave}
-                disabled={configSaving}
-                className={`flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-white shadow-md transition-all duration-300 ${
-                  configSaving
-                    ? "bg-blue-700 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {configSaving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Disk Config"
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Resource Add Form */}
+        {/* ➕ Resource Add Form */}
         <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-6 shadow-2xl border border-indigo-900/40">
           <form onSubmit={handleSubmit}>
             <table className="w-full text-left border-collapse">
@@ -223,10 +179,10 @@ export default function ManageResourcesPage({
                     key={i}
                     className={i % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"}
                   >
-                    {fields.map((f) => (
+                    {fields.map((f, j) => (
                       <td
                         key={f.name}
-                        className="px-6 py-3 border-b border-indigo-900/30"
+                        className="px-6 py-3 border-b border-indigo-900/30 relative"
                       >
                         {f.type === "checkbox" ? (
                           <input
@@ -248,6 +204,44 @@ export default function ManageResourcesPage({
                             required
                             className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                           />
+                        )}
+
+                        {/* 🗑 Small Delete Icon Button */}
+                        {j === fields.length - 1 && i > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newRows = rows.filter(
+                                (_, idx) => idx !== i
+                              );
+                              setRows(
+                                newRows.length
+                                  ? newRows
+                                  : [
+                                      Object.fromEntries(
+                                        fields.map((f) => [f.name, ""])
+                                      ),
+                                    ]
+                              );
+                            }}
+                            title="Remove Row"
+                            className="absolute right-1 top-6 text-red-500 hover:text-red-600 transition-all"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"
+                              />
+                            </svg>
+                          </button>
                         )}
                       </td>
                     ))}
@@ -275,6 +269,8 @@ export default function ManageResourcesPage({
                   "Save"
                 )}
               </button>
+
+              {/* ➕ Add Row Button */}
               <button
                 type="button"
                 onClick={addRow}
@@ -287,18 +283,22 @@ export default function ManageResourcesPage({
           </form>
         </div>
 
-        {/* Existing Entries */}
-        {showExisting && (
+        {/* Existing or Available Entries */}
+        {(showExisting || extraForm === "disks") && (
           <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-6 shadow-2xl border border-indigo-900/40">
-            <h2 className="text-2xl font-semibold text-indigo-400 mb-4">
-              Existing Entries
+            <h2
+              className={`text-2xl font-semibold ${
+                extraForm === "disks" ? "text-green-400" : "text-indigo-400"
+              } mb-4`}
+            >
+              {extraForm === "disks" ? "Available Disks" : "Existing Entries"}
             </h2>
 
             {loading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
               </div>
-            ) : displayed.length === 0 ? (
+            ) : existing.length === 0 ? (
               <div className="text-center text-gray-400 py-10">
                 No records found.
               </div>
@@ -338,21 +338,23 @@ export default function ManageResourcesPage({
                   </tbody>
                 </table>
 
-                <div className="flex justify-end mt-6 space-x-2">
-                  {Array.from({ length: totalPages }, (_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`px-3 py-1 rounded-md border border-indigo-800 text-sm ${
-                        currentPage === i + 1
-                          ? "bg-indigo-600 text-white"
-                          : "bg-[#1a2035] text-gray-300 hover:bg-indigo-700/40"
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
+                {showExisting && (
+                  <div className="flex justify-end mt-6 space-x-2">
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(i + 1)}
+                        className={`px-3 py-1 rounded-md border border-indigo-800 text-sm ${
+                          currentPage === i + 1
+                            ? "bg-indigo-600 text-white"
+                            : "bg-[#1a2035] text-gray-300 hover:bg-indigo-700/40"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -363,4 +365,3 @@ export default function ManageResourcesPage({
     </div>
   );
 }
-

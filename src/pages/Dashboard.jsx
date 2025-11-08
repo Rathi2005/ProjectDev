@@ -113,7 +113,7 @@ export default function Dashboard() {
             
 
             {/* Server Image - REDUCED padding and removed centering */}
-            <div id="server-image" className="min-h-screen px-8 py-28">
+            <div id="server-image" className="min-h-screen px-8 py-20">
               <ImageSelector
                 serverId={serverId}
                 setSelectedOS={setSelectedOS}
@@ -162,7 +162,7 @@ export default function Dashboard() {
         >
           <SummarySidebar
             selectedLocation={selectedLocation}
-            selectedOS={selectedOS}
+            selectedOS={selectedOS} 
             selectedType={selectedType}
             selectedResources={selectedResources}
           />

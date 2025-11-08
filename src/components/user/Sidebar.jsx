@@ -39,9 +39,12 @@ export default function Sidebar() {
     { label: "Storage" },
   ];
 
-  // ✅ Scroll tracking for active sections
+  const [isManualClick, setIsManualClick] = useState(false);
+
   useEffect(() => {
     const handleScroll = () => {
+      if (isManualClick) return; // 🚫 Skip if manually clicked
+
       const scrollPos = window.scrollY + 100;
 
       const sectionIds = [
@@ -74,16 +77,14 @@ export default function Sidebar() {
       if (foundSection && foundSection !== activeSection) {
         setActiveSection(foundSection);
       }
-
       if (foundSub !== activeSubSection) {
         setActiveSubSection(foundSub);
       }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [activeSection, activeSubSection, serversSubItems]);
+  }, [activeSection, activeSubSection, serversSubItems, isManualClick]);
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);
@@ -93,26 +94,33 @@ export default function Sidebar() {
   };
 
   const onClickSection = (id) => {
-    setActiveSection(id);
+  setIsManualClick(true);
+  setActiveSection(id);
 
-    if (id === "servers") {
-      setOpenServersMenu((prev) => !prev);
-      if (!openServersMenu) {
-        const target = activeSubSection || "create-server";
-        setActiveSubSection(target);
-        scrollTo(target);
-      }
-    } else {
-      setOpenServersMenu(false);
-      setActiveSubSection(null);
-      scrollTo(id);
+  if (id === "servers") {
+    setOpenServersMenu((prev) => !prev);
+    if (!openServersMenu) {
+      const target = activeSubSection || "create-server";
+      setActiveSubSection(target);
+      scrollTo(target);
     }
-  };
-
-  const onClickSubSection = (id) => {
-    setActiveSubSection(id);
+  } else {
+    setOpenServersMenu(false);
+    setActiveSubSection(null);
     scrollTo(id);
-  };
+  }
+
+  setTimeout(() => setIsManualClick(false), 500); // Allow scroll updates again
+};
+
+const onClickSubSection = (id) => {
+  setIsManualClick(true);
+  setActiveSection("servers");
+  setActiveSubSection(id);
+  scrollTo(id);
+  setTimeout(() => setIsManualClick(false), 500);
+};
+
 
   // ✅ Call logout from your hook when clicked
   const handleLogout = async () => {
@@ -164,14 +172,20 @@ export default function Sidebar() {
           <button
             onClick={() => setOpenMoreOptions(!openMoreOptions)}
             className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
-              openMoreOptions ? "bg-indigo-600/30 text-white" : "hover:bg-[#1c2538]"
+              openMoreOptions
+                ? "bg-indigo-600/30 text-white"
+                : "hover:bg-[#1c2538]"
             }`}
           >
             <div className="flex items-center gap-3">
               <Settings size={18} />
               <span>More Options</span>
             </div>
-            {openMoreOptions ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {openMoreOptions ? (
+              <ChevronDown size={16} />
+            ) : (
+              <ChevronRight size={16} />
+            )}
           </button>
           {openMoreOptions && (
             <div className="mt-1 ml-8 border-l border-indigo-700/40 pl-3 space-y-1">

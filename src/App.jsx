@@ -16,6 +16,7 @@ import ServersPage from "./pages/admin/ServersPage";
 // import DiskPage from "../../../BIn/Disk";
 import ManageResourcesPage from "./pages/admin/ManageResources";
 import VMsPage from "./pages/admin/VMs";
+import PricingDetailPage from "./pages/admin/PricingDetailPage";
 
 export default function App() {
   return (
@@ -129,12 +130,13 @@ export default function App() {
             <AdminProtectedRoute>
               <ManageResourcesPage
                 title="Manage Disks"
-                endpoint="/disks"
+                endpoint="/disk-details"
                 showExisting={false}
                 extraForm="disks"
                 fields={[
                   { name: "diskName", label: "Disk Name", type: "text" },
-                  { name: "diskSize", label: "Disk Size", type: "number" },
+                  { name: "maxVms", label: "Maximum VMs", type: "number" },
+                  { name: "usableDiskPercentage", label: "Usable Disk Percentage", type: "number" },
                 ]}
               />
             </AdminProtectedRoute>
@@ -146,6 +148,14 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <VMsPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/pricing/:type"
+          element={
+            <AdminProtectedRoute>
+              <PricingDetailPage />
             </AdminProtectedRoute>
           }
         />
