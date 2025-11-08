@@ -89,7 +89,7 @@ export default function LoginPage() {
 
         if (response.ok) {
           setSuccess(data.message || "Login successful!");
-          localStorage.setItem("token", JSON.stringify(data.token));
+          localStorage.setItem("token", data.token);
           setTimeout(() => navigate("/dashboard"), 1500);
         } else if (response.status === 401) {
           setError(data.message || "Incorrect email or password.");

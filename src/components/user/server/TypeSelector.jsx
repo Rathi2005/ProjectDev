@@ -1,9 +1,7 @@
 import React, { useState } from "react";
-import SummarySidebar from "./SummarySidebar";
 
-const TypeSelector = () => {
-  const [selectedType, setSelectedType] = useState("Shared vCPU");
-  const [selectedArch, setSelectedArch] = useState("x86 (Intel/AMD)");
+const TypeSelector = ({ setSelectedType }) => {
+  const [selectedType, setSelectedTypeState] = useState(null);
 
   const types = [
     {
@@ -14,34 +12,58 @@ const TypeSelector = () => {
         "Medium traffic websites & applications",
         "Low to medium CPU usage",
       ],
-      architectures: ["x86 (Intel/AMD)", "Arm64 (Ampere)"],
     },
     {
       name: "Dedicated vCPU",
       description:
         "Best choice for critical production as well as high CPU usage applications. Delivers predictable performance and response times.",
       tags: ["High traffic applications", "Sustained high CPU usage"],
-      architectures: ["x86 (AMD)"],
     },
   ];
 
+  // Handle type selection and auto-scroll to next section
+  const handleTypeSelect = (typeName) => {
+    setSelectedTypeState(typeName);
+    
+    // Update parent component immediately
+    setSelectedType(typeName);
+
+    // 🧭 Smooth scroll to Resources section
+    setTimeout(() => {
+      const resourcesSection = document.getElementById("server-resources");
+      if (resourcesSection) {
+        resourcesSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 100);
+  };
+
   return (
-    <div className="flex bg-[#0e1525] text-white w-full -mt-2">
+    <div className="flex bg-[#0e1525] text-white w-full">
       {/* Left Section */}
-      <div className="flex-1 p-8">
+      <div className="flex-1 px-8">
         {/* Back link */}
-        <div className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline">
-          ← Back to servers
+        <div
+          className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline"
+          onClick={() => {
+            const imageSection = document.getElementById("server-image");
+            if (imageSection) {
+              imageSection.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          }}
+        >
+          ← Back to image
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold mb-10">Choose Type</h1>
+        <h1 className="text-3xl font-bold mb-6">Choose Type</h1>
 
         {/* Description */}
-        <p className="text-gray-400 text-sm mb-8 max-w-3xl leading-relaxed">
-          Select the CPU type and architecture for your server. Choose shared
-          vCPUs for lighter workloads or dedicated vCPUs for consistent,
-          high-performance requirements.
+        <p className="text-gray-400 text-sm mb-6 max-w-3xl leading-relaxed">
+          Select the CPU type for your server. Choose shared vCPUs for lighter workloads 
+          or dedicated vCPUs for consistent, high-performance requirements.
         </p>
 
         {/* Type Cards */}
@@ -49,22 +71,21 @@ const TypeSelector = () => {
           {types.map((type) => (
             <div
               key={type.name}
-              className={`p-5 rounded-xl border transition-all cursor-pointer duration-200 ${
+              className={`p-6 rounded-xl border transition-all cursor-pointer duration-200 ${
                 selectedType === type.name
-                  ? "border-red-500 bg-[#1a2238]"
-                  : "border-gray-700 hover:border-gray-600 bg-[#111827]"
+                  ? "border-red-500 bg-[#1a2238] shadow-lg"
+                  : "border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
               }`}
-              onClick={() => {
-                setSelectedType(type.name);
-                setSelectedArch(type.architectures[0]);
-              }}
+              onClick={() => handleTypeSelect(type.name)}
             >
               {/* Card Header */}
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold">{type.name}</h2>
-                <div className="text-gray-400 text-xs">
-                  {selectedType === type.name && "✓"}
-                </div>
+                {selectedType === type.name && (
+                  <div className="text-green-400 text-sm font-medium">
+                    ✓ Selected
+                  </div>
+                )}
               </div>
 
               <p className="text-gray-400 text-sm mb-4 leading-snug">
@@ -72,7 +93,7 @@ const TypeSelector = () => {
               </p>
 
               {/* Tags */}
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2">
                 {type.tags.map((tag) => (
                   <span
                     key={tag}
@@ -82,39 +103,25 @@ const TypeSelector = () => {
                   </span>
                 ))}
               </div>
-
-              {/* Architecture Selection */}
-              <div className="border-t border-gray-700 pt-4">
-                <p className="text-xs text-gray-400 mb-2">ARCHITECTURE</p>
-                <div className="flex gap-4">
-                  {type.architectures.map((arch) => (
-                    <label
-                      key={arch}
-                      className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name={type.name}
-                        value={arch}
-                        checked={
-                          selectedType === type.name &&
-                          selectedArch === arch
-                        }
-                        onChange={() => setSelectedArch(arch)}
-                        className="accent-red-500"
-                      />
-                      {arch}
-                    </label>
-                  ))}
-                </div>
-              </div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Right: Summary Sidebar */}
-      <SummarySidebar />
+        {/* Next Step Suggestion */}
+        {selectedType && (
+          <div className="mt-8 p-4 bg-[#1a2238] rounded-lg border border-gray-700">
+            <p className="text-gray-300 text-sm">
+              <span className="font-semibold text-green-400">
+                ✓ Type Selected:
+              </span>{" "}
+              {selectedType}
+            </p>
+            <p className="text-gray-400 text-xs mt-2">
+              Continue to the next step to choose your server resources.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

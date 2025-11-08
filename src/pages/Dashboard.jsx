@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/user/Sidebar";
 import Header from "../components/user/Header";
 import DashboardPage from "../components/user/dashboard/DashboardPage";
@@ -5,67 +6,168 @@ import CreateServerPage from "../components/user/server/CreateServerPage";
 import ImageSelector from "../components/user/server/ImageSelector";
 import TypeSelector from "../components/user/server/TypeSelector";
 import ResourcesSelector from "../components/user/server/ResourcesSelector";
+import SummarySidebar from "../components/user/server/SummarySidebar";
 
 export default function Dashboard() {
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [serverId, setServerId] = useState(null);
+  const [selectedOS, setSelectedOS] = useState(null);
+  const [selectedType, setSelectedType] = useState(null);
+  const [selectedResources, setSelectedResources] = useState({});
+  const [showSidebar, setShowSidebar] = useState(false);
+
+  const mainContentRef = useRef(null);
+
+  useEffect(() => {
+    console.log("🔄 Dashboard State Update:", {
+      selectedLocation,
+      selectedOS,
+      selectedType,
+      selectedResources,
+    });
+  }, [selectedLocation, selectedOS, selectedType, selectedResources]);
+
+  // Show sidebar when we're in any server-related section
+  useEffect(() => {
+    const handleScroll = () => {
+      const content = mainContentRef.current;
+      if (!content) return;
+
+      const serverSubsections = [
+        "create-server",
+        "server-image",
+        "server-type",
+        "server-resources",
+      ];
+
+      let isInServerSection = false;
+
+      for (const subsectionId of serverSubsections) {
+        const subsection = document.getElementById(subsectionId);
+        if (subsection) {
+          const rect = subsection.getBoundingClientRect();
+          const containerRect = content.getBoundingClientRect();
+
+          const visibleHeight =
+            Math.min(rect.bottom, containerRect.bottom) -
+            Math.max(rect.top, containerRect.top);
+          const sectionHeight = rect.height;
+
+          if (visibleHeight > sectionHeight * 0.5) {
+            isInServerSection = true;
+            break;
+          }
+        }
+      }
+
+      setShowSidebar(isInServerSection);
+    };
+
+    const content = mainContentRef.current;
+    content?.addEventListener("scroll", handleScroll);
+
+    handleScroll();
+
+    return () => content?.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <div className="bg-[#0e1525] min-h-screen flex text-gray-100">
-      {/* Header */}
+    <div className="bg-[#0e1525] text-gray-100 flex min-h-screen">
+      {/* 🧭 Fixed Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#0e1525] border-b border-indigo-900/30">
         <Header />
       </div>
 
-      {/* Sidebar */}
+      {/* 🧱 Left Sidebar */}
       <Sidebar />
 
-      {/* Main content area */}
-      <div
-        className="flex-1 flex flex-col ml-64"
-        style={{
-          height: "calc(100vh - 72px)",
-        }}
-      >
+      {/* 📄 Main Content + Right Sidebar */}
+      <div className="flex-1 ml-64 flex flex-row">
+        {/* 🧱 Scrollable Main Content - REMOVED padding here */}
+        
         <div
           id="main-content"
-          className="flex-1 mt-[50px]"
+          ref={mainContentRef}
+          className={`flex-1 overflow-y-auto scroll-smooth transition-all duration-300 ${
+            showSidebar ? "pr-[340px]" : ""
+          }`}
           style={{
-            overflow: "hidden", // disables manual scroll
-            scrollBehavior: "smooth", // enables smooth programmatic scroll
+            height: "calc(100vh - 72px)",
           }}
         >
-          {/* Sections */}
-          <section id="dashboard" className="min-h-screen p-10">
+          {/* Dashboard Section - REDUCED padding and removed centering */}
+          <div id="dashboard" className="min-h-screen px-8 py-20">
             <DashboardPage />
-          </section>
+          </div>
 
-          <section id="servers" className="min-h-screen p-10">
-            <div id="create-server" className="mb-20">
-              <CreateServerPage />
+          {/* Server Creation Sections */}
+          <div id="servers">
+            {/* Create Server - REDUCED padding and removed centering */}
+            <div id="create-server" className="min-h-screen px-8 py-20">
+              <CreateServerPage
+                selectedLocation={selectedLocation}
+                setSelectedLocation={setSelectedLocation}
+                setServerId={setServerId}
+              />
+            </div>
+            
+
+            {/* Server Image - REDUCED padding and removed centering */}
+            <div id="server-image" className="min-h-screen px-8 py-28">
+              <ImageSelector
+                serverId={serverId}
+                setSelectedOS={setSelectedOS}
+              />
             </div>
 
-            <div id="server-image" className="min-h-screen mb-20 -ml-2">
-              <ImageSelector />
+            {/* Server Type - REDUCED padding and removed centering */}
+            <div id="server-type" className="min-h-screen px-8 py-20">
+              <TypeSelector
+                selectedType={selectedType}
+                setSelectedType={setSelectedType}
+              />
             </div>
 
-            <div id="server-type" className="min-h-screen mb-20 -ml-2">
-              <TypeSelector />
+            {/* Server Resources - REDUCED padding and removed centering */}
+            <div id="server-resources" className="min-h-screen px-8 py-20">
+              <ResourcesSelector
+                selectedType={selectedType}
+                selectedResources={selectedResources}
+                setSelectedResources={setSelectedResources}
+              />
             </div>
+          </div>
 
-            <div id="server-resources" className="min-h-screen mb-20 -ml-2">
-              <ResourcesSelector/>
-            </div>
-
-          </section>
-
-          <section id="security" className="min-h-screen p-10">
+          {/* Security Section - REDUCED padding and removed centering */}
+          <div id="security" className="min-h-screen px-8 py-8">
             <h1 className="text-3xl font-bold">Security</h1>
-          </section>
+          </div>
 
-          <section id="settings" className="min-h-screen p-10">
+          {/* Settings Section - REDUCED padding and removed centering */}
+          <div id="settings" className="min-h-screen px-8 py-8">
             <h1 className="text-3xl font-bold">Settings</h1>
-          </section>
+          </div>
         </div>
+
+        {/* 📊 Fixed Summary Sidebar */}
+        <aside
+          className={`w-[320px] shrink-0 border-l border-gray-800 bg-[#121a2a]
+          fixed right-0 top-[72px] h-[calc(100vh-72px)] overflow-y-auto
+          transition-all duration-500 ease-in-out z-40
+          ${
+            showSidebar
+              ? "translate-x-0 opacity-100"
+              : "translate-x-full opacity-0 pointer-events-none"
+          }`}
+        >
+          <SummarySidebar
+            selectedLocation={selectedLocation}
+            selectedOS={selectedOS}
+            selectedType={selectedType}
+            selectedResources={selectedResources}
+          />
+        </aside>
       </div>
     </div>
   );
 }
-

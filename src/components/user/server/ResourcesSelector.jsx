@@ -1,69 +1,316 @@
-import React, { useState, useMemo } from "react";
-import SummarySidebar from "./SummarySidebar";
+import React, { useState, useEffect, useMemo } from "react";
 
-const ResourcesSelector = () => {
-  const [vCPU, setVCPU] = useState("1 Core");
-  const [ram, setRam] = useState("2 GB");
-  const [disk, setDisk] = useState("40 GB NVMe SSD");
-  const [bandwidth, setBandwidth] = useState("5 TB (included)");
+const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
+  const [vCPU, setVCPU] = useState("");
+  const [ram, setRam] = useState("");
+  const [disk, setDisk] = useState("");
+  const [bandwidth, setBandwidth] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // vCPU options and their base hourly prices
-  const vcpuOptions = [
-    { label: "1 Core", price: 0.3440 },
-    { label: "2 Cores", price: 0.6880 },
-    { label: "4 Cores", price: 1.3760 },
-    { label: "6 Cores", price: 2.0640 },
-    { label: "8 Cores", price: 2.7520 },
-    { label: "10 Cores", price: 3.4400 },
-    { label: "12 Cores", price: 4.1280 },
-  ];
+  // State for API data
+  const [vcpuOptions, setVcpuOptions] = useState([]);
+  const [ramOptions, setRamOptions] = useState([]);
+  const [diskOptions, setDiskOptions] = useState([]);
+  const [bandwidthOptions, setBandwidthOptions] = useState([]);
 
-  // RAM options and multipliers
-  const ramOptions = [
-    { label: "2 GB", multiplier: 1 },
-    { label: "4 GB", multiplier: 1.2 },
-    { label: "8 GB", multiplier: 1.4 },
-    { label: "16 GB", multiplier: 1.8 },
-  ];
+  // API endpoints based on your structure
+  const API_BASE = import.meta.env.VITE_BASE_URL;
 
-  // Disk options and price add-ons
-  const diskOptions = [
-    { label: "40 GB NVMe SSD", addon: 0 },
-    { label: "80 GB NVMe SSD", addon: 0.2 },
-    { label: "160 GB NVMe SSD", addon: 0.4 },
-  ];
+  // Determine API endpoints based on selected type
+  const getApiEndpoints = (type) => {
+    const basePath = type === "Dedicated vCPU" ? "dedicated" : "shared";
+    const endpoints = {
+      vcpu: `${API_BASE}/admin/pricing/${basePath}/cpu`,
+      ram: `${API_BASE}/admin/pricing/${basePath}/ram`,
+      disk: `${API_BASE}/admin/pricing/${basePath}/disk`,
+      bandwidth: `${API_BASE}/admin/pricing/${basePath}/bandwidth`,
+    };
+    return endpoints;
+  };
 
-  // Bandwidth options and price add-ons
-  const bandwidthOptions = [
-    { label: "5 TB (included)", addon: 0 },
-    { label: "10 TB (+₹100/month)", addon: 100 / 720 },
-    { label: "20 TB (+₹200/month)", addon: 200 / 720 },
-  ];
+  // Fetch prices based on selected type
+  useEffect(() => {
+    // Use a default type if none is provided
+    const effectiveType = selectedType || "Shared vCPU";
+
+    const fetchPrices = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        let token = localStorage.getItem("token");
+        try {
+          token = JSON.parse(token);
+        } catch (e) {
+          // Token parsing failed, use raw token
+        }
+
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
+
+        const endpoints = getApiEndpoints(effectiveType);
+
+        // Fetch all prices in parallel
+        const [vcpuRes, ramRes, diskRes, bandwidthRes] = await Promise.all([
+          fetch(endpoints.vcpu, { headers }),
+          fetch(endpoints.ram, { headers }),
+          fetch(endpoints.disk, { headers }),
+          fetch(endpoints.bandwidth, { headers }),
+        ]);
+
+        // Check if any request failed
+        if (!vcpuRes.ok) throw new Error("Failed to fetch vCPU prices");
+        if (!ramRes.ok) throw new Error("Failed to fetch RAM prices");
+        if (!diskRes.ok) throw new Error("Failed to fetch Disk prices");
+        if (!bandwidthRes.ok) throw new Error("Failed to fetch Bandwidth prices");
+
+        const [vcpuData, ramData, diskData, bandwidthData] = await Promise.all([
+          vcpuRes.json(),
+          ramRes.json(),
+          diskRes.json(),
+          bandwidthRes.json(),
+        ]);
+
+        // Validate data structure
+        if (!Array.isArray(vcpuData)) throw new Error("vCPU data is not an array");
+        if (!Array.isArray(ramData)) throw new Error("RAM data is not an array");
+        if (!Array.isArray(diskData)) throw new Error("Disk data is not an array");
+        if (!Array.isArray(bandwidthData)) throw new Error("Bandwidth data is not an array");
+
+        // Set options directly from API response
+        setVcpuOptions(vcpuData);
+        setRamOptions(ramData);
+        setDiskOptions(diskData);
+        setBandwidthOptions(bandwidthData);
+
+        // Set default values from API response (first item in each array)
+        if (vcpuData.length > 0) setVCPU(vcpuData[0].label);
+        if (ramData.length > 0) setRam(ramData[0].label);
+        if (diskData.length > 0) setDisk(diskData[0].label);
+        if (bandwidthData.length > 0) setBandwidth(bandwidthData[0].label);
+
+      } catch (err) {
+        console.error("Error fetching prices:", err);
+        setError("Failed to load resource prices");
+        // Fallback to default options if API fails
+        setDefaultOptions(effectiveType);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPrices();
+  }, [selectedType]);
+
+  // Fallback default options if API fails
+  const setDefaultOptions = (type = "Shared vCPU") => {
+    // Default options based on server type
+    const isDedicated = type === "Dedicated vCPU";
+
+    const defaultVcpuOptions = isDedicated
+      ? [
+          { id: 1, label: "2 Cores (Dedicated)", price: 1.2 },
+          { id: 2, label: "4 Cores (Dedicated)", price: 2.4 },
+          { id: 3, label: "8 Cores (Dedicated)", price: 4.8 },
+        ]
+      : [
+          { id: 1, label: "1 Core (Shared)", price: 0.344 },
+          { id: 2, label: "2 Cores (Shared)", price: 0.688 },
+          { id: 3, label: "4 Cores (Shared)", price: 1.376 },
+        ];
+
+    const defaultRamOptions = [
+      { id: 1, label: "2 GB RAM", multiplier: 1 },
+      { id: 2, label: "4 GB RAM", multiplier: 1.2 },
+      { id: 3, label: "8 GB RAM", multiplier: 1.4 },
+      { id: 4, label: "16 GB RAM", multiplier: 1.8 },
+    ];
+
+    const defaultDiskOptions = [
+      { id: 1, label: "40 GB NVMe SSD", addon: 0 },
+      { id: 2, label: "80 GB NVMe SSD", addon: 0.2 },
+      { id: 3, label: "160 GB NVMe SSD", addon: 0.4 },
+    ];
+
+    const defaultBandwidthOptions = [
+      { id: 1, label: "5 TB Bandwidth (included)", addon: 0 },
+      { id: 2, label: "10 TB Bandwidth", addon: 100 / 720 },
+      { id: 3, label: "20 TB Bandwidth", addon: 200 / 720 },
+    ];
+
+    setVcpuOptions(defaultVcpuOptions);
+    setRamOptions(defaultRamOptions);
+    setDiskOptions(defaultDiskOptions);
+    setBandwidthOptions(defaultBandwidthOptions);
+
+    // Set default values
+    if (defaultVcpuOptions.length > 0) setVCPU(defaultVcpuOptions[0].label);
+    if (defaultRamOptions.length > 0) setRam(defaultRamOptions[0].label);
+    if (defaultDiskOptions.length > 0) setDisk(defaultDiskOptions[0].label);
+    if (defaultBandwidthOptions.length > 0)
+      setBandwidth(defaultBandwidthOptions[0].label);
+  };
 
   // Compute pricing dynamically
   const pricing = useMemo(() => {
-    const cpuPrice = vcpuOptions.find((c) => c.label === vCPU)?.price || 0;
-    const ramMultiplier = ramOptions.find((r) => r.label === ram)?.multiplier || 1;
-    const diskAddon = diskOptions.find((d) => d.label === disk)?.addon || 0;
-    const bandwidthAddon = bandwidthOptions.find((b) => b.label === bandwidth)?.addon || 0;
+    const cpuOption = vcpuOptions.find((c) => c.label === vCPU);
+    const ramOption = ramOptions.find((r) => r.label === ram);
+    const diskOption = diskOptions.find((d) => d.label === disk);
+    const bandwidthOption = bandwidthOptions.find((b) => b.label === bandwidth);
 
-    const hourly = (cpuPrice * ramMultiplier + diskAddon + bandwidthAddon).toFixed(4);
-    const monthly = (hourly * 720).toFixed(2);
+    const cpuPrice = cpuOption?.price || 0;
+    const ramMultiplier = ramOption?.multiplier || 1;
+    const diskAddon = diskOption?.addon || 0;
+    const bandwidthAddon = bandwidthOption?.addon || 0;
+
+    const hourly = (
+      cpuPrice * ramMultiplier +
+      diskAddon +
+      bandwidthAddon
+    ).toFixed(4);
+    const monthly = (parseFloat(hourly) * 720).toFixed(2);
 
     return { hourly, monthly };
-  }, [vCPU, ram, disk, bandwidth]);
+  }, [vCPU, ram, disk, bandwidth, vcpuOptions, ramOptions, diskOptions, bandwidthOptions]);
 
-  return (
-    <div className="flex bg-[#0e1525] text-white w-full -mt-2">
-      {/* Left Section */}
-      <div className="flex-1 p-8">
+  // Update parent component when resources change
+  useEffect(() => {
+    if (vcpuOptions.length > 0 && ramOptions.length > 0 && vCPU && ram) {
+      setSelectedResources({
+        vCPU,
+        ram,
+        disk,
+        bandwidth,
+        pricing: {
+          hourly: pricing.hourly,
+          monthly: pricing.monthly,
+        },
+      });
+    }
+  }, [vCPU, ram, disk, bandwidth, pricing, vcpuOptions, ramOptions, setSelectedResources]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex-1 px-8">
         {/* Back link */}
-        <div className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline">
-          ← Back to servers
+        <div
+          className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline"
+          onClick={() => {
+            const typeSection = document.getElementById("server-type");
+            if (typeSection) {
+              typeSection.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          }}
+        >
+          ← Back to type
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold mb-10">Resources</h1>
+        <h1 className="text-3xl font-bold mb-6">Resources</h1>
+
+        {/* Enhanced Loading Indicator */}
+        <div className="space-y-6">
+          {/* Server Type Info with Loading */}
+          <div className="p-4 bg-[#1a2238] rounded-lg border border-gray-700">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-red-500 border-t-transparent"></div>
+              <div>
+                <p className="text-gray-300 text-sm">
+                  <span className="font-semibold text-green-400">Configuring:</span>{" "}
+                  {selectedType}
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Loading resource options...
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Loading Skeleton for Resource Selectors */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} className="space-y-3">
+                <div className="h-4 bg-gray-700 rounded w-1/3 animate-pulse"></div>
+                <div className="h-10 bg-gray-800 rounded animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Loading Message */}
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent mx-auto mb-3"></div>
+            <p className="text-gray-400 text-sm">
+              Fetching {selectedType === "Dedicated vCPU" ? "dedicated" : "shared"} resource prices...
+            </p>
+            <p className="text-gray-500 text-xs mt-1">
+              This may take a few seconds
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex bg-[#0e1525] text-white w-full">
+      {/* Left Section */}
+      <div className="flex-1 px-8">
+        {/* Back link */}
+        <div
+          className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline"
+          onClick={() => {
+            const typeSection = document.getElementById("server-type");
+            if (typeSection) {
+              typeSection.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          }}
+        >
+          ← Back to type
+        </div>
+
+        {/* Title */}
+        <h1 className="text-3xl font-bold mb-6">Resources</h1>
+
+        {/* Server Type Info */}
+        <div className="mb-6 p-4 bg-[#1a2238] rounded-lg border border-gray-700">
+          <p className="text-gray-300 text-sm">
+            <span className="font-semibold text-green-400">Configuring:</span>{" "}
+            {selectedType}
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded-lg">
+            <p className="text-red-400 text-sm">{error}</p>
+            <p className="text-red-400 text-xs mt-1">Using default pricing</p>
+          </div>
+        )}
+
+        {/* API Success Indicator */}
+        {!loading && !error && vcpuOptions.length > 0 && (
+          <div className="mb-6 p-4 bg-green-900/20 border border-green-700 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <p className="text-green-400 text-sm">
+                APIs connected successfully
+              </p>
+            </div>
+            <p className="text-green-400 text-xs mt-1">
+              Loaded: {vcpuOptions.length} vCPU options, {ramOptions.length} RAM options, 
+              {diskOptions.length} Disk options, {bandwidthOptions.length} Bandwidth options
+            </p>
+          </div>
+        )}
 
         {/* Resource selectors */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-10">
@@ -73,11 +320,11 @@ const ResourcesSelector = () => {
             <select
               value={vCPU}
               onChange={(e) => setVCPU(e.target.value)}
-              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               {vcpuOptions.map((opt) => (
-                <option key={opt.label} value={opt.label}>
-                  {opt.label} - ₹{opt.price.toFixed(4)}/hr
+                <option key={opt.id} value={opt.label}>
+                  {opt.label} - ₹{opt.price?.toFixed(4) || "0.0000"}/hr
                 </option>
               ))}
             </select>
@@ -89,11 +336,11 @@ const ResourcesSelector = () => {
             <select
               value={ram}
               onChange={(e) => setRam(e.target.value)}
-              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               {ramOptions.map((opt) => (
-                <option key={opt.label} value={opt.label}>
-                  {opt.label}
+                <option key={opt.id} value={opt.label}>
+                  {opt.label} {opt.multiplier && `(${opt.multiplier}x)`}
                 </option>
               ))}
             </select>
@@ -101,14 +348,16 @@ const ResourcesSelector = () => {
 
           {/* Disk */}
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Primary Disk</label>
+            <label className="block text-sm text-gray-400 mb-2">
+              Primary Disk
+            </label>
             <select
               value={disk}
               onChange={(e) => setDisk(e.target.value)}
-              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               {diskOptions.map((opt) => (
-                <option key={opt.label} value={opt.label}>
+                <option key={opt.id} value={opt.label}>
                   {opt.label}
                 </option>
               ))}
@@ -117,14 +366,16 @@ const ResourcesSelector = () => {
 
           {/* Bandwidth */}
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Bandwidth</label>
+            <label className="block text-sm text-gray-400 mb-2">
+              Bandwidth
+            </label>
             <select
               value={bandwidth}
               onChange={(e) => setBandwidth(e.target.value)}
-              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               {bandwidthOptions.map((opt) => (
-                <option key={opt.label} value={opt.label}>
+                <option key={opt.id} value={opt.label}>
                   {opt.label}
                 </option>
               ))}
@@ -136,24 +387,23 @@ const ResourcesSelector = () => {
         </div>
 
         {/* Pricing Summary */}
-        <div className="mt-10 border-t border-gray-700 pt-6">
-          <h2 className="text-lg font-semibold mb-3">Pricing Summary</h2>
-          <div className="flex items-center justify-between text-gray-300 mb-1">
-            <span>
-              {vCPU}, {ram}, {disk}
-            </span>
-            <span className="font-bold text-indigo-400">
-              ₹{pricing.hourly} / hour
-            </span>
+        {pricing.hourly !== "0.0000" && (
+          <div className="mt-10 border-t border-gray-700 pt-6">
+            <h2 className="text-lg font-semibold mb-3">Pricing Summary</h2>
+            <div className="flex items-center justify-between text-gray-300 mb-1">
+              <span className="text-sm">
+                {vCPU}, {ram}, {disk}, {bandwidth}
+              </span>
+              <span className="font-bold text-red-400">
+                ₹{pricing.hourly} / hour
+              </span>
+            </div>
+            <div className="text-sm text-gray-400">
+              ≈ ₹{pricing.monthly} / month
+            </div>
           </div>
-          <div className="text-sm text-gray-400">
-            ≈ ₹{pricing.monthly} / month
-          </div>
-        </div>
+        )}
       </div>
-
-      {/* Right: Summary Sidebar */}
-      <SummarySidebar />
     </div>
   );
 };

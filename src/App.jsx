@@ -117,7 +117,6 @@ export default function App() {
                 fields={[
                   { name: "iso", label: "ISO Name", type: "text" },
                   { name: "vmid", label: "VM ID", type: "text" },
-                  { name: "is_in_use", label: "In Use", type: "checkbox" },
                 ]}
               />
             </AdminProtectedRoute>
@@ -131,15 +130,17 @@ export default function App() {
               <ManageResourcesPage
                 title="Manage Disks"
                 endpoint="/disks"
+                showExisting={false}
+                extraForm="disks"
                 fields={[
-                  { name: "disk_name", label: "Disk Name", type: "text" },
-                  { name: "maximum_storage", label: "Maximum Storage", type: "number" },
-                  { name: "maximum_vms", label: "Maximum VMs", type: "number" },
+                  { name: "diskName", label: "Disk Name", type: "text" },
+                  { name: "diskSize", label: "Disk Size", type: "number" },
                 ]}
               />
             </AdminProtectedRoute>
           }
         />
+
         <Route
           path="/admin/servers/:id/vms"
           element={

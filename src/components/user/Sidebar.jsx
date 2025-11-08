@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import Logout from "../../Logout";
+import React, { useState, useEffect } from "react";
 import {
   Home,
   Server,
@@ -9,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
+import useLogout from "./Logout"; // ✅ Correct import for your custom hook
 
 export default function Sidebar() {
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -16,7 +16,8 @@ export default function Sidebar() {
   const [openServersMenu, setOpenServersMenu] = useState(false);
   const [openMoreOptions, setOpenMoreOptions] = useState(false);
 
-  const logout = Logout();
+  // ✅ Get logout function from hook
+  const logout = useLogout();
 
   const links = [
     { name: "Dashboard", icon: <Home size={18} />, id: "dashboard" },
@@ -38,7 +39,7 @@ export default function Sidebar() {
     { label: "Storage" },
   ];
 
-  // ✅ Scroll tracking only highlights, doesn't toggle dropdown
+  // ✅ Scroll tracking for active sections
   useEffect(() => {
     const handleScroll = () => {
       const scrollPos = window.scrollY + 100;
@@ -95,7 +96,7 @@ export default function Sidebar() {
     setActiveSection(id);
 
     if (id === "servers") {
-      setOpenServersMenu((prev) => !prev); // ✅ Toggle submenu
+      setOpenServersMenu((prev) => !prev);
       if (!openServersMenu) {
         const target = activeSubSection || "create-server";
         setActiveSubSection(target);
@@ -111,6 +112,11 @@ export default function Sidebar() {
   const onClickSubSection = (id) => {
     setActiveSubSection(id);
     scrollTo(id);
+  };
+
+  // ✅ Call logout from your hook when clicked
+  const handleLogout = async () => {
+    await logout(); // This calls your API + clears token + navigates to /login
   };
 
   return (
@@ -131,7 +137,11 @@ export default function Sidebar() {
                 <span>{link.name}</span>
               </div>
               {link.id === "servers" &&
-                (openServersMenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+                (openServersMenu ? (
+                  <ChevronDown size={16} />
+                ) : (
+                  <ChevronRight size={16} />
+                ))}
             </button>
 
             {link.id === "servers" && openServersMenu && (
@@ -149,7 +159,7 @@ export default function Sidebar() {
           </div>
         ))}
 
-        {/* More Options collapsible */}
+        {/* More Options */}
         <div className="mt-2">
           <button
             onClick={() => setOpenMoreOptions(!openMoreOptions)}
@@ -173,9 +183,10 @@ export default function Sidebar() {
         </div>
       </nav>
 
+      {/* ✅ Logout Button */}
       <div
         className="px-6 py-4 border-t border-indigo-900/30 flex items-center gap-3 cursor-pointer hover:text-red-400"
-        onClick={logout}
+        onClick={handleLogout}
       >
         <LogOut size={18} />
         <span>Logout</span>

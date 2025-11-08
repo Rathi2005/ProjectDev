@@ -1,11 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Globe, Server, Ticket, Settings, User } from "lucide-react";
+import useLogout from "./Logout"; // ✅ default import (not destructured)
 
 const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Close dropdown when clicking outside
+  // ✅ Call your hook here — this gives you the logout function
+  const logout = useLogout();
+
+  // ✅ Check login state on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, []);
+
+  // ✅ Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -15,6 +26,13 @@ const Header = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // ✅ Call logout function returned by hook
+  const handleLogout = async () => {
+    setIsDropdownOpen(false);
+    await logout(); // <-- correct usage
+    setIsLoggedIn(false);
+  };
 
   return (
     <header className="bg-[#0e1525] text-gray-200 shadow-md border-b border-gray-700">
@@ -44,36 +62,27 @@ const Header = () => {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-8 text-sm">
-          <a
-            href="#"
-            className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
-          >
+          <a href="#" className="flex items-center space-x-1 hover:text-[#4f46e5] transition">
             <Globe className="w-4 h-4" />
             <span>Cloud VPS</span>
           </a>
-          <a
-            href="#"
-            className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
-          >
+          <a href="#" className="flex items-center space-x-1 hover:text-[#4f46e5] transition">
             <Server className="w-4 h-4" />
             <span>Pricing</span>
           </a>
-          <a
-            href="#"
-            className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
-          >
+          <a href="#" className="flex items-center space-x-1 hover:text-[#4f46e5] transition">
             <Ticket className="w-4 h-4" />
-            <span>About us</span>
+            <span>About Us</span>
           </a>
         </nav>
 
-        {/* Icons */}
+        {/* Right Section */}
         <div className="flex items-center space-x-4 relative">
           <button className="p-2 hover:bg-[#1e293b] rounded-full transition">
             <Settings className="w-5 h-5 text-gray-300 hover:text-[#4f46e5]" />
           </button>
 
-          {/* User Dropdown (Click to open) */}
+          {/* User Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               className="p-2 border border-gray-600 rounded-full hover:border-[#4f46e5] transition"
@@ -84,21 +93,41 @@ const Header = () => {
 
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-40 bg-[#121a2a] border border-gray-700 rounded-xl shadow-lg py-1 z-50">
-                <a
-                  href="/login"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-slate-600"
-                >
-                  <span className="material-icons text-[18px]">login</span>
-                  <span>Login</span>
-                </a>
-
-                <a
-                  href="/register"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
-                >
-                  <span className="material-icons text-[18px]">person_add</span>
-                  <span>Sign Up</span>
-                </a>
+                {isLoggedIn ? (
+                  <>
+                    <a
+                      href="/profile"
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-slate-600"
+                    >
+                      <span className="material-icons text-[18px]">account_circle</span>
+                      <span>Profile</span>
+                    </a>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-red-400 transition"
+                    >
+                      <span className="material-icons text-[18px]">logout</span>
+                      <span>Logout</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <a
+                      href="/login"
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-slate-600"
+                    >
+                      <span className="material-icons text-[18px]">login</span>
+                      <span>Login</span>
+                    </a>
+                    <a
+                      href="/register"
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
+                    >
+                      <span className="material-icons text-[18px]">person_add</span>
+                      <span>Sign Up</span>
+                    </a>
+                  </>
+                )}
               </div>
             )}
           </div>
