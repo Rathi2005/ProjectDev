@@ -35,6 +35,7 @@ const ImageSelector = ({ serverId, setSelectedOS }) => {
         const formatted = data.map((iso) => ({
           name: iso.iso,
           version: iso.version || "Latest",
+          id: iso.id, // Add ID from API response
         }));
 
         setOsOptions(formatted);
@@ -51,14 +52,15 @@ const ImageSelector = ({ serverId, setSelectedOS }) => {
   }, [serverId]);
 
   // Handle OS selection and auto-scroll to next section
-  const handleOSSelect = (osName, osVersion) => {
+  const handleOSSelect = (osName, osVersion, osId) => {
     setSelectedOSState(osName);
     setSelectedVersion(osVersion);
     
     // Update parent component immediately with proper structure
     setSelectedOS({
-      name: osName,  // Changed from 'os' to 'name'
+      name: osName,
       version: osVersion,
+      id: osId, // Add ISO ID
     });
 
     // 🧭 Smooth scroll to Server Type section
@@ -125,7 +127,7 @@ const ImageSelector = ({ serverId, setSelectedOS }) => {
                         ? "border-red-500 bg-[#1a2238] shadow-lg"
                         : "border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
                     }`}
-                  onClick={() => handleOSSelect(os.name, os.version)}
+                  onClick={() => handleOSSelect(os.name, os.version, os.id)}
                 >
                   <div className="text-lg font-semibold mb-2">{os.name}</div>
                   <div className="text-gray-400 text-sm">

@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 
-const TypeSelector = ({ setSelectedType }) => {
+const TypeSelector = ({ setSelectedType, selectedOS }) => {
   const [selectedType, setSelectedTypeState] = useState(null);
 
   const types = [
     {
-      name: "Shared vCPU",
+      name: "SHARED",
       description:
         "Best price/performance ratio. Applications must be able to handle varying levels of CPU assignment. Not suitable for sustained high CPU usage.",
       tags: [
@@ -14,7 +14,7 @@ const TypeSelector = ({ setSelectedType }) => {
       ],
     },
     {
-      name: "Dedicated vCPU",
+      name: "DEDICATED",
       description:
         "Best choice for critical production as well as high CPU usage applications. Delivers predictable performance and response times.",
       tags: ["High traffic applications", "Sustained high CPU usage"],
@@ -23,6 +23,9 @@ const TypeSelector = ({ setSelectedType }) => {
 
   // Handle type selection and auto-scroll to next section
   const handleTypeSelect = (typeName) => {
+    // Prevent selection if no OS is selected
+    if (!selectedOS) return;
+    
     setSelectedTypeState(typeName);
     
     // Update parent component immediately
@@ -66,15 +69,26 @@ const TypeSelector = ({ setSelectedType }) => {
           or dedicated vCPUs for consistent, high-performance requirements.
         </p>
 
+        {/* Warning message if no OS selected */}
+        {!selectedOS && (
+          <div className="mb-6 p-4 bg-yellow-900/30 border border-yellow-700 rounded-lg">
+            <p className="text-yellow-400 text-sm font-medium">
+              ⚠️ Please select a server image first before choosing a type.
+            </p>
+          </div>
+        )}
+
         {/* Type Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {types.map((type) => (
             <div
               key={type.name}
-              className={`p-6 rounded-xl border transition-all cursor-pointer duration-200 ${
-                selectedType === type.name
-                  ? "border-red-500 bg-[#1a2238] shadow-lg"
-                  : "border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
+              className={`p-6 rounded-xl border transition-all duration-200 ${
+                !selectedOS
+                  ? "cursor-not-allowed opacity-50 border-gray-800 bg-[#0d1421]"
+                  : selectedType === type.name
+                  ? "cursor-pointer border-red-500 bg-[#1a2238] shadow-lg"
+                  : "cursor-pointer border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
               }`}
               onClick={() => handleTypeSelect(type.name)}
             >

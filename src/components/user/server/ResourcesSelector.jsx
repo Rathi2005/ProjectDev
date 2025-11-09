@@ -112,9 +112,9 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
 
     const defaultVcpuOptions = isDedicated
       ? [
-          { id: 1, label: "2 Cores (Dedicated)", price: 1.2 },
-          { id: 2, label: "4 Cores (Dedicated)", price: 2.4 },
-          { id: 3, label: "8 Cores (Dedicated)", price: 4.8 },
+          { id: 5, label: "2 Cores (Dedicated)", price: 1.2 },
+          { id: 6, label: "4 Cores (Dedicated)", price: 2.4 },
+          { id: 7, label: "8 Cores (Dedicated)", price: 4.8 },
         ]
       : [
           { id: 1, label: "1 Core (Shared)", price: 0.344 },
@@ -123,10 +123,9 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
         ];
 
     const defaultRamOptions = [
-      { id: 1, label: "2 GB RAM", multiplier: 1 },
-      { id: 2, label: "4 GB RAM", multiplier: 1.2 },
-      { id: 3, label: "8 GB RAM", multiplier: 1.4 },
-      { id: 4, label: "16 GB RAM", multiplier: 1.8 },
+      { id: 3, label: "4 GB RAM", multiplier: 1 },
+      { id: 4, label: "8 GB RAM", multiplier: 1.2 },
+      { id: 5, label: "16 GB RAM", multiplier: 1.4 },
     ];
 
     const defaultDiskOptions = [
@@ -179,18 +178,27 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
   // Update parent component when resources change
   useEffect(() => {
     if (vcpuOptions.length > 0 && ramOptions.length > 0 && vCPU && ram) {
+      const cpuOption = vcpuOptions.find((c) => c.label === vCPU);
+      const ramOption = ramOptions.find((r) => r.label === ram);
+      const diskOption = diskOptions.find((d) => d.label === disk);
+      const bandwidthOption = bandwidthOptions.find((b) => b.label === bandwidth);
+
       setSelectedResources({
         vCPU,
         ram,
         disk,
         bandwidth,
+        cpuPriceId: cpuOption?.id || null,
+        ramPriceId: ramOption?.id || null,
+        diskPriceId: diskOption?.id || null,
+        bandwidthPriceId: bandwidthOption?.id || null,
         pricing: {
           hourly: pricing.hourly,
           monthly: pricing.monthly,
         },
       });
     }
-  }, [vCPU, ram, disk, bandwidth, pricing, vcpuOptions, ramOptions, setSelectedResources]);
+  }, [vCPU, ram, disk, bandwidth, pricing, vcpuOptions, ramOptions, diskOptions, bandwidthOptions, setSelectedResources]);
 
   // Show loading state
   if (loading) {

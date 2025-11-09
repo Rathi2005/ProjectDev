@@ -10,7 +10,7 @@ import SummarySidebar from "../components/user/server/SummarySidebar";
 
 export default function Dashboard() {
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [serverId, setServerId] = useState(null);
+  const [serverId, setServerId] = useState(null); // This should be set
   const [selectedOS, setSelectedOS] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   const [selectedResources, setSelectedResources] = useState({});
@@ -21,11 +21,12 @@ export default function Dashboard() {
   useEffect(() => {
     console.log("🔄 Dashboard State Update:", {
       selectedLocation,
+      serverId, // Check if serverId is being set
       selectedOS,
       selectedType,
       selectedResources,
     });
-  }, [selectedLocation, selectedOS, selectedType, selectedResources]);
+  }, [selectedLocation, serverId, selectedOS, selectedType, selectedResources]);
 
   // Show sidebar when we're in any server-related section
   useEffect(() => {
@@ -108,14 +109,15 @@ export default function Dashboard() {
                 selectedLocation={selectedLocation}
                 setSelectedLocation={setSelectedLocation}
                 setServerId={setServerId}
+                serverId={serverId} // Pass serverId to CreateServerPage
               />
             </div>
             
 
             {/* Server Image - REDUCED padding and removed centering */}
-            <div id="server-image" className="min-h-screen px-8 py-20">
+            <div id="server-image" className="min-h-screen px-8 py-28">
               <ImageSelector
-                serverId={serverId}
+                serverId={serverId} // Pass serverId to ImageSelector
                 setSelectedOS={setSelectedOS}
               />
             </div>
@@ -125,6 +127,7 @@ export default function Dashboard() {
               <TypeSelector
                 selectedType={selectedType}
                 setSelectedType={setSelectedType}
+                selectedOS={selectedOS} // Pass selectedOS for validation
               />
             </div>
 
@@ -162,9 +165,10 @@ export default function Dashboard() {
         >
           <SummarySidebar
             selectedLocation={selectedLocation}
-            selectedOS={selectedOS} 
+            selectedOS={selectedOS}
             selectedType={selectedType}
             selectedResources={selectedResources}
+            serverId={serverId} // Make sure this is passed!
           />
         </aside>
       </div>

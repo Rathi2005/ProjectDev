@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import LocationSelector from "./LocationSelector";
 
-const CreateServerPage = ({ selectedLocation, setSelectedLocation, setServerId }) => {
+const CreateServerPage = ({ selectedLocation, setSelectedLocation, setServerId, serverId }) => {
   // Scrolls only when selecting a location
   const handleLocationSelect = (locationName, serverIdValue) => {
     setSelectedLocation(locationName);
@@ -44,6 +44,9 @@ const CreateServerPage = ({ selectedLocation, setSelectedLocation, setServerId }
             <div className="mt-8 p-4 bg-[#1a2238] rounded-lg border border-gray-700">
               <p className="text-gray-300 text-sm">
                 <span className="font-semibold text-green-400">✓ Location Selected:</span> {selectedLocation}
+              </p>
+              <p className="text-gray-300 text-sm mt-1">
+                <span className="font-semibold text-blue-400">Server ID:</span> {serverId}
               </p>
               <p className="text-gray-400 text-xs mt-2">
                 Continue to the next step to choose your operating system.
