@@ -115,7 +115,7 @@ export default function Dashboard() {
             
 
             {/* Server Image - REDUCED padding and removed centering */}
-            <div id="server-image" className="min-h-screen px-8 py-28">
+            <div id="server-image" className="min-h-screen px-8 py-20">
               <ImageSelector
                 serverId={serverId} // Pass serverId to ImageSelector
                 setSelectedOS={setSelectedOS}

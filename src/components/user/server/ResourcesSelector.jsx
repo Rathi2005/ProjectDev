@@ -31,8 +31,9 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
 
   // Fetch prices based on selected type
   useEffect(() => {
-    // Use a default type if none is provided
-    const effectiveType = selectedType || "Shared vCPU";
+    if (!selectedType) {
+      return; // Don't fetch yet
+    }
 
     const fetchPrices = async () => {
       setLoading(true);
@@ -42,30 +43,21 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
         let token = localStorage.getItem("token");
         try {
           token = JSON.parse(token);
-        } catch (e) {
-          // Token parsing failed, use raw token
-        }
+        } catch {}
 
         const headers = {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         };
 
-        const endpoints = getApiEndpoints(effectiveType);
+        const endpoints = getApiEndpoints(selectedType);
 
-        // Fetch all prices in parallel
         const [vcpuRes, ramRes, diskRes, bandwidthRes] = await Promise.all([
           fetch(endpoints.vcpu, { headers }),
           fetch(endpoints.ram, { headers }),
           fetch(endpoints.disk, { headers }),
           fetch(endpoints.bandwidth, { headers }),
         ]);
-
-        // Check if any request failed
-        if (!vcpuRes.ok) throw new Error("Failed to fetch vCPU prices");
-        if (!ramRes.ok) throw new Error("Failed to fetch RAM prices");
-        if (!diskRes.ok) throw new Error("Failed to fetch Disk prices");
-        if (!bandwidthRes.ok) throw new Error("Failed to fetch Bandwidth prices");
 
         const [vcpuData, ramData, diskData, bandwidthData] = await Promise.all([
           vcpuRes.json(),
@@ -74,29 +66,21 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
           bandwidthRes.json(),
         ]);
 
-        // Validate data structure
-        if (!Array.isArray(vcpuData)) throw new Error("vCPU data is not an array");
-        if (!Array.isArray(ramData)) throw new Error("RAM data is not an array");
-        if (!Array.isArray(diskData)) throw new Error("Disk data is not an array");
-        if (!Array.isArray(bandwidthData)) throw new Error("Bandwidth data is not an array");
-
-        // Set options directly from API response
         setVcpuOptions(vcpuData);
         setRamOptions(ramData);
         setDiskOptions(diskData);
         setBandwidthOptions(bandwidthData);
 
-        // Set default values from API response (first item in each array)
-        if (vcpuData.length > 0) setVCPU(vcpuData[0].label);
+        if (vcpuData.length > 0) {
+          setVCPU(vcpuData[0].label);
+        }
         if (ramData.length > 0) setRam(ramData[0].label);
         if (diskData.length > 0) setDisk(diskData[0].label);
         if (bandwidthData.length > 0) setBandwidth(bandwidthData[0].label);
-
       } catch (err) {
-        console.error("Error fetching prices:", err);
-        setError("Failed to load resource prices");
-        // Fallback to default options if API fails
-        setDefaultOptions(effectiveType);
+        console.error("❌ Error fetching data:", err);
+        setError("Failed to load resource prices.");
+        setDefaultOptions(selectedType);
       } finally {
         setLoading(false);
       }
@@ -146,13 +130,16 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
     setBandwidthOptions(defaultBandwidthOptions);
 
     // Set default values
-    if (defaultVcpuOptions.length > 0) setVCPU(defaultVcpuOptions[0].label);
+    if (defaultVcpuOptions.length > 0) {
+      setVCPU(defaultVcpuOptions[0].label);
+    }
     if (defaultRamOptions.length > 0) setRam(defaultRamOptions[0].label);
     if (defaultDiskOptions.length > 0) setDisk(defaultDiskOptions[0].label);
     if (defaultBandwidthOptions.length > 0)
       setBandwidth(defaultBandwidthOptions[0].label);
   };
 
+  // Rest of the component remains exactly the same...
   // Compute pricing dynamically
   const pricing = useMemo(() => {
     const cpuOption = vcpuOptions.find((c) => c.label === vCPU);
@@ -173,7 +160,16 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
     const monthly = (parseFloat(hourly) * 720).toFixed(2);
 
     return { hourly, monthly };
-  }, [vCPU, ram, disk, bandwidth, vcpuOptions, ramOptions, diskOptions, bandwidthOptions]);
+  }, [
+    vCPU,
+    ram,
+    disk,
+    bandwidth,
+    vcpuOptions,
+    ramOptions,
+    diskOptions,
+    bandwidthOptions,
+  ]);
 
   // Update parent component when resources change
   useEffect(() => {
@@ -181,7 +177,9 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
       const cpuOption = vcpuOptions.find((c) => c.label === vCPU);
       const ramOption = ramOptions.find((r) => r.label === ram);
       const diskOption = diskOptions.find((d) => d.label === disk);
-      const bandwidthOption = bandwidthOptions.find((b) => b.label === bandwidth);
+      const bandwidthOption = bandwidthOptions.find(
+        (b) => b.label === bandwidth
+      );
 
       setSelectedResources({
         vCPU,
@@ -198,7 +196,18 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
         },
       });
     }
-  }, [vCPU, ram, disk, bandwidth, pricing, vcpuOptions, ramOptions, diskOptions, bandwidthOptions, setSelectedResources]);
+  }, [
+    vCPU,
+    ram,
+    disk,
+    bandwidth,
+    pricing,
+    vcpuOptions,
+    ramOptions,
+    diskOptions,
+    bandwidthOptions,
+    setSelectedResources,
+  ]);
 
   // Show loading state
   if (loading) {
@@ -231,7 +240,9 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
               <div className="animate-spin rounded-full h-5 w-5 border-2 border-red-500 border-t-transparent"></div>
               <div>
                 <p className="text-gray-300 text-sm">
-                  <span className="font-semibold text-green-400">Configuring:</span>{" "}
+                  <span className="font-semibold text-green-400">
+                    Configuring:
+                  </span>{" "}
                   {selectedType}
                 </p>
                 <p className="text-gray-400 text-xs mt-1">
@@ -255,7 +266,9 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent mx-auto mb-3"></div>
             <p className="text-gray-400 text-sm">
-              Fetching {selectedType === "Dedicated vCPU" ? "dedicated" : "shared"} resource prices...
+              Fetching{" "}
+              {selectedType === "Dedicated vCPU" ? "dedicated" : "shared"}{" "}
+              resource prices...
             </p>
             <p className="text-gray-500 text-xs mt-1">
               This may take a few seconds
@@ -295,6 +308,9 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
             <span className="font-semibold text-green-400">Configuring:</span>{" "}
             {selectedType}
           </p>
+          <p className="text-gray-400 text-xs mt-1">
+            Current vCPU: {vCPU}
+          </p>
         </div>
 
         {error && (
@@ -314,8 +330,10 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
               </p>
             </div>
             <p className="text-green-400 text-xs mt-1">
-              Loaded: {vcpuOptions.length} vCPU options, {ramOptions.length} RAM options, 
-              {diskOptions.length} Disk options, {bandwidthOptions.length} Bandwidth options
+              Loaded: {vcpuOptions.length} vCPU options, {ramOptions.length} RAM
+              options,
+              {diskOptions.length} Disk options, {bandwidthOptions.length}{" "}
+              Bandwidth options
             </p>
           </div>
         )}

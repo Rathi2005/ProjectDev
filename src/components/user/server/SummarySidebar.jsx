@@ -61,44 +61,44 @@ const SummarySidebar = ({
 
   // Handle server creation
   const handleCreateServer = async () => {
-    // if (!isConfigurationComplete()) {
-    //   alert(
-    //     "⚠️ Please complete all server configuration steps before creating the server."
-    //   );
-    //   return;
-    // }
+    if (!isConfigurationComplete()) {
+      alert(
+        "⚠️ Please complete all server configuration steps before creating the server."
+      );
+      return;
+    }
 
-    // const token =
-    //   localStorage.getItem("userToken") || localStorage.getItem("adminToken"); // whichever is used
-    // const CREATE_SERVER_URL = import.meta.env.VITE_CREATE_SERVER;
+    const token =
+      localStorage.getItem("userToken") || localStorage.getItem("adminToken"); // whichever is used
+    const CREATE_SERVER_URL = import.meta.env.VITE_CREATE_SERVER;
 
-    // try {
-    //   console.log("🚀 Creating server with configuration:", serverConfig);
+    try {
+      console.log("🚀 Creating server with configuration:", serverConfig);
 
-    //   const response = await fetch(CREATE_SERVER_URL, {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //       Authorization: `Bearer ${token}`,
-    //     },
-    //     body: JSON.stringify(serverConfig),
-    //   });
+      const response = await fetch(CREATE_SERVER_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(serverConfig),
+      });
 
-    //   if (!response.ok) {
-    //     const errorText = await response.text();
-    //     console.error("❌ Server creation failed:", response.status, errorText);
-    //     alert(`Server creation failed: ${response.status} - ${errorText}`);
-    //     return;
-    //   }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ Server creation failed:", response.status, errorText);
+        alert(`Server creation failed: ${response.status} - ${errorText}`);
+        return;
+      }
 
-    //   const data = await response.json();
-    //   console.log("✅ Server created successfully:", data);
-    //   alert("🎉 Server Created Successfully!");
-    // } catch (err) {
-    //   console.error("🔥 Error while creating server:", err);
-    //   alert("Error creating server. Please check the console for details.");
-    // }
-    alert("🛠️ Server creation logic is currently disabled for testing.");
+      const data = await response.json();
+      console.log("✅ Server created successfully:", data);
+      alert("🎉 Server Created Successfully!");
+    } catch (err) {
+      console.error("🔥 Error while creating server:", err);
+      alert("Error creating server. Please check the console for details.");
+    }
+    // alert("🛠️ Server creation logic is currently disabled for testing.");
   };
 
   // Check if all required configuration is complete

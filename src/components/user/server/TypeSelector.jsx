@@ -5,7 +5,7 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
 
   const types = [
     {
-      name: "SHARED",
+      name: "Shared vCPU",
       description:
         "Best price/performance ratio. Applications must be able to handle varying levels of CPU assignment. Not suitable for sustained high CPU usage.",
       tags: [
@@ -14,7 +14,7 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
       ],
     },
     {
-      name: "DEDICATED",
+      name: "Dedicated vCPU",
       description:
         "Best choice for critical production as well as high CPU usage applications. Delivers predictable performance and response times.",
       tags: ["High traffic applications", "Sustained high CPU usage"],
@@ -25,9 +25,9 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
   const handleTypeSelect = (typeName) => {
     // Prevent selection if no OS is selected
     if (!selectedOS) return;
-    
+
     setSelectedTypeState(typeName);
-    
+
     // Update parent component immediately
     setSelectedType(typeName);
 
@@ -65,8 +65,9 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
 
         {/* Description */}
         <p className="text-gray-400 text-sm mb-6 max-w-3xl leading-relaxed">
-          Select the CPU type for your server. Choose shared vCPUs for lighter workloads 
-          or dedicated vCPUs for consistent, high-performance requirements.
+          Select the CPU type for your server. Choose shared vCPUs for lighter
+          workloads or dedicated vCPUs for consistent, high-performance
+          requirements.
         </p>
 
         {/* Warning message if no OS selected */}
