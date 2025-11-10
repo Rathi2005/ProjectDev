@@ -166,35 +166,6 @@ const onClickSubSection = (id) => {
             )}
           </div>
         ))}
-
-        {/* More Options */}
-        <div className="mt-2">
-          <button
-            onClick={() => setOpenMoreOptions(!openMoreOptions)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
-              openMoreOptions
-                ? "bg-indigo-600/30 text-white"
-                : "hover:bg-[#1c2538]"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Settings size={18} />
-              <span>More Options</span>
-            </div>
-            {openMoreOptions ? (
-              <ChevronDown size={16} />
-            ) : (
-              <ChevronRight size={16} />
-            )}
-          </button>
-          {openMoreOptions && (
-            <div className="mt-1 ml-8 border-l border-indigo-700/40 pl-3 space-y-1">
-              {moreOptionsSubItems.map(({ label }) => (
-                <SubItem key={label} label={label} />
-              ))}
-            </div>
-          )}
-        </div>
       </nav>
 
       {/* ✅ Logout Button */}

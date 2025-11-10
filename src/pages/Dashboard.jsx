@@ -142,12 +142,12 @@ export default function Dashboard() {
           </div>
 
           {/* Security Section - REDUCED padding and removed centering */}
-          <div id="security" className="min-h-screen px-8 py-8">
+          <div id="security" className="min-h-screen px-8 py-20">
             <h1 className="text-3xl font-bold">Security</h1>
           </div>
 
           {/* Settings Section - REDUCED padding and removed centering */}
-          <div id="settings" className="min-h-screen px-8 py-8">
+          <div id="settings" className="min-h-screen px-8 py-20">
             <h1 className="text-3xl font-bold">Settings</h1>
           </div>
         </div>
