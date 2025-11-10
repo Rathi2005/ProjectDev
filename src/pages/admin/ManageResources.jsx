@@ -325,6 +325,14 @@ export default function ManageResourcesPage({
                           index % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"
                         }
                       >
+                        {/* {Object.values(item).map((val, j) => (
+                          <td
+                            key={j}
+                            className="px-6 py-3 border-b border-indigo-900/30"
+                          >
+                            {String(val)}
+                          </td>
+                        ))} */}
                         {Object.entries(item).map(([key, val], j) => {
                           let displayValue = val;
 
