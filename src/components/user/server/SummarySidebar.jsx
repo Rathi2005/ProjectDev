@@ -1,27 +1,54 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 
 const SummarySidebar = ({
   selectedLocation,
   selectedOS,
   selectedType,
   selectedResources,
-  serverId, // This comes from CreateServerPage via parent
+  serverId,
 }) => {
   const [serverCount, setServerCount] = useState(1);
   const [vmName, setVmName] = useState("my-shared-vm-test-3");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Function to check if token is valid
+  const isTokenValid = (token) => {
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const isExpired = payload.exp * 1000 < Date.now();
+      if (isExpired) {
+        console.log("❌ Token expired");
+        localStorage.removeItem("token");
+      }
+      return !isExpired;
+    } catch (error) {
+      console.error("❌ Invalid token format:", error);
+      localStorage.removeItem("token");
+      return false;
+    }
+  };
+
+  // Check token on component mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!isTokenValid(token)) {
+      console.warn("⚠️ No valid token found");
+    }
+  }, []);
 
   // Function to calculate pricing based on selected resources
   const calculatePricing = useMemo(() => {
     if (!selectedResources || !selectedResources.pricing) {
       return {
-        serverPrice: 590, // Default price per server (₹)
-        ipv4Price: 42, // Default price per IPv4 (₹)
+        serverPrice: 590,
+        ipv4Price: 42,
       };
     }
 
     return {
       serverPrice: parseFloat(selectedResources.pricing.monthly) || 590,
-      ipv4Price: 42, // Fixed price per server for IPv4
+      ipv4Price: 42,
     };
   }, [selectedResources]);
 
@@ -32,20 +59,20 @@ const SummarySidebar = ({
       serverId: serverId || null,
       isoId: selectedOS?.id || null,
       planType: selectedType
-        ? selectedType.toUpperCase().replace(/\s+/g, "_")
+        ? selectedType.toUpperCase().replace(/\s+/g, "_").replace("_VCPU", "")
         : null,
+
       cpuPriceId: selectedResources?.cpuPriceId || null,
       ramPriceId: selectedResources?.ramPriceId || null,
       diskPriceId: selectedResources?.diskPriceId || null,
       bandwidthPriceId: selectedResources?.bandwidthPriceId || null,
     };
 
-    // Log the configuration for debugging
     console.log("🔄 Server Configuration:", config);
     return config;
   }, [vmName, serverId, selectedOS, selectedType, selectedResources]);
 
-  // Total price = (per-server total) × number of servers
+  // Total price calculation
   const total =
     (calculatePricing.serverPrice + calculatePricing.ipv4Price) * serverCount;
 
@@ -59,6 +86,94 @@ const SummarySidebar = ({
     setVmName(e.target.value);
   };
 
+  // Enhanced API request function with better error handling
+  const apiRequest = async (url, options = {}) => {
+    const token = localStorage.getItem("token");
+
+    const config = {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest", // Add this
+        ...options.headers,
+      },
+    };
+
+    // Log EXACTLY what we're sending
+    console.log("🚀 Making API request:", {
+      url,
+      method: config.method,
+      headers: config.headers,
+      body: config.body ? JSON.parse(config.body) : undefined,
+    });
+
+    try {
+      const response = await fetch(url, config);
+
+      // Log ALL response headers
+      const responseHeaders = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+
+      console.log("📨 Full API response:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: responseHeaders,
+        url: response.url,
+      });
+
+      if (!response.ok) {
+        let errorText;
+        try {
+          errorText = await response.text();
+          console.log("❌ Error response body:", errorText);
+        } catch {
+          errorText = "No error message";
+        }
+
+        throw new Error(
+          `HTTP ${response.status}: ${errorText || response.statusText}`
+        );
+      }
+
+      return response;
+    } catch (error) {
+      console.error("🔥 API request failed:", error);
+      throw error;
+    }
+  };
+
+  // Test token validity before making the main request
+  const testTokenValidity = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    if (!isTokenValid(token)) {
+      throw new Error("Token is invalid or expired");
+    }
+
+    // Test with a simple profile request
+    const testUrl = import.meta.env.VITE_API_BASE_URL
+      ? `${import.meta.env.VITE_API_BASE_URL}/users/profile`
+      : "https://vps.devai.in/api/users/profile";
+
+    try {
+      const testResponse = await apiRequest(testUrl, { method: "GET" });
+      console.log("✅ Token validation successful");
+      return true;
+    } catch (error) {
+      console.error("❌ Token validation failed:", error);
+      throw new Error(`Token validation failed: ${error.message}`);
+    }
+  };
+
   // Handle server creation
   const handleCreateServer = async () => {
     if (!isConfigurationComplete()) {
@@ -68,51 +183,90 @@ const SummarySidebar = ({
       return;
     }
 
-    const token =
-      localStorage.getItem("userToken") || localStorage.getItem("adminToken"); // whichever is used
-    const CREATE_SERVER_URL = import.meta.env.VITE_CREATE_SERVER;
+    setIsLoading(true);
 
     try {
-      console.log("🚀 Creating server with configuration:", serverConfig);
+      // Step 1: Validate token first
+      await testTokenValidity();
 
-      const response = await fetch(CREATE_SERVER_URL, {
+      // Step 2: Prepare the request
+      const CREATE_SERVER_URL = import.meta.env.VITE_CREATE_SERVER;
+
+      if (!CREATE_SERVER_URL) {
+        throw new Error(
+          "API endpoint not configured. Please check environment variables."
+        );
+      }
+
+      console.log("🎯 Creating server with final configuration:", serverConfig);
+
+      // Step 3: Make the actual request
+      const response = await apiRequest(CREATE_SERVER_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(serverConfig),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Server creation failed:", response.status, errorText);
-        alert(`Server creation failed: ${response.status} - ${errorText}`);
-        return;
-      }
 
       const data = await response.json();
       console.log("✅ Server created successfully:", data);
       alert("🎉 Server Created Successfully!");
-    } catch (err) {
-      console.error("🔥 Error while creating server:", err);
-      alert("Error creating server. Please check the console for details.");
+    } catch (error) {
+      console.error("🔥 Error creating server:", error);
+
+      let errorMessage = error.message || "Unknown error occurred";
+
+      // Provide user-friendly error messages
+      if (errorMessage.includes("403")) {
+        errorMessage =
+          "Access forbidden. Your account may not have permission to create servers, or your token is invalid.";
+      } else if (errorMessage.includes("401")) {
+        errorMessage = "Authentication failed. Please log in again.";
+        localStorage.removeItem("token");
+      } else if (
+        errorMessage.includes("Network Error") ||
+        errorMessage.includes("Failed to fetch")
+      ) {
+        errorMessage = "Network error. Please check your internet connection.";
+      } else if (errorMessage.includes("No authentication token")) {
+        errorMessage = "Please log in to create a server.";
+      }
+
+      alert(`❌ Server creation failed: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
     }
-    // alert("🛠️ Server creation logic is currently disabled for testing.");
   };
 
   // Check if all required configuration is complete
   const isConfigurationComplete = () => {
-    return (
+    const complete =
       serverId &&
       selectedOS?.id &&
       selectedType &&
       selectedResources?.cpuPriceId &&
       selectedResources?.ramPriceId &&
       selectedResources?.diskPriceId &&
-      selectedResources?.bandwidthPriceId
-    );
+      selectedResources?.bandwidthPriceId;
+
+    if (!complete) {
+      console.log("⚠️ Configuration incomplete. Missing:", {
+        serverId: !serverId,
+        selectedOS: !selectedOS?.id,
+        selectedType: !selectedType,
+        cpuPriceId: !selectedResources?.cpuPriceId,
+        ramPriceId: !selectedResources?.ramPriceId,
+        diskPriceId: !selectedResources?.diskPriceId,
+        bandwidthPriceId: !selectedResources?.bandwidthPriceId,
+      });
+    }
+
+    return complete;
   };
+
+  // Check token status
+  const hasValidToken = useMemo(() => {
+    const token = localStorage.getItem("token");
+    return isTokenValid(token);
+  }, []);
 
   return (
     <aside className="w-[300px] bg-[#121a2a] mt-10 p-6 border-l border-gray-800 flex flex-col justify-start">
@@ -206,6 +360,22 @@ const SummarySidebar = ({
 
       {/* Purchase Section */}
       <div className="pt-3 border-t border-gray-800 space-y-4">
+        {/* Authentication Status */}
+        <div className="text-xs mb-2">
+          <div className="flex justify-between items-center">
+            <span>Authentication:</span>
+            <span
+              className={`px-2 py-1 rounded ${
+                hasValidToken
+                  ? "bg-green-900/30 text-green-400"
+                  : "bg-red-900/30 text-red-400"
+              }`}
+            >
+              {hasValidToken ? "Authenticated" : "Not Authenticated"}
+            </span>
+          </div>
+        </div>
+
         {/* Server count control */}
         <div className="flex items-center justify-between">
           <button
@@ -247,19 +417,47 @@ const SummarySidebar = ({
           </div>
         </div>
 
-        {/* Buy Now Button */}
+        {/* Create Server Button */}
         <button
           onClick={handleCreateServer}
-          className={`w-full py-2 mt-3 rounded font-semibold ${
-            isConfigurationComplete()
+          disabled={!isConfigurationComplete() || !hasValidToken || isLoading}
+          className={`w-full py-2 mt-3 rounded font-semibold transition-all ${
+            isConfigurationComplete() && hasValidToken && !isLoading
               ? "bg-red-600 hover:bg-red-700 text-white cursor-pointer"
               : "bg-gray-600 text-gray-400 cursor-not-allowed"
-          }`}
-          disabled={!isConfigurationComplete()}
+          } ${isLoading ? "opacity-70" : ""}`}
         >
-          {isConfigurationComplete()
-            ? "Create & Buy now"
-            : "Complete Configuration"}
+          {isLoading ? (
+            <span className="flex items-center justify-center">
+              <svg
+                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Creating Server...
+            </span>
+          ) : !hasValidToken ? (
+            "Please Log In"
+          ) : !isConfigurationComplete() ? (
+            "Complete Configuration"
+          ) : (
+            "Create & Buy now"
+          )}
         </button>
 
         <p className="text-xs text-gray-500 mt-2">
@@ -302,11 +500,15 @@ const SummarySidebar = ({
           </div>
         </div>
 
-        {/* Debug Info (remove in production) */}
-        <div className="text-xs text-gray-600 border-t border-gray-700 pt-2">
+        {/* Debug Info */}
+        <div className="text-xs text-gray-600 border-t border-gray-700 pt-2 space-y-1">
           <div className="flex justify-between">
             <span>Server ID:</span>
             <span>{serverId || "Not set"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Token Status:</span>
+            <span>{hasValidToken ? "Valid" : "Invalid/Missing"}</span>
           </div>
         </div>
       </div>
