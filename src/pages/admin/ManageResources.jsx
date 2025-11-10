@@ -325,14 +325,33 @@ export default function ManageResourcesPage({
                           index % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"
                         }
                       >
-                        {Object.values(item).map((val, j) => (
-                          <td
-                            key={j}
-                            className="px-6 py-3 border-b border-indigo-900/30"
-                          >
-                            {String(val)}
-                          </td>
-                        ))}
+                        {Object.entries(item).map(([key, val], j) => {
+                          let displayValue = val;
+
+                          // ✅ Convert GB → TB only for disks
+                          if (
+                            extraForm === "disks" &&
+                            [
+                              "TOTALDISKGB",
+                              "USABLEDISKGB",
+                              "LIVEUSEDGB",
+                              "LIVEAVAILABLEGB",
+                            ].includes(key.toUpperCase()) &&
+                            !isNaN(val)
+                          ) {
+                            displayValue =
+                              (Number(val) / 1024).toFixed(2) + " TB";
+                          }
+
+                          return (
+                            <td
+                              key={j}
+                              className="px-6 py-3 border-b border-indigo-900/30"
+                            >
+                              {displayValue}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
