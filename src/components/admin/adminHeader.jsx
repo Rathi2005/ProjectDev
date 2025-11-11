@@ -12,6 +12,9 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+import useLogout from "./logout"; 
+
+
 const AdminHeader = () => {
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -21,10 +24,10 @@ const AdminHeader = () => {
   const pricingDropdownRef = useRef(null); // Separate ref for pricing dropdown
 
   const token = localStorage.getItem("adminToken");
-
-  const logout = () => {
-    localStorage.removeItem("adminToken");
-    navigate("/admin/login");
+  const logout = useLogout();
+  
+  const handleLogout = async () => {
+    await logout(); 
   };
 
   // ✅ Fixed: Close dropdowns when clicking outside
@@ -176,7 +179,7 @@ const AdminHeader = () => {
                   </Link>
 
                   <button
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#22c55e] transition"
                   >
                     <LogOut className="w-4 h-4" />

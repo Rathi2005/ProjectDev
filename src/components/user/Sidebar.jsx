@@ -8,7 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import useLogout from "./Logout"; // ✅ Correct import for your custom hook
+import useLogout from "./Logout"; // Correct import for your custom hook
 
 export default function Sidebar() {
   const [activeSection, setActiveSection] = useState("dashboard");
