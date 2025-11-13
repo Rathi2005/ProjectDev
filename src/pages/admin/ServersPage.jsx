@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import { PlusCircle, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function ServersPage() {
   const [showModal, setShowModal] = useState(false);
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false); // ✅ separate submit state
+  const [submitting, setSubmitting] = useState(false);
+  const [zones, setZones] = useState([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -24,6 +25,8 @@ export default function ServersPage() {
   const navigate = useNavigate();
   const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
   const BASE_URL = import.meta.env.VITE_BASE_URL;
+  const [zoneForm, setZoneForm] = useState({ name: "" });
+  const { id: zoneId } = useParams();
 
   // Fetch servers (GET)
   useEffect(() => {
@@ -32,7 +35,7 @@ export default function ServersPage() {
       setLoading(true);
 
       try {
-        const res = await fetch(FETCH_SERVERS, {
+        const res = await fetch(`${BASE_URL}/admin/servers?zoneId=${zoneId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -46,13 +49,15 @@ export default function ServersPage() {
         }
 
         const data = await res.json();
-        const serversWithCounts = data.map((srv) => ({
-          ...srv,
-          vmCount: null,
-        }));
-        setServers(serversWithCounts);
+        setServers(
+          data.map((srv) => ({
+            ...srv,
+            vmCount: 0, // ✅ Change from null to 0
+          }))
+        );
 
-        serversWithCounts.forEach((srv) => {
+        // Remove the duplicate setServers call and fix the variable name
+        data.forEach((srv) => {
           if (srv.id) fetchVmCount(srv.id, token);
         });
       } catch (err) {
@@ -64,6 +69,34 @@ export default function ServersPage() {
 
     fetchServers();
   }, [FETCH_SERVERS]);
+
+  // ✅ Fetch all zones
+  useEffect(() => {
+    const fetchZones = async () => {
+      try {
+        const token = localStorage.getItem("adminToken");
+        const res = await fetch(`${BASE_URL}/options/zones`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          console.error("Failed to fetch zones:", res.statusText);
+          return;
+        }
+
+        const data = await res.json();
+        setZones(data || []);
+      } catch (err) {
+        console.error("Error fetching zones:", err);
+      }
+    };
+
+    fetchZones();
+  }, [BASE_URL]);
 
   // Fetch VM count per server
   const fetchVmCount = async (serverId, token) => {
@@ -123,13 +156,14 @@ export default function ServersPage() {
     setSubmitting(true);
 
     try {
-      const res = await fetch(FETCH_SERVERS, {
+      const res = await fetch(`${BASE_URL}/admin/servers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          zoneId: Number(formData.zoneId),
           name: formData.name,
           ip: formData.ip,
           location: formData.location,
@@ -143,7 +177,7 @@ export default function ServersPage() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        alert(`❌ Failed to add server: ${res.status} ${errorText}`);
+        alert(`Failed to add server: ${res.status} ${errorText}`);
         console.error("Failed to add server:", res.status, errorText);
         return;
       }
@@ -151,10 +185,11 @@ export default function ServersPage() {
       const newServer = await res.json();
       setServers((prev) => [...prev, { ...newServer, vmCount: 0 }]);
       setShowModal(false);
-      alert("✅ Server added successfully!");
+      alert("Server added successfully!");
 
       // reset with defaults
       setFormData({
+        zoneId: "",
         name: "",
         ip: "",
         location: "",
@@ -183,13 +218,22 @@ export default function ServersPage() {
       <main className="flex-1 mt-[72px] p-4 sm:p-10 space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-wide">Servers</h1>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl shadow-md hover:shadow-indigo-600/30 transition-all duration-300 text-sm sm:text-base"
-          >
-            <PlusCircle className="w-5 h-5" />
-            Add Server
-          </button>
+          <div className="flex flex-wrap gap-3">
+            {/* <button
+              onClick={() => setShowZoneModal(true)} // ✅ add zone button
+              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl shadow-md hover:shadow-green-600/30 transition-all duration-300 text-sm sm:text-base"
+            >
+              <PlusCircle className="w-5 h-5" />
+              Add Zone
+            </button> */}
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl shadow-md hover:shadow-indigo-600/30 transition-all duration-300 text-sm sm:text-base"
+            >
+              <PlusCircle className="w-5 h-5" />
+              Add Server
+            </button>
+          </div>
         </div>
 
         {/* Table */}
@@ -272,17 +316,9 @@ export default function ServersPage() {
                         <div className="flex flex-col sm:flex-row gap-2 justify-center">
                           <button
                             onClick={() =>
-                              navigate(`/admin/servers/${server.id}/ips`)
-                            }
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300"
-                          >
-                            Add IPs
-                          </button>
-                          <button
-                            onClick={() =>
                               navigate(`/admin/servers/${server.id}/isos`)
                             }
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300"
                           >
                             Add ISOs
                           </button>
@@ -305,16 +341,48 @@ export default function ServersPage() {
         </div>
       </main>
 
-      {/* ✅ Modal */}
+      {/* ✅ Add Server Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fadeIn">
-          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl p-8 sm:p-10">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-300 mb-6 flex items-center gap-2">
-              <PlusCircle className="w-6 h-6 text-indigo-400" />
-              Add New Server
-            </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-fadeIn overflow-y-auto flex justify-center">
+          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl my-10 p-8 sm:p-10 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between top-0 bg-[#111827] pb-3 z-10">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-300 flex items-center gap-2">
+                <PlusCircle className="w-6 h-6 text-indigo-400" />
+                Add New Server
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-red-400 transition-colors text-xl"
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-5 mt-4">
+              {/* ✅ Zone Dropdown */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Select Zone
+                </label>
+                <select
+                  name="zoneId"
+                  value={formData.zoneId}
+                  onChange={handleChange}
+                  required
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="">-- Select a Zone --</option>
+                  {zones.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Server Name */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">
@@ -394,7 +462,7 @@ export default function ServersPage() {
                 </div>
               </div>
 
-              {/* Network Bridge + Token Secret (side by side) */}
+              {/* Network Bridge + Token Secret */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">
@@ -425,7 +493,7 @@ export default function ServersPage() {
                 </div>
               </div>
 
-              {/* Token ID (below) */}
+              {/* Token ID */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">
                   Token ID
@@ -441,7 +509,7 @@ export default function ServersPage() {
               </div>
 
               {/* Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-indigo-900/40 mt-6">
+              <div className="flex justify-end gap-3 pt-4 border-t border-indigo-900/40 mt-6 bottom-0 bg-[#111827] pb-3 z-10">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
@@ -466,14 +534,6 @@ export default function ServersPage() {
                 </button>
               </div>
             </form>
-
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-5 right-6 text-gray-400 hover:text-red-400 transition-colors text-xl"
-              title="Close"
-            >
-              ×
-            </button>
           </div>
         </div>
       )}

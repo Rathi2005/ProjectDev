@@ -17,6 +17,7 @@ import ServersPage from "./pages/admin/ServersPage";
 import ManageResourcesPage from "./pages/admin/ManageResources";
 import VMsPage from "./pages/admin/VMs";
 import PricingDetailPage from "./pages/admin/PricingDetailPage";
+import Zones from "./pages/admin/Zones";
 
 export default function App() {
   return (
@@ -60,39 +61,16 @@ export default function App() {
           }
         />
         <Route
-          path="/admin/servers"
+          path="/admin/:id/servers"
           element={
             <AdminProtectedRoute>
               <ServersPage />
             </AdminProtectedRoute>
           }
         />
-        {/* <Route
-          path="/admin/servers/:id/ips"
-          element={
-            <AdminProtectedRoute>
-              <IPsPage />
-            </AdminProtectedRoute>
-          }
-        />
+        
         <Route
-          path="/admin/servers/:id/isos"
-          element={
-            <AdminProtectedRoute>
-              <IsosPage />
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/servers/:id/disks"
-          element={
-            <AdminProtectedRoute>
-              <DiskPage />
-            </AdminProtectedRoute>
-          }
-        /> */}
-        <Route
-          path="/admin/servers/:id/ips"
+          path="/admin/zones/:id/ips"
           element={
             <AdminProtectedRoute>
               <ManageResourcesPage
@@ -136,7 +114,11 @@ export default function App() {
                 fields={[
                   { name: "diskName", label: "Disk Name", type: "text" },
                   { name: "maxVms", label: "Maximum VMs", type: "number" },
-                  { name: "usableDiskPercentage", label: "Usable Disk Percentage", type: "number" },
+                  {
+                    name: "usableDiskPercentage",
+                    label: "Usable Disk Percentage",
+                    type: "number",
+                  },
                 ]}
               />
             </AdminProtectedRoute>
@@ -156,6 +138,15 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <PricingDetailPage />
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/zones"
+          element={
+            <AdminProtectedRoute>
+              <Zones />
             </AdminProtectedRoute>
           }
         />

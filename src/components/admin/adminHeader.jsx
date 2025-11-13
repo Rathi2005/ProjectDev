@@ -56,7 +56,8 @@ const AdminHeader = () => {
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/orders", icon: Users, label: "Orders" },
     { href: "/admin/invoices", icon: FileBarChart, label: "Invoices" },
-    { href: "/admin/servers", icon: FileBarChart, label: "Servers" },
+    // { href: "/admin/servers", icon: FileBarChart, label: "Servers" },
+    { href: "/admin/zones", icon: FileBarChart, label: "Zones" },
     {
       label: "Pricing",
       icon: FileBarChart,
