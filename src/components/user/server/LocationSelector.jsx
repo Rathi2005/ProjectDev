@@ -16,10 +16,25 @@ const LocationSelector = ({ selected, onSelect }) => {
         if (!res.ok) throw new Error("Failed to fetch locations");
         const data = await res.json();
 
-        const formatted = Object.entries(data).map(([name, servers]) => ({
-          name,
-          servers,
-        }));
+        const formatted = Object.entries(data)
+          .map(([name, servers]) => {
+            // keep only ACTIVE servers
+            const activeServers = servers.filter(
+              (s) =>
+                s.status?.toUpperCase() === "ACTIVE" ||
+                s.isActive === 1 ||
+                s.active === true
+            );
+
+            return {
+              name,
+              servers: activeServers,
+            };
+          })
+          // 🔥 remove locations with NO active servers
+          .filter((loc) => loc.servers.length > 0);
+
+        setLocations(formatted);
 
         setLocations(formatted);
       } catch (err) {
