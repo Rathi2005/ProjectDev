@@ -15,8 +15,11 @@ export default function ManageResourcesPage({
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
   const [rows, setRows] = useState([
-    Object.fromEntries(fields.map((f) => [f.name, ""])),
+    Object.fromEntries(
+      fields.map((f) => [f.name, f.type === "checkbox" ? false : ""])
+    ),
   ]);
+
   const [existing, setExisting] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,7 +32,12 @@ export default function ManageResourcesPage({
   const [maxVMs, setMaxVMs] = useState("");
 
   const addRow = () =>
-    setRows([...rows, Object.fromEntries(fields.map((f) => [f.name, ""]))]);
+    setRows([
+      ...rows,
+      Object.fromEntries(
+        fields.map((f) => [f.name, f.type === "checkbox" ? false : ""])
+      ),
+    ]);
 
   const handleChange = (i, field, value) => {
     const newRows = [...rows];
@@ -41,7 +49,6 @@ export default function ManageResourcesPage({
     const fetchData = async () => {
       const token = localStorage.getItem("adminToken");
       try {
-        // ✅ Use Zone endpoint only for IPs
         const apiUrl =
           endpoint === "/ips"
             ? `${BASE_URL}/admin/zones/${id}/ips`
@@ -52,7 +59,9 @@ export default function ManageResourcesPage({
         });
 
         if (!res.ok) throw new Error("Failed to fetch data");
-        setExisting(await res.json());
+
+        const data = await res.json();
+        setExisting(data); // ✅ No transformation needed anymore
       } catch (err) {
         console.error("Error fetching:", err);
       } finally {
@@ -63,27 +72,32 @@ export default function ManageResourcesPage({
   }, [BASE_URL, endpoint, id]);
 
   const reloadData = async () => {
-  const token = localStorage.getItem("adminToken");
+    const token = localStorage.getItem("adminToken");
 
-  const url =
-    endpoint === "/ips"
-      ? `${BASE_URL}/admin/zones/${id}/ips`
-      : extraForm === "disks"
-      ? `${BASE_URL}/admin/servers/${id}/disk-details`
-      : `${BASE_URL}/admin/servers/${id}${endpoint}`;
+    try {
+      const url =
+        endpoint === "/ips"
+          ? `${BASE_URL}/admin/zones/${id}/ips`
+          : extraForm === "disks"
+          ? `${BASE_URL}/admin/servers/${id}/disk-details`
+          : `${BASE_URL}/admin/servers/${id}${endpoint}`;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  if (!res.ok) {
-    console.error("Failed to reload data");
-    return;
-  }
+      if (!res.ok) {
+        console.error("Failed to reload data:", res.status, res.statusText);
+        return;
+      }
 
-  const json = await res.json();
-  setExisting(json);
-};
+      const json = await res.json();
+      console.log("Reloaded data from API:", json);
+      setExisting(json); // ✅ No transformation needed
+    } catch (err) {
+      console.error("Error in reloadData:", err);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -92,16 +106,19 @@ export default function ManageResourcesPage({
 
     try {
       for (const row of rows) {
+        console.log("Submitting row:", row);
+
         let postUrl;
         let payload;
 
-        // ✅ IP endpoint uses Zone-based API
         if (endpoint === "/ips") {
           postUrl = `${BASE_URL}/admin/zones/${id}/ips`;
           payload = {
             ip: row.ip,
             mac: row.mac,
+            inUse: row.inUse, // ✅ Use inUse
           };
+          console.log("Final IP Payload:", payload);
         }
         // ✅ Disk special handling
         else if (extraForm === "disks") {
@@ -127,23 +144,20 @@ export default function ManageResourcesPage({
           body: JSON.stringify(payload),
         });
 
-        if (!res.ok) throw new Error("Failed to add item");
+        // ✅ ADD THIS: Log the response from API
+        if (!res.ok) {
+          console.error("API Error Response:", res.status, res.statusText);
+          const errorText = await res.text();
+          console.error("Error details:", errorText);
+          throw new Error("Failed to add item");
+        }
+
+        // ✅ ADD THIS: Log the successful response
+        const responseData = await res.json();
       }
 
       alert(`${title} added successfully!`);
-
-      // ✅ Refetch existing entries
-      const refetchUrl =
-        endpoint === "/ips"
-          ? `${BASE_URL}/admin/zones/${id}/ips`
-          : extraForm === "disks"
-          ? `${BASE_URL}/admin/servers/${id}/disk-details`
-          : `${BASE_URL}/admin/servers/${id}${endpoint}`;
-
-      const res = await fetch(refetchUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setExisting(await res.json());
+      await reloadData();
     } catch (err) {
       console.error("Error adding:", err);
     } finally {
@@ -171,9 +185,9 @@ export default function ManageResourcesPage({
       if (endpoint === "/ips") {
         const newIp = prompt("Enter new IP:", item.ip);
         const newMac = prompt("Enter new MAC:", item.mac);
-        const newUse = confirm("Mark as In Use?"); // returns true/false
+        const newUse = confirm("Mark as In Use?");
 
-        if (newIp === null || newMac === null) return; // Handle cancel
+        if (newIp === null || newMac === null) return;
 
         const res = await fetch(
           `${BASE_URL}/admin/zones/${id}/ips/${item.id}`,
@@ -186,7 +200,7 @@ export default function ManageResourcesPage({
             body: JSON.stringify({
               ip: newIp,
               mac: newMac,
-              isInUse: newUse,
+              inUse: newUse, // ✅ Use inUse
             }),
           }
         );
@@ -233,9 +247,12 @@ export default function ManageResourcesPage({
       if (extraForm === "disks") {
         // 1. Get the ID safely. Check console if this alerts "ID not found".
         const diskId = item.id || item.ID || item.Id || item.storage_id;
-        
+
         if (!diskId) {
-          console.error("❌ Error: Could not find a valid ID property in item:", item);
+          console.error(
+            "❌ Error: Could not find a valid ID property in item:",
+            item
+          );
           alert("Error: Cannot find Disk ID. Check console for details.");
           return;
         }
@@ -243,7 +260,7 @@ export default function ManageResourcesPage({
         const inputType = prompt(
           "Type 'vms' to edit Max VMs or 'percentage' to edit usable percentage:"
         );
-        
+
         if (!inputType) return; // User cancelled
 
         const cleanInput = inputType.trim().toLowerCase();
@@ -258,12 +275,10 @@ export default function ManageResourcesPage({
         if (["vms", "max-vms", "maxvms", "vm"].includes(cleanInput)) {
           url = `${BASE_URL}/admin/servers/${id}/storage/${diskId}/max-vms`;
           body = { maxVms: Number(newValue) };
-        } 
-        else if (["percentage", "perc", "%"].includes(cleanInput)) {
+        } else if (["percentage", "perc", "%"].includes(cleanInput)) {
           url = `${BASE_URL}/admin/servers/${id}/storage/${diskId}/percentage`;
           body = { usableDiskPercentage: Number(newValue) };
-        } 
-        else {
+        } else {
           alert("Invalid selection. Please type 'vms' or 'percentage'.");
           return;
         }
@@ -284,9 +299,11 @@ export default function ManageResourcesPage({
 
         if (!res.ok) {
           // Try to read the error message from the server
-          const errData = await res.json().catch(() => ({})); 
+          const errData = await res.json().catch(() => ({}));
           console.error("❌ API Failed:", res.status, res.statusText, errData);
-          throw new Error(`Failed to update Disk: ${res.status} ${res.statusText}`);
+          throw new Error(
+            `Failed to update Disk: ${res.status} ${res.statusText}`
+          );
         }
 
         alert("Disk updated successfully!");
@@ -424,7 +441,10 @@ export default function ManageResourcesPage({
                                     ? newRows
                                     : [
                                         Object.fromEntries(
-                                          fields.map((f) => [f.name, ""])
+                                          fields.map((f) => [
+                                            f.name,
+                                            f.type === "checkbox" ? false : "",
+                                          ])
                                         ),
                                       ]
                                 );
@@ -503,7 +523,10 @@ export default function ManageResourcesPage({
                             ? newRows
                             : [
                                 Object.fromEntries(
-                                  fields.map((f) => [f.name, ""])
+                                  fields.map((f) => [
+                                    f.name,
+                                    f.type === "checkbox" ? false : "",
+                                  ])
                                 ),
                               ]
                         );
@@ -613,6 +636,11 @@ export default function ManageResourcesPage({
                         >
                           {Object.entries(item).map(([key, val], j) => {
                             let displayValue = val;
+
+                            // ✅ Only handle 'inUse' now
+                            if (key === "inUse") {
+                              displayValue = val ? "Yes" : "No";
+                            }
                             // ✅ Convert GB → TB only for disks
                             if (
                               extraForm === "disks" &&

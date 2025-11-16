@@ -79,7 +79,7 @@ export default function App() {
                 fields={[
                   { name: "ip", label: "IP Address", type: "text" },
                   { name: "mac", label: "MAC Address", type: "text" },
-                  { name: "is_in_use", label: "In Use", type: "checkbox" },
+                  { name: "inUse", label: "In Use", type: "checkbox" },
                 ]}
               />
             </AdminProtectedRoute>
