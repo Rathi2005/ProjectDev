@@ -3,6 +3,7 @@ import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";   // ✅ Added toast
 
 export default function ServersPage() {
   const [showModal, setShowModal] = useState(false);
@@ -25,7 +26,6 @@ export default function ServersPage() {
   const navigate = useNavigate();
   const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
   const BASE_URL = import.meta.env.VITE_BASE_URL;
-  const [zoneForm, setZoneForm] = useState({ name: "" });
   const { id: zoneId } = useParams();
 
   // Fetch servers (GET)
@@ -45,6 +45,7 @@ export default function ServersPage() {
 
         if (!res.ok) {
           console.error("Failed to fetch servers:", res.status, res.statusText);
+          toast.error("Failed to load servers");
           return;
         }
 
@@ -52,16 +53,16 @@ export default function ServersPage() {
         setServers(
           data.map((srv) => ({
             ...srv,
-            vmCount: 0, // ✅ Change from null to 0
+            vmCount: 0,
           }))
         );
 
-        // Remove the duplicate setServers call and fix the variable name
         data.forEach((srv) => {
           if (srv.id) fetchVmCount(srv.id, token);
         });
       } catch (err) {
         console.error("Error fetching servers:", err);
+        toast.error("Error loading servers");
       } finally {
         setLoading(false);
       }
@@ -70,7 +71,7 @@ export default function ServersPage() {
     fetchServers();
   }, [FETCH_SERVERS]);
 
-  // ✅ Fetch all zones
+  // Fetch Zones
   useEffect(() => {
     const fetchZones = async () => {
       try {
@@ -84,7 +85,7 @@ export default function ServersPage() {
         });
 
         if (!res.ok) {
-          console.error("Failed to fetch zones:", res.statusText);
+          toast.error("Failed to load zones");
           return;
         }
 
@@ -92,6 +93,7 @@ export default function ServersPage() {
         setZones(data || []);
       } catch (err) {
         console.error("Error fetching zones:", err);
+        toast.error("Error loading zones");
       }
     };
 
@@ -150,6 +152,7 @@ export default function ServersPage() {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // Add Server
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem("adminToken");
@@ -169,7 +172,7 @@ export default function ServersPage() {
           location: formData.location,
           node: formData.node,
           port: Number(formData.port) || 8006,
-          networkBridge: formData.networkBridge || "vmbr0",
+          networkBridge: formData.networkBridge,
           tokenId: formData.tokenId,
           tokenSecret: formData.tokenSecret,
         }),
@@ -177,17 +180,17 @@ export default function ServersPage() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        alert(`Failed to add server: ${res.status} ${errorText}`);
+        toast.error("Failed to add server");
         console.error("Failed to add server:", res.status, errorText);
         return;
       }
 
       const newServer = await res.json();
       setServers((prev) => [...prev, { ...newServer, vmCount: 0 }]);
-      setShowModal(false);
-      alert("Server added successfully!");
 
-      // reset with defaults
+      toast.success("Server added successfully!");
+      setShowModal(false);
+
       setFormData({
         zoneId: "",
         name: "",
@@ -200,12 +203,13 @@ export default function ServersPage() {
         tokenSecret: "",
       });
     } catch (err) {
-      alert("Error adding server!");
       console.error("Error adding server:", err);
+      toast.error("Error adding server");
     } finally {
       setSubmitting(false);
     }
   };
+
 
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen flex flex-col">

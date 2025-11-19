@@ -1,5 +1,6 @@
 // src/App.jsx
 import React from "react";
+import { Toaster } from "react-hot-toast";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminProtectedRoute from "./AdminProtectedRoute";
@@ -11,9 +12,6 @@ import AdminDashboard from "./components/admin/adminDashboard";
 import OrdersPage from "./pages/admin/OrdersPage";
 import InvoicesPage from "./pages/admin/InvoicesPage";
 import ServersPage from "./pages/admin/ServersPage";
-// import IPsPage from "../../../BIn/IPs";
-// import IsosPage from "../../../BIn/ISOs";
-// import DiskPage from "../../../BIn/Disk";
 import ManageResourcesPage from "./pages/admin/ManageResources";
 import VMsPage from "./pages/admin/VMs";
 import PricingDetailPage from "./pages/admin/PricingDetailPage";

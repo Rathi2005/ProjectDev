@@ -3,6 +3,7 @@ import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 export default function ZonesPage() {
   const [zones, setZones] = useState([]);
@@ -29,7 +30,7 @@ export default function ZonesPage() {
         });
 
         if (!res.ok) {
-          console.error("Failed to fetch zones:", res.statusText);
+          toast.error("Failed to fetch zones");
           return;
         }
 
@@ -37,6 +38,7 @@ export default function ZonesPage() {
         setZones(data || []);
       } catch (err) {
         console.error("Error fetching zones:", err);
+        toast.error("Error fetching zones");
       } finally {
         setLoading(false);
       }
@@ -45,10 +47,11 @@ export default function ZonesPage() {
     fetchZones();
   }, [BASE_URL]);
 
-  // ✅ Add Zone
+  // ✅ Add Zone (with toast)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+
     try {
       const token = localStorage.getItem("adminToken");
       const res = await fetch(`${BASE_URL}/admin/zones`, {
@@ -61,23 +64,25 @@ export default function ZonesPage() {
       });
 
       if (!res.ok) {
-        const err = await res.text();
-        alert(`Failed to add zone: ${res.status} ${err}`);
+        const errMsg = await res.text();
+        toast.error(`Failed to add zone: ${errMsg}`);
         return;
       }
 
       const newZone = await res.json();
       setZones((prev) => [...prev, newZone]);
-      alert("✅ Zone added successfully!");
+
+      toast.success("Zone added successfully!");
       setShowModal(false);
       setFormData({ name: "" });
     } catch (err) {
       console.error("Error adding zone:", err);
-      alert("Error adding zone!");
+      toast.error("Error adding zone");
     } finally {
       setSubmitting(false);
     }
   };
+
 
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen flex flex-col">

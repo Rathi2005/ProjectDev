@@ -1,9 +1,10 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import LoginForm from "../../components/admin/LoginForm";
 import AdminHeader from "../../components/admin/adminHeader";
 import AdminOtpVerification from "../../components/admin/adminOtpVerification";
+import { toast } from "react-hot-toast";  
 
 const ADMIN_LOGIN_API = import.meta.env.VITE_ADMIN_LOGIN;
 const ADMIN_OTP_VERIFY = import.meta.env.VITE_ADMIN_OTP_VERIFY;
@@ -17,11 +18,11 @@ export default function AdminLoginPage() {
   const navigate = useNavigate();
   const adminToken = localStorage.getItem("adminToken");
 
+  // Token validation for auto-login
   if (adminToken) {
     try {
       const decoded = jwtDecode(adminToken);
       if (decoded.exp * 1000 > Date.now()) {
-        // Already logged in and token valid
         return <Navigate to="/admin/dashboard" replace />;
       }
     } catch {
@@ -44,16 +45,20 @@ export default function AdminLoginPage() {
       });
 
       if (!res.ok) throw new Error("Failed to send OTP");
+
       setOtpSent(true);
-      setSuccess("OTP has been sent to your registered email!");
+      setSuccess("OTP has been sent!");
+      toast.success("OTP sent to your email!");  
+
     } catch (err) {
       setError(err.message || "Something went wrong!");
+      toast.error(err.message || "Failed to send OTP"); 
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 2: Verify OTP and store token
+  // Step 2: Verify OTP
   const handleVerifyOtp = async (otpValue) => {
     setError("");
     setSuccess("");
@@ -72,15 +77,20 @@ export default function AdminLoginPage() {
       if (!res.ok) throw new Error("Invalid OTP");
 
       const data = await res.json();
+
       if (data?.token) {
-        localStorage.setItem("adminToken", data.token); // ✅ save token
-        setSuccess("Login successful! Redirecting...");
-        setTimeout(() => navigate("/admin/dashboard"), 1500);
+        localStorage.setItem("adminToken", data.token);
+
+        toast.success("LoggedIn Successfully!");
+        setTimeout(() => navigate("/admin/dashboard"), 1200);
       } else {
         throw new Error("Token missing in response");
       }
+
     } catch (err) {
       setError(err.message || "Something went wrong!");
+      toast.error(err.message || "OTP verification failed");
+
     } finally {
       setLoading(false);
     }

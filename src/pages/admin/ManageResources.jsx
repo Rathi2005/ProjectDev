@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import { PlusCircle, Loader2 } from "lucide-react";
+import { toast } from "react-hot-toast";
+import Swal from "sweetalert2";
 
 export default function ManageResourcesPage({
   title,
@@ -23,13 +25,8 @@ export default function ManageResourcesPage({
   const [existing, setExisting] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [configSaving, setConfigSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
-  // keep for structure
-  const [maxStorage, setMaxStorage] = useState("");
-  const [maxVMs, setMaxVMs] = useState("");
 
   const addRow = () =>
     setRows([
@@ -61,7 +58,7 @@ export default function ManageResourcesPage({
         if (!res.ok) throw new Error("Failed to fetch data");
 
         const data = await res.json();
-        setExisting(data); // ✅ No transformation needed anymore
+        setExisting(data);
       } catch (err) {
         console.error("Error fetching:", err);
       } finally {
@@ -86,14 +83,10 @@ export default function ManageResourcesPage({
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!res.ok) {
-        console.error("Failed to reload data:", res.status, res.statusText);
-        return;
-      }
+      if (!res.ok) return;
 
       const json = await res.json();
-      console.log("Reloaded data from API:", json);
-      setExisting(json); // ✅ No transformation needed
+      setExisting(json);
     } catch (err) {
       console.error("Error in reloadData:", err);
     }
@@ -106,8 +99,6 @@ export default function ManageResourcesPage({
 
     try {
       for (const row of rows) {
-        console.log("Submitting row:", row);
-
         let postUrl;
         let payload;
 
@@ -116,21 +107,16 @@ export default function ManageResourcesPage({
           payload = {
             ip: row.ip,
             mac: row.mac,
-            inUse: row.inUse, // ✅ Use inUse
+            inUse: row.inUse,
           };
-          console.log("Final IP Payload:", payload);
-        }
-        // ✅ Disk special handling
-        else if (extraForm === "disks") {
+        } else if (extraForm === "disks") {
           postUrl = `${BASE_URL}/admin/servers/${id}/storage`;
           payload = {
             diskName: row.diskName,
             maxVms: Number(row.maxVms),
             usableDiskPercentage: Number(row.usableDiskPercentage),
           };
-        }
-        // ✅ Other normal server endpoints (like ISOs)
-        else {
+        } else {
           postUrl = `${BASE_URL}/admin/servers/${id}${endpoint}`;
           payload = row;
         }
@@ -144,151 +130,173 @@ export default function ManageResourcesPage({
           body: JSON.stringify(payload),
         });
 
-        // ✅ ADD THIS: Log the response from API
-        if (!res.ok) {
-          console.error("API Error Response:", res.status, res.statusText);
-          const errorText = await res.text();
-          console.error("Error details:", errorText);
-          throw new Error("Failed to add item");
-        }
+        if (!res.ok) throw new Error("Failed to add item");
 
-        // ✅ ADD THIS: Log the successful response
-        const responseData = await res.json();
+        await res.json();
       }
 
-      alert(`${title} added successfully!`);
       await reloadData();
+      toast.success(`${title} added successfully!`);
     } catch (err) {
-      console.error("Error adding:", err);
+      toast.error("Failed to add item");
     } finally {
       setSaving(false);
     }
   };
 
-  // =========================
-  // 🔵 EDIT HANDLER
-  // =========================
+  // =========================================================
+  // 🚀 FINAL SWEETALERT VERSION FOR ALL EDIT PROMPTS
+  // =========================================================
   const handleEdit = async (item) => {
     const token = localStorage.getItem("adminToken");
     if (!token) {
-      alert("No admin token found. Please log in again.");
+      toast.error("No admin token found.");
       return;
     }
 
-    // 🔍 DEBUG: Check what the item actually looks like in the Console
-    console.log("Current Item Data:", item);
-
     try {
-      // =========================
-      // 1. IP ADDRESS EDIT
-      // =========================
+      // --------------------- IP EDIT ---------------------
       if (endpoint === "/ips") {
-        const newIp = prompt("Enter new IP:", item.ip);
-        const newMac = prompt("Enter new MAC:", item.mac);
-        const newUse = confirm("Mark as In Use?");
+        // IP
+        const { value: newIp } = await Swal.fire({
+          title: "Edit IP Address",
+          input: "text",
+          inputValue: item.ip,
+          confirmButtonText: "Next",
+          showCancelButton: true,
+          background: "#1e2640",
+          color: "#fff",
+        });
+        if (!newIp) return;
 
-        if (newIp === null || newMac === null) return;
+        // MAC
+        const { value: newMac } = await Swal.fire({
+          title: "Edit MAC Address",
+          input: "text",
+          inputValue: item.mac,
+          confirmButtonText: "Next",
+          showCancelButton: true,
+          background: "#1e2640",
+          color: "#fff",
+        });
+        if (!newMac) return;
 
-        const res = await fetch(
-          `${BASE_URL}/admin/zones/${id}/ips/${item.id}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              ip: newIp,
-              mac: newMac,
-              inUse: newUse, // ✅ Use inUse
-            }),
-          }
-        );
+        // InUse
+        const { isConfirmed: inUse } = await Swal.fire({
+          title: "Mark as In Use?",
+          showCancelButton: true,
+          confirmButtonText: "Yes",
+          cancelButtonText: "No",
+          background: "#1e2640",
+          color: "#fff",
+        });
 
-        if (!res.ok) throw new Error("Failed to update IP");
-        alert("IP updated successfully!");
+        await fetch(`${BASE_URL}/admin/zones/${id}/ips/${item.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ip: newIp,
+            mac: newMac,
+            inUse,
+          }),
+        });
+
         await reloadData();
+        toast.success("IP updated successfully!");
         return;
       }
 
-      // =========================
-      // 2. ISO EDIT
-      // =========================
+      // --------------------- ISO EDIT ---------------------
       if (endpoint === "/isos") {
-        const newIso = prompt("Enter new ISO name:", item.iso);
-        const newVmid = prompt("Enter VMID:", item.vmid);
+        const { value: newIso } = await Swal.fire({
+          title: "Edit ISO Name",
+          input: "text",
+          inputValue: item.iso,
+          confirmButtonText: "Next",
+          showCancelButton: true,
+          background: "#1e2640",
+          color: "#fff",
+        });
+        if (!newIso) return;
 
-        if (newIso === null || newVmid === null) return;
+        const { value: newVmid } = await Swal.fire({
+          title: "Edit VMID",
+          input: "text",
+          inputValue: item.vmid,
+          confirmButtonText: "Save",
+          showCancelButton: true,
+          background: "#1e2640",
+          color: "#fff",
+        });
+        if (!newVmid) return;
 
-        const res = await fetch(
-          `${BASE_URL}/admin/servers/${id}/isos/${item.id}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              iso: newIso,
-              vmid: newVmid,
-            }),
-          }
-        );
+        await fetch(`${BASE_URL}/admin/servers/${id}/isos/${item.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            iso: newIso,
+            vmid: newVmid,
+          }),
+        });
 
-        if (!res.ok) throw new Error("Failed to update ISO");
-        alert("ISO updated successfully!");
         await reloadData();
+        toast.success("ISO updated successfully!");
         return;
       }
 
-      // =========================
-      // 3. DISK EDIT (Fixed Logic)
-      // =========================
+      // --------------------- DISK EDIT ---------------------
       if (extraForm === "disks") {
-        // 1. Get the ID safely. Check console if this alerts "ID not found".
         const diskId = item.id || item.ID || item.Id || item.storage_id;
-
         if (!diskId) {
-          console.error(
-            "❌ Error: Could not find a valid ID property in item:",
-            item
-          );
-          alert("Error: Cannot find Disk ID. Check console for details.");
+          toast.error("Disk ID not found");
           return;
         }
 
-        const inputType = prompt(
-          "Type 'vms' to edit Max VMs or 'percentage' to edit usable percentage:"
-        );
+        const { value: type } = await Swal.fire({
+          title: "What do you want to edit?",
+          input: "select",
+          inputOptions: {
+            vms: "Max VMs",
+            percentage: "Usable Percentage",
+          },
+          inputPlaceholder: "Select field",
+          confirmButtonText: "Next",
+          showCancelButton: true,
+          background: "#1e2640",
+          color: "#fff",
+        });
 
-        if (!inputType) return; // User cancelled
+        if (!type) return;
 
-        const cleanInput = inputType.trim().toLowerCase();
+        const { value: newVal } = await Swal.fire({
+          title: "Enter new value",
+          input: "number",
+          confirmButtonText: "Save",
+          showCancelButton: true,
+          background: "#1e2640",
+          color: "#fff",
+        });
 
-        const newValue = prompt("Enter new value:");
-        if (newValue === null || newValue.trim() === "") return;
+        if (newVal === null) return;
 
         let url = "";
         let body = {};
 
-        // 2. Allow multiple variations of 'vms' input
-        if (["vms", "max-vms", "maxvms", "vm"].includes(cleanInput)) {
+        if (type === "vms") {
           url = `${BASE_URL}/admin/servers/${id}/storage/${diskId}/max-vms`;
-          body = { maxVms: Number(newValue) };
-        } else if (["percentage", "perc", "%"].includes(cleanInput)) {
-          url = `${BASE_URL}/admin/servers/${id}/storage/${diskId}/percentage`;
-          body = { usableDiskPercentage: Number(newValue) };
+          body = { maxVms: Number(newVal) };
         } else {
-          alert("Invalid selection. Please type 'vms' or 'percentage'.");
-          return;
+          url = `${BASE_URL}/admin/servers/${id}/storage/${diskId}/percentage`;
+          body = { usableDiskPercentage: Number(newVal) };
         }
 
-        // 🔍 DEBUG: Verify URL and Body before sending
-        console.log("🚀 Sending PATCH Request:");
-        console.log("URL:", url);
-        console.log("Payload:", body);
-
-        const res = await fetch(url, {
+        await fetch(url, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -297,68 +305,60 @@ export default function ManageResourcesPage({
           body: JSON.stringify(body),
         });
 
-        if (!res.ok) {
-          // Try to read the error message from the server
-          const errData = await res.json().catch(() => ({}));
-          console.error("❌ API Failed:", res.status, res.statusText, errData);
-          throw new Error(
-            `Failed to update Disk: ${res.status} ${res.statusText}`
-          );
-        }
-
-        alert("Disk updated successfully!");
-        // Reload to see changes
         await reloadData();
+        toast.success("Disk updated successfully!");
         return;
       }
     } catch (err) {
-      console.error("Edit Operation Failed:", err);
-      alert("Failed to update item. Check console for error details.");
+      console.error(err);
+      toast.error("Update failed");
     }
   };
 
+  // ------------------ DELETE (UNCHANGED) ------------------
   const handleDelete = async (item) => {
     const token = localStorage.getItem("adminToken");
-    if (!token) {
-      alert("No admin token found. Please log in again.");
-      return;
-    }
+    if (!token) return toast.error("No admin token");
 
-    if (!confirm("Are you sure you want to delete this record?")) return;
+    // 🔥 SweetAlert delete confirmation
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This action cannot be undone!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel",
+      background: "#1e2640",
+      color: "#fff",
+      confirmButtonColor: "#e63946",
+      cancelButtonColor: "#444",
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       let deleteUrl = "";
 
-      // DELETE IP
-      if (endpoint === "/ips") {
+      if (endpoint === "/ips")
         deleteUrl = `${BASE_URL}/admin/zones/${id}/ips/${item.id}`;
-      }
-
-      // DELETE ISO
-      else if (endpoint === "/isos") {
-        deleteUrl = `${BASE_URL}/admin/servers/${id}/isos/${item.id}`;
-      }
-
-      // DELETE DISK
-      else if (extraForm === "disks") {
+      else if (endpoint === "/isos")
+        deleteUrl = `${BASE_URL}/admin/servers/${id}/isos/${item.id}`; // fixed typo
+      else if (extraForm === "disks")
         deleteUrl = `${BASE_URL}/admin/servers/${id}/storage/${item.id}`;
-      }
 
-      const res = await fetch(deleteUrl, {
+      await fetch(deleteUrl, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!res.ok) throw new Error("Delete failed");
-
-      alert("Item deleted successfully!");
       await reloadData();
-    } catch (err) {
-      console.error("Delete failed:", err);
-      alert("Failed to delete item");
+      toast.success("Item deleted");
+    } catch {
+      toast.error("Delete failed");
     }
   };
 
+  // UI Rendering (UNCHANGED)
   const totalPages = Math.ceil(existing.length / itemsPerPage);
   const displayed = existing.slice(
     (currentPage - 1) * itemsPerPage,
@@ -367,6 +367,27 @@ export default function ManageResourcesPage({
 
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen flex flex-col">
+      {/* Inject SweetAlert neon CSS (Option B: injected) */}
+      <style>{`
+        .swal2-confirm.swal2-confirm-glow {
+          box-shadow: 0 0 12px rgba(76,139,255,0.8) !important;
+        }
+        /* Better input look for the swal2-input/select in premium theme */
+        .swal2-input, .swal2-select {
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.06);
+          color: #e6e6e6;
+          box-shadow: none;
+        }
+        .swal2-container {
+          z-index: 9999;
+        }
+          .swal2-select {
+          color: #000 !important;          /* text inside dropdown */
+          background: #ffffff !important;  /* dropdown background */
+        }
+      `}</style>
+
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#0e1525]/90 backdrop-blur-md border-b border-indigo-900/30">
         <Header />
       </div>
