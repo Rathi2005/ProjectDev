@@ -40,7 +40,6 @@ const ImageSelector = ({ serverId, setSelectedOS }) => {
 
         setOsOptions(formatted);
       } catch (err) {
-        console.error("Error fetching ISOs:", err);
         setSelectedError("Failed to load images.");
         setOsOptions([]);
       } finally {

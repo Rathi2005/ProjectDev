@@ -68,7 +68,7 @@ const SummarySidebar = ({
       bandwidthPriceId: selectedResources?.bandwidthPriceId || null,
     };
 
-    console.log("🔄 Server Configuration:", config);
+    // console.log("🔄 Server Configuration:", config);
     return config;
   }, [vmName, serverId, selectedOS, selectedType, selectedResources]);
 
@@ -198,7 +198,7 @@ const SummarySidebar = ({
         );
       }
 
-      console.log("🎯 Creating server with final configuration:", serverConfig);
+      // console.log("🎯 Creating server with final configuration:", serverConfig);
 
       // Step 3: Make the actual request
       const response = await apiRequest(CREATE_SERVER_URL, {
@@ -207,10 +207,10 @@ const SummarySidebar = ({
       });
 
       const data = await response.json();
-      console.log("✅ Server created successfully:", data);
+      // console.log("✅ Server created successfully:", data);
       alert("🎉 Server Created Successfully!");
     } catch (error) {
-      console.error("🔥 Error creating server:", error);
+      // console.error("🔥 Error creating server:", error);
 
       let errorMessage = error.message || "Unknown error occurred";
 
@@ -247,17 +247,17 @@ const SummarySidebar = ({
       selectedResources?.diskPriceId &&
       selectedResources?.bandwidthPriceId;
 
-    if (!complete) {
-      console.log("⚠️ Configuration incomplete. Missing:", {
-        serverId: !serverId,
-        selectedOS: !selectedOS?.id,
-        selectedType: !selectedType,
-        cpuPriceId: !selectedResources?.cpuPriceId,
-        ramPriceId: !selectedResources?.ramPriceId,
-        diskPriceId: !selectedResources?.diskPriceId,
-        bandwidthPriceId: !selectedResources?.bandwidthPriceId,
-      });
-    }
+    // if (!complete) {
+    //   console.log("⚠️ Configuration incomplete. Missing:", {
+    //     serverId: !serverId,
+    //     selectedOS: !selectedOS?.id,
+    //     selectedType: !selectedType,
+    //     cpuPriceId: !selectedResources?.cpuPriceId,
+    //     ramPriceId: !selectedResources?.ramPriceId,
+    //     diskPriceId: !selectedResources?.diskPriceId,
+    //     bandwidthPriceId: !selectedResources?.bandwidthPriceId,
+    //   });
+    // }
 
     return complete;
   };

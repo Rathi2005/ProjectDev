@@ -4,6 +4,7 @@ import Footer from "../components/user/Footer";
 import OtpVerification from "../components/user/OtpVerification";
 import BillingAddress from "../components/user/BillingAddress";
 import { Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 const VALIDATE_EMAIL = import.meta.env.VITE_VALIDATE;
 const INITIATE_VERIFICATION = import.meta.env.VITE_INITIATE_VERIFICATION;
@@ -54,6 +55,7 @@ export default function CreateAccount() {
     // basic client-side check
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match!");
+      toast.error("Passwords do not match!"); 
       return;
     }
 
@@ -81,6 +83,7 @@ export default function CreateAccount() {
         const msg =
           valData?.message || "Email validation failed. Please try again.";
         setError(msg);
+        toast.error(msg);
         setLoading(false);
         return;
       }
@@ -88,6 +91,7 @@ export default function CreateAccount() {
       // Expecting: {"isEmailTaken": boolean}
       if (valData.isEmailTaken) {
         setError("This email is already registered. Please use another one.");
+        toast.error("This email is already registered. Please use another one.");
         setLoading(false);
         return;
       }
@@ -120,11 +124,18 @@ export default function CreateAccount() {
           initData.message ||
             "Verification OTP sent to your email. Please check."
         );
+        toast.success(
+          initData.message ||
+            "Verification OTP sent to your email. Please check."
+        );
         // small delay so user sees success toast, then show OTP form
         setTimeout(() => setShowOtp(true), 700);
       } else if (initRes.status === 409) {
         // Email already exists (server-side race condition)
         setError(
+          initData.message || "An account with this email already exists."
+        );
+        toast.error(
           initData.message || "An account with this email already exists."
         );
       } else if (initRes.status === 400) {
@@ -133,12 +144,15 @@ export default function CreateAccount() {
         const firstError =
           Object.values(initData)[0] || "Validation failed. Check your input.";
         setError(firstError);
+        toast.error(firstError);
       } else {
         setError("Could not initiate verification. Please try again.");
+        toast.error("Could not initiate verification. Please try again.");
       }
     } catch (err) {
       console.error("Registration flow error:", err);
       setError("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
     } finally {
       setLoading(false);
     }

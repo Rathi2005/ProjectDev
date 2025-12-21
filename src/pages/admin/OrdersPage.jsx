@@ -11,7 +11,7 @@ import {
   HardDrive,
   Globe,
   Calendar,
-  DollarSign,
+  IndianRupee,
   User,
   Mail,
   MapPin,
@@ -119,8 +119,8 @@ export default function OrdersPage() {
       },
       {
         title: "Total Revenue",
-        value: `$${revenue.toFixed(2)}`,
-        icon: <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />,
+        value: `₹${revenue.toFixed(2)}`,
+        icon: <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />,
         subtitle: "From active orders",
         color: "text-emerald-400"
       }
@@ -167,7 +167,7 @@ export default function OrdersPage() {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 2
     }).format(amount || 0);
   };
@@ -453,7 +453,7 @@ export default function OrdersPage() {
                                       
                                       <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                         <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
-                                          <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
+                                          <IndianRupee className="w-3 h-3 sm:w-4 sm:h-4" />
                                           <span>Total Amount</span>
                                         </div>
                                         <p className="text-xl sm:text-2xl font-bold text-emerald-300">

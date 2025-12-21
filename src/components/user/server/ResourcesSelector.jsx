@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { CheckCircle } from "lucide-react";
 
-const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
+const ResourcesSelector = ({ 
+  selectedType, 
+  setSelectedResources,
+  onVerifyAndCreate, // Add this prop
+  isServerCreationComplete // Add this prop
+}) => {
   const [vCPU, setVCPU] = useState("");
   const [ram, setRam] = useState("");
   const [disk, setDisk] = useState("");
@@ -78,7 +84,6 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
         if (diskData.length > 0) setDisk(diskData[0].label);
         if (bandwidthData.length > 0) setBandwidth(bandwidthData[0].label);
       } catch (err) {
-        console.error("❌ Error fetching data:", err);
         setError("Failed to load resource prices.");
         setDefaultOptions(selectedType);
       } finally {
@@ -282,7 +287,7 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
   return (
     <div className="flex bg-[#0e1525] text-white w-full">
       {/* Left Section */}
-      <div className="flex-1 px-8">
+      <div className="flex-1 px-4 sm:px-8">
         {/* Back link */}
         <div
           className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline"
@@ -300,7 +305,7 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold mb-6">Resources</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Resources</h1>
 
         {/* Server Type Info */}
         <div className="mb-6 p-4 bg-[#1a2238] rounded-lg border border-gray-700">
@@ -339,7 +344,7 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
         )}
 
         {/* Resource selectors */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-10">
           {/* vCPUs */}
           <div>
             <label className="block text-sm text-gray-400 mb-2">vCPUs</label>
@@ -414,7 +419,7 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
 
         {/* Pricing Summary */}
         {pricing.hourly !== "0.0000" && (
-          <div className="mt-10 border-t border-gray-700 pt-6">
+          <div className="mt-8 border-t border-gray-700 pt-6">
             <h2 className="text-lg font-semibold mb-3">Pricing Summary</h2>
             <div className="flex items-center justify-between text-gray-300 mb-1">
               <span className="text-sm">
@@ -429,6 +434,25 @@ const ResourcesSelector = ({ selectedType, setSelectedResources }) => {
             </div>
           </div>
         )}
+
+        {/* Mobile-only Verify and Create Button */}
+        <div className="lg:hidden mt-8 pt-6 border-t border-gray-700">
+          <button
+            onClick={() => onVerifyAndCreate && onVerifyAndCreate()}
+            disabled={!isServerCreationComplete}
+            className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold transition-colors ${
+              isServerCreationComplete
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                : "bg-gray-700 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            <CheckCircle size={20} />
+            <span>Verify and Create Server</span>
+          </button>
+          <p className="text-center text-gray-400 text-sm mt-2">
+            Review your server configuration before creating
+          </p>
+        </div>
       </div>
     </div>
   );
