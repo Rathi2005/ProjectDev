@@ -190,7 +190,8 @@ export default function Dashboard() {
               {/* Show Summary button (only in server sections) */}
               {isInServerSection && (
                 <button
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-indigo-900/30 hover:bg-indigo-800/50 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1.5
+                   rounded-lg bg-indigo-900/30 hover:bg-indigo-800/50 transition-colors"
                   onClick={toggleMobileSummary}
                 >
                   <ListChecks size={14} />

@@ -1,4 +1,19 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { 
+  CheckCircle, 
+  AlertCircle, 
+  Server, 
+  Cpu, 
+  Globe, 
+  Calendar,
+  Loader2,
+  CreditCard,
+  Package,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Shield
+} from "lucide-react";
 
 const SummarySidebar = ({
   selectedLocation,
@@ -10,6 +25,8 @@ const SummarySidebar = ({
   const [serverCount, setServerCount] = useState(1);
   const [vmName, setVmName] = useState("my-shared-vm-test-3");
   const [isLoading, setIsLoading] = useState(false);
+  const [months, setMonths] = useState("1");
+  const [configExpanded, setConfigExpanded] = useState(false);
 
   // Function to check if token is valid
   const isTokenValid = (token) => {
@@ -66,20 +83,15 @@ const SummarySidebar = ({
       ramPriceId: selectedResources?.ramPriceId || null,
       diskPriceId: selectedResources?.diskPriceId || null,
       bandwidthPriceId: selectedResources?.bandwidthPriceId || null,
+      months: Number(months),
     };
 
-    // console.log("🔄 Server Configuration:", config);
     return config;
-  }, [vmName, serverId, selectedOS, selectedType, selectedResources]);
+  }, [vmName, serverId, selectedOS, selectedType, selectedResources, months]);
 
   // Total price calculation
   const total =
     (calculatePricing.serverPrice + calculatePricing.ipv4Price) * serverCount;
-
-  // Functions to increment and decrement server count
-  const increaseCount = () => setServerCount((prev) => prev + 1);
-  const decreaseCount = () =>
-    setServerCount((prev) => (prev > 1 ? prev - 1 : 1));
 
   // Handle VM name change
   const handleVmNameChange = (e) => {
@@ -96,41 +108,18 @@ const SummarySidebar = ({
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
-        "X-Requested-With": "XMLHttpRequest", // Add this
+        "X-Requested-With": "XMLHttpRequest",
         ...options.headers,
       },
     };
 
-    // Log EXACTLY what we're sending
-    console.log("🚀 Making API request:", {
-      url,
-      method: config.method,
-      headers: config.headers,
-      body: config.body ? JSON.parse(config.body) : undefined,
-    });
-
     try {
       const response = await fetch(url, config);
-
-      // Log ALL response headers
-      const responseHeaders = {};
-      response.headers.forEach((value, key) => {
-        responseHeaders[key] = value;
-      });
-
-      console.log("📨 Full API response:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: responseHeaders,
-        url: response.url,
-      });
 
       if (!response.ok) {
         let errorText;
         try {
           errorText = await response.text();
-          console.log("❌ Error response body:", errorText);
         } catch {
           errorText = "No error message";
         }
@@ -159,17 +148,14 @@ const SummarySidebar = ({
       throw new Error("Token is invalid or expired");
     }
 
-    // Test with a simple profile request
     const testUrl = import.meta.env.VITE_API_BASE_URL
       ? `${import.meta.env.VITE_API_BASE_URL}/users/profile`
       : "https://vps.devai.in/api/users/profile";
 
     try {
       const testResponse = await apiRequest(testUrl, { method: "GET" });
-      console.log("✅ Token validation successful");
       return true;
     } catch (error) {
-      console.error("❌ Token validation failed:", error);
       throw new Error(`Token validation failed: ${error.message}`);
     }
   };
@@ -186,10 +172,8 @@ const SummarySidebar = ({
     setIsLoading(true);
 
     try {
-      // Step 1: Validate token first
       await testTokenValidity();
 
-      // Step 2: Prepare the request
       const CREATE_SERVER_URL = import.meta.env.VITE_CREATE_SERVER;
 
       if (!CREATE_SERVER_URL) {
@@ -198,23 +182,16 @@ const SummarySidebar = ({
         );
       }
 
-      // console.log("🎯 Creating server with final configuration:", serverConfig);
-
-      // Step 3: Make the actual request
       const response = await apiRequest(CREATE_SERVER_URL, {
         method: "POST",
         body: JSON.stringify(serverConfig),
       });
 
       const data = await response.json();
-      // console.log("✅ Server created successfully:", data);
       alert("🎉 Server Created Successfully!");
     } catch (error) {
-      // console.error("🔥 Error creating server:", error);
-
       let errorMessage = error.message || "Unknown error occurred";
 
-      // Provide user-friendly error messages
       if (errorMessage.includes("403")) {
         errorMessage =
           "Access forbidden. Your account may not have permission to create servers, or your token is invalid.";
@@ -245,19 +222,10 @@ const SummarySidebar = ({
       selectedResources?.cpuPriceId &&
       selectedResources?.ramPriceId &&
       selectedResources?.diskPriceId &&
-      selectedResources?.bandwidthPriceId;
-
-    // if (!complete) {
-    //   console.log("⚠️ Configuration incomplete. Missing:", {
-    //     serverId: !serverId,
-    //     selectedOS: !selectedOS?.id,
-    //     selectedType: !selectedType,
-    //     cpuPriceId: !selectedResources?.cpuPriceId,
-    //     ramPriceId: !selectedResources?.ramPriceId,
-    //     diskPriceId: !selectedResources?.diskPriceId,
-    //     bandwidthPriceId: !selectedResources?.bandwidthPriceId,
-    //   });
-    // }
+      selectedResources?.bandwidthPriceId &&
+      months && 
+      vmName.trim().length > 0 &&
+      Number(months) > 0;
 
     return complete;
   };
@@ -268,249 +236,251 @@ const SummarySidebar = ({
     return isTokenValid(token);
   }, []);
 
+  // Calculate completion percentage
+  const completionPercentage = useMemo(() => {
+    const steps = [serverId, selectedOS?.id, selectedType, selectedResources?.cpuPriceId, months];
+    const completed = steps.filter(Boolean).length;
+    return Math.round((completed / steps.length) * 100);
+  }, [serverId, selectedOS, selectedType, selectedResources, months]);
+
   return (
-    <aside className="w-[300px] bg-[#121a2a] mt-10 p-6 border-l border-gray-800 flex flex-col justify-start">
-      <div className="space-y-4 mb-12">
-        {/* VM Name Input */}
-        <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-2">VM Name</label>
-          <input
-            type="text"
-            value={vmName}
-            onChange={handleVmNameChange}
-            className="w-full bg-[#0e1525] border border-gray-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"
-            placeholder="Enter VM name"
+    <aside className="w-full bg-[#121a2a] border-l border-gray-800 flex flex-col h-full">
+      {/* Header - Compact but Clear */}
+      <div className="p-5 border-b border-gray-800">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-900/30 rounded-lg">
+              <Package className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Server Summary</h2>
+              <p className="text-sm text-gray-400">Review your configuration</p>
+            </div>
+          </div>
+          <div className={`px-3 py-1 rounded-full text-sm font-medium ${isConfigurationComplete() ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
+            {completionPercentage}%
+          </div>
+        </div>
+        
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-800 rounded-full h-1.5">
+          <div 
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full transition-all duration-500"
+            style={{ width: `${completionPercentage}%` }}
           />
         </div>
-
-        {/* Location */}
-        <div className="flex items-center gap-2 text-sm">
-          <span className={`${serverId ? "text-green-500" : "text-gray-500"}`}>
-            ✔
-          </span>
-          <span>
-            {selectedLocation
-              ? `${selectedLocation} - Location (ID: ${serverId})`
-              : "No location selected"}
-          </span>
-        </div>
-
-        {/* Operating System */}
-        <div className="flex items-center gap-2 text-sm">
-          <span
-            className={`${selectedOS?.id ? "text-green-500" : "text-gray-500"}`}
-          >
-            ✔
-          </span>
-          <span>
-            {selectedOS
-              ? `${selectedOS.name} ${selectedOS.version} - Image (ID: ${selectedOS.id})`
-              : "No OS selected"}
-          </span>
-        </div>
-
-        {/* Server Type */}
-        <div className="flex items-center gap-2 text-sm">
-          <span
-            className={`${selectedType ? "text-green-500" : "text-gray-500"}`}
-          >
-            ✔
-          </span>
-          <span>
-            {selectedType
-              ? `${selectedType} - Type (${serverConfig.planType})`
-              : "No type selected"}
-          </span>
-        </div>
-
-        {/* Resources */}
-        {selectedResources && Object.keys(selectedResources).length > 0 && (
-          <div className="flex items-center gap-2 text-sm">
-            <span
-              className={`${
-                selectedResources.cpuPriceId &&
-                selectedResources.ramPriceId &&
-                selectedResources.diskPriceId &&
-                selectedResources.bandwidthPriceId
-                  ? "text-green-500"
-                  : "text-yellow-500"
-              }`}
-            >
-              {selectedResources.cpuPriceId &&
-              selectedResources.ramPriceId &&
-              selectedResources.diskPriceId &&
-              selectedResources.bandwidthPriceId
-                ? "✔"
-                : "⚠"}
-            </span>
-            <span>
-              {selectedResources.vCPU &&
-                `${selectedResources.vCPU} (ID: ${selectedResources.cpuPriceId}), `}
-              {selectedResources.ram &&
-                `${selectedResources.ram} (ID: ${selectedResources.ramPriceId}), `}
-              {selectedResources.disk &&
-                `${selectedResources.disk} (ID: ${selectedResources.diskPriceId})`}{" "}
-              - Resources
-              {selectedResources.bandwidthPriceId &&
-                `, Bandwidth (ID: ${selectedResources.bandwidthPriceId})`}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Purchase Section */}
-      <div className="pt-3 border-t border-gray-800 space-y-4">
-        {/* Authentication Status */}
-        <div className="text-xs mb-2">
-          <div className="flex justify-between items-center">
-            <span>Authentication:</span>
-            <span
-              className={`px-2 py-1 rounded ${
-                hasValidToken
-                  ? "bg-green-900/30 text-green-400"
-                  : "bg-red-900/30 text-red-400"
-              }`}
-            >
-              {hasValidToken ? "Authenticated" : "Not Authenticated"}
-            </span>
+      {/* Main Content - Smart Layout */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        {/* Essential Inputs - Always Visible */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              <Server className="inline w-4 h-4 mr-2" />
+              Server Name
+            </label>
+            <input
+              type="text"
+              value={vmName}
+              onChange={handleVmNameChange}
+              className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="Enter server name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              <Calendar className="inline w-4 h-4 mr-2" />
+              Duration (Months)
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={months}
+              onChange={(e) => setMonths(e.target.value)}
+              className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="1"
+            />
           </div>
         </div>
 
-        {/* Server count control */}
-        <div className="flex items-center justify-between">
+        {/* Configuration Details - Collapsible */}
+        <div className="bg-gray-900/30 rounded-xl border border-gray-700/50">
           <button
-            onClick={decreaseCount}
-            className="px-2 py-1 border border-gray-700 rounded hover:bg-gray-700/30"
+            onClick={() => setConfigExpanded(!configExpanded)}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/30 transition-colors rounded-t-xl"
           >
-            -
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-gray-400" />
+              <span className="font-medium text-gray-300">Configuration Details</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${isConfigurationComplete() ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
+                {isConfigurationComplete() ? 'Complete' : `${completionPercentage}%`}
+              </span>
+            </div>
+            {configExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            )}
           </button>
-          <span>
-            {serverCount} Server{serverCount > 1 ? "s" : ""}
-          </span>
-          <button
-            onClick={increaseCount}
-            className="px-2 py-1 border border-gray-700 rounded hover:bg-gray-700/30"
-          >
-            +
-          </button>
-        </div>
 
-        {/* Pricing breakdown */}
-        <div className="text-sm space-y-3">
-          <div className="flex justify-between text-gray-400">
-            <span>
-              {serverCount} SERVER{serverCount > 1 ? "S" : ""}
-            </span>
-            <span className="text-white">
-              ₹{(calculatePricing.serverPrice * serverCount).toFixed(0)}/mo
-            </span>
-          </div>
-          <div className="flex justify-between text-gray-400">
-            <span>{serverCount} IPv4</span>
-            <span className="text-white">
-              ₹{(calculatePricing.ipv4Price * serverCount).toFixed(0)}/mo
-            </span>
-          </div>
-          <div className="flex justify-between font-semibold border-t border-gray-700 pt-2">
-            <span>Total</span>
-            <span>₹{total.toFixed(0)}/mo</span>
-          </div>
-        </div>
+          {configExpanded && (
+            <div className="px-4 pb-4 space-y-3">
+              {/* Location */}
+              <div className="flex items-center justify-between pt-3">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${serverId ? 'bg-green-900/20' : 'bg-gray-800'}`}>
+                    <Globe className={`w-4 h-4 ${serverId ? 'text-green-400' : 'text-gray-500'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Location</p>
+                    <p className="text-sm text-gray-400">
+                      {selectedLocation || "Not selected"}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-        {/* Create Server Button */}
-        <button
-          onClick={handleCreateServer}
-          disabled={!isConfigurationComplete() || !hasValidToken || isLoading}
-          className={`w-full py-2 mt-3 rounded font-semibold transition-all ${
-            isConfigurationComplete() && hasValidToken && !isLoading
-              ? "bg-red-600 hover:bg-red-700 text-white cursor-pointer"
-              : "bg-gray-600 text-gray-400 cursor-not-allowed"
-          } ${isLoading ? "opacity-70" : ""}`}
-        >
-          {isLoading ? (
-            <span className="flex items-center justify-center">
-              <svg
-                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Creating Server...
-            </span>
-          ) : !hasValidToken ? (
-            "Please Log In"
-          ) : !isConfigurationComplete() ? (
-            "Complete Configuration"
-          ) : (
-            "Create & Buy now"
+              {/* OS */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${selectedOS?.id ? 'bg-blue-900/20' : 'bg-gray-800'}`}>
+                    <Server className={`w-4 h-4 ${selectedOS?.id ? 'text-blue-400' : 'text-gray-500'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Operating System</p>
+                    <p className="text-sm text-gray-400">
+                      {selectedOS ? `${selectedOS.name} ${selectedOS.version}` : "Not selected"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Server Type */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${selectedType ? 'bg-purple-900/20' : 'bg-gray-800'}`}>
+                    <Package className={`w-4 h-4 ${selectedType ? 'text-purple-400' : 'text-gray-500'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Server Type</p>
+                    <p className="text-sm text-gray-400">
+                      {selectedType || "Not selected"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resources */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${selectedResources?.cpuPriceId ? 'bg-amber-900/20' : 'bg-gray-800'}`}>
+                    <Cpu className={`w-4 h-4 ${selectedResources?.cpuPriceId ? 'text-amber-400' : 'text-gray-500'}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Resources</p>
+                    <p className="text-sm text-gray-400">
+                      {selectedResources?.vCPU ? 
+                        `${selectedResources.vCPU} vCPU • ${selectedResources.ram} RAM • ${selectedResources.disk} Disk` : 
+                        "Not configured"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
-        </button>
+        </div>
 
-        <p className="text-xs text-gray-500 mt-2">
-          All prices incl. 0% VAT. Our{" "}
-          <span className="underline text-gray-400 hover:text-white cursor-pointer">
-            terms and conditions
-          </span>{" "}
-          apply.
-        </p>
+        {/* Pricing Summary - Always Visible & Compact */}
+        <div className="bg-gradient-to-br from-gray-900/50 to-gray-800/30 rounded-xl p-4 border border-gray-700/50 shadow-lg">
+          <h3 className="text-base font-semibold text-white mb-3">Pricing</h3>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-300">Server ({serverCount}x)</span>
+              <span className="text-sm font-medium text-white">
+                ₹{(calculatePricing.serverPrice * serverCount).toFixed(0)}
+                <span className="text-xs text-gray-400 ml-1">/mo</span>
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-300">IPv4 Address</span>
+              <span className="text-sm font-medium text-white">
+                ₹{(calculatePricing.ipv4Price * serverCount).toFixed(0)}
+                <span className="text-xs text-gray-400 ml-1">/mo</span>
+              </span>
+            </div>
 
-        {/* Hourly Pricing */}
-        {selectedResources?.pricing?.hourly && (
-          <div className="text-xs text-gray-400 border-t border-gray-700 pt-2">
-            <div className="flex justify-between">
-              <span>Hourly rate:</span>
-              <span>
-                ₹
-                {(
-                  parseFloat(selectedResources.pricing.hourly) * serverCount
-                ).toFixed(2)}
-                /hour
+            {/* Total - Prominent */}
+            <div className="pt-3 mt-2 border-t border-gray-700">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-white">Total Amount</span>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-white">₹{total.toFixed(0)}</div>
+                  <div className="text-xs text-gray-400">per month</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer - Action Area */}
+      <div className="p-5 border-t border-gray-800 space-y-4 bg-[#0e1525]/50">
+        {/* Status Indicators - Inline */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-1 px-2 py-1 rounded ${hasValidToken ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+              {hasValidToken ? (
+                <CheckCircle className="w-3 h-3" />
+              ) : (
+                <AlertCircle className="w-3 h-3" />
+              )}
+              <span className="text-sm">
+                {hasValidToken ? 'Authenticated' : 'Login Required'}
               </span>
             </div>
           </div>
-        )}
-
-        {/* Configuration Status */}
-        <div className="text-xs text-gray-400 border-t border-gray-700 pt-2">
-          <div className="flex justify-between items-center">
-            <span>Configuration:</span>
-            <span
-              className={`px-2 py-1 rounded ${
-                isConfigurationComplete()
-                  ? "bg-green-900/30 text-green-400"
-                  : "bg-yellow-900/30 text-yellow-400"
-              }`}
-            >
-              {isConfigurationComplete() ? "Complete" : "Incomplete"}
-            </span>
+          
+          <div className="text-sm text-gray-400">
+            Est. setup: <span className="text-white">~2 minutes</span>
           </div>
         </div>
 
-        {/* Debug Info */}
-        <div className="text-xs text-gray-600 border-t border-gray-700 pt-2 space-y-1">
-          <div className="flex justify-between">
-            <span>Server ID:</span>
-            <span>{serverId || "Not set"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Token Status:</span>
-            <span>{hasValidToken ? "Valid" : "Invalid/Missing"}</span>
-          </div>
-        </div>
+        {/* Primary Action Button */}
+        <button
+          onClick={handleCreateServer}
+          disabled={!isConfigurationComplete() || !hasValidToken || isLoading}
+          className={`w-full py-3.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-base
+            ${isConfigurationComplete() && hasValidToken && !isLoading
+              ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              : "bg-gray-800 text-gray-400 cursor-not-allowed"
+            }`}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Creating Server...
+            </>
+          ) : !hasValidToken ? (
+            <>
+              <AlertCircle className="w-5 h-5" />
+              Please Log In to Deploy
+            </>
+          ) : !isConfigurationComplete() ? (
+            <>
+              <AlertCircle className="w-5 h-5" />
+              Complete Configuration ({completionPercentage}%)
+            </>
+          ) : (
+            <>
+              <CreditCard className="w-5 h-5" />
+              Deploy Server Now
+            </>
+          )}
+        </button>
       </div>
     </aside>
   );
