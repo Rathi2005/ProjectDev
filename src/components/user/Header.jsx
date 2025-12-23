@@ -62,9 +62,9 @@ const Header = () => {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-8 text-sm">
-          <a href="#" className="flex items-center space-x-1 hover:text-[#4f46e5] transition">
+          <a href="/orders" className="flex items-center space-x-1 hover:text-[#4f46e5] transition">
             <Globe className="w-4 h-4" />
-            <span>Cloud VPS</span>
+            <span>Orders</span>
           </a>
           <a href="#" className="flex items-center space-x-1 hover:text-[#4f46e5] transition">
             <Server className="w-4 h-4" />

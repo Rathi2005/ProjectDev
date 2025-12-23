@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
-import { 
-  Package, 
-  CheckCircle, 
-  Clock, 
+import {
+  Package,
+  CheckCircle,
+  Clock,
   XCircle,
   Cpu,
   MemoryStick,
@@ -23,7 +23,7 @@ import {
   Activity,
   CircleAlert,
   Wifi,
-  HardDriveIcon
+  HardDriveIcon,
 } from "lucide-react";
 
 export default function OrdersPage() {
@@ -71,21 +71,68 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
+  const [powerLoading, setPowerLoading] = useState({});
+
+  const handlePowerAction = async (orderId, action) => {
+    const adminToken = localStorage.getItem("adminToken");
+    if (!adminToken) {
+      alert("Admin not authenticated");
+      return;
+    }
+
+    try {
+      setPowerLoading((prev) => ({ ...prev, [orderId]: action }));
+
+      const res = await fetch(
+        `${BASE_URL}/admin/vms/order/${orderId}/power?action=${action}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Power operation failed");
+      }
+
+      alert(`✅ VM ${action.toUpperCase()} command sent successfully`);
+
+      // Optional: refresh orders to reflect new state
+      // fetchOrders();
+    } catch (err) {
+      console.error(err);
+      alert(`❌ Failed to ${action} VM`);
+    } finally {
+      setPowerLoading((prev) => ({ ...prev, [orderId]: null }));
+    }
+  };
+
   // Dynamic insights calculation
   const insights = useMemo(() => {
     const totalOrders = orders.length;
-    const activeOrders = orders.filter((o) => 
-      o.status === "ACTIVE" || o.status === "Active"
+    const activeOrders = orders.filter(
+      (o) => o.status === "ACTIVE" || o.status === "Active"
     ).length;
-    const pendingOrders = orders.filter((o) => 
-      o.status === "PENDING_PAYMENT" || o.status === "Pending"
+    const pendingOrders = orders.filter(
+      (o) => o.status === "PENDING_PAYMENT" || o.status === "Pending"
     ).length;
     const cancelledOrders = orders.filter((o) =>
-      ["CANCELLED", "Cancelled", "EXPIRED", "Expired", "FAILED", "Failed"].includes(o.status)
+      [
+        "CANCELLED",
+        "Cancelled",
+        "EXPIRED",
+        "Expired",
+        "FAILED",
+        "Failed",
+      ].includes(o.status)
     ).length;
-    
+
     const revenue = orders
-      .filter(order => order.status === "ACTIVE" || order.status === "Active")
+      .filter((order) => order.status === "ACTIVE" || order.status === "Active")
       .reduce((sum, order) => sum + (order.priceTotal || 0), 0);
 
     return [
@@ -94,36 +141,38 @@ export default function OrdersPage() {
         value: totalOrders,
         icon: <Package className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" />,
         subtitle: "All time",
-        color: "text-indigo-400"
+        color: "text-indigo-400",
       },
       {
         title: "Active Orders",
         value: activeOrders,
         icon: <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />,
         subtitle: "Currently running",
-        color: "text-green-400"
+        color: "text-green-400",
       },
       {
         title: "Pending Orders",
         value: pendingOrders,
         icon: <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400" />,
         subtitle: "Awaiting payment",
-        color: "text-yellow-400"
+        color: "text-yellow-400",
       },
       {
         title: "Cancelled / Failed",
         value: cancelledOrders,
         icon: <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />,
         subtitle: "Not active",
-        color: "text-red-400"
+        color: "text-red-400",
       },
       {
         title: "Total Revenue",
         value: `₹${revenue.toFixed(2)}`,
-        icon: <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />,
+        icon: (
+          <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+        ),
         subtitle: "From active orders",
-        color: "text-emerald-400"
-      }
+        color: "text-emerald-400",
+      },
     ];
   }, [orders]);
 
@@ -152,23 +201,67 @@ export default function OrdersPage() {
     }
   };
 
+  const getLiveStatusColor = (status) => {
+    switch (status) {
+      case "START":
+        return "text-green-400 bg-green-400/10 border border-green-400/20";
+      case "STOP":
+        return "text-gray-400 bg-gray-400/10 border border-gray-400/20";
+      case "REBOOT":
+        return "text-purple-400 bg-purple-400/10 border border-purple-400/20";
+      case "HIBERNATE":
+        return "text-indigo-400 bg-indigo-400/10 border border-indigo-400/20";
+      case "RESUME":
+        return "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20";
+      default:
+        return "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20";
+    }
+  };
+
+  const normalizeLiveStatus = (status) => {
+    if (!status) return "UNKNOWN";
+
+    const s = status.toLowerCase();
+
+    if (s === "running") return "START";
+    if (s === "stopped") return "STOP";
+    if (s === "not_provisioned") return "NOT_PROVISIONED";
+
+    return "UNKNOWN";
+  };
+
+  const canAction = (liveStatus, action) => {
+    const status = normalizeLiveStatus(liveStatus);
+
+    const rules = {
+      START: ["stop", "reboot", "hibernate"],
+      STOP: ["start"],
+      HIBERNATE: ["resume"],
+      RESUME: ["stop"],
+      REBOOT: [],
+      NOT_PROVISIONED: [],
+    };
+
+    return rules[status]?.includes(action) ?? false;
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
     }).format(amount || 0);
   };
 
@@ -188,7 +281,9 @@ export default function OrdersPage() {
 
       <main className="flex-1 mt-[72px] p-4 sm:p-6 lg:p-8 xl:p-10 space-y-6 sm:space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-wide">Orders Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-wide">
+            Orders Management
+          </h1>
           <div className="text-sm text-gray-400">
             Last updated: {new Date().toLocaleDateString()}
           </div>
@@ -215,11 +310,17 @@ export default function OrdersPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <h3 className="text-xs sm:text-sm text-gray-400 font-medium">{ins.title}</h3>
-                      <p className={`text-2xl sm:text-3xl font-bold mt-1 ${ins.color}`}>
+                      <h3 className="text-xs sm:text-sm text-gray-400 font-medium">
+                        {ins.title}
+                      </h3>
+                      <p
+                        className={`text-2xl sm:text-3xl font-bold mt-1 ${ins.color}`}
+                      >
                         {ins.value}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">{ins.subtitle}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {ins.subtitle}
+                      </p>
                     </div>
                     <div className="p-2 sm:p-3 bg-[#0e1525] rounded-lg sm:rounded-xl border border-indigo-900/40">
                       {ins.icon}
@@ -233,9 +334,13 @@ export default function OrdersPage() {
             <div className="bg-[#151c2f] border border-indigo-900/30 rounded-xl sm:rounded-2xl shadow-lg overflow-hidden mt-6">
               {/* Table Header */}
               <div className="p-4 sm:p-6 border-b border-indigo-900/30">
-                <h2 className="text-lg sm:text-xl font-semibold text-white">Order List</h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-white">
+                  Order List
+                </h2>
                 <p className="text-sm text-gray-400 mt-1">
-                  Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, orders.length)} of {orders.length} orders
+                  Showing {startIndex + 1}-
+                  {Math.min(startIndex + itemsPerPage, orders.length)} of{" "}
+                  {orders.length} orders
                 </p>
               </div>
 
@@ -253,6 +358,7 @@ export default function OrdersPage() {
                       <th className="py-3 px-4 sm:px-6">Created</th>
                       <th className="py-3 px-4 sm:px-6">Price</th>
                       <th className="py-3 px-4 sm:px-6">Status</th>
+                      <th className="py-3 px-4 sm:px-6">Live Status</th>
                       <th className="py-3 px-4 sm:px-6">Details</th>
                     </tr>
                   </thead>
@@ -263,7 +369,7 @@ export default function OrdersPage() {
                         {/* CLICKABLE MAIN ROW */}
                         <tr
                           className={`border-t border-indigo-900/20 hover:bg-indigo-900/10 transition-all ${
-                            expandedRow === order.id ? 'bg-indigo-900/10' : ''
+                            expandedRow === order.id ? "bg-indigo-900/10" : ""
                           }`}
                         >
                           <td className="py-3 px-4 sm:px-6">
@@ -329,10 +435,21 @@ export default function OrdersPage() {
                             </span>
                           </td>
                           <td className="py-3 px-4 sm:px-6">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${getLiveStatusColor(
+                                normalizeLiveStatus(order.liveState)
+                              )}`}
+                            >
+                              {normalizeLiveStatus(order.liveState)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 sm:px-6">
                             <button
                               onClick={() => toggleRow(order.id)}
                               className="p-1.5 hover:bg-indigo-900/30 rounded-lg transition-colors"
-                              title={expandedRow === order.id ? "Collapse" : "Expand"}
+                              title={
+                                expandedRow === order.id ? "Collapse" : "Expand"
+                              }
                             >
                               {expandedRow === order.id ? (
                                 <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
@@ -359,7 +476,7 @@ export default function OrdersPage() {
                                         Server Specifications
                                       </h3>
                                     </div>
-                                    
+
                                     <div className="space-y-3 sm:space-y-4">
                                       <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                         <div className="bg-[#0e1525]/50 rounded-lg p-3">
@@ -369,10 +486,12 @@ export default function OrdersPage() {
                                           </div>
                                           <p className="text-lg sm:text-xl font-bold text-white">
                                             {order.cores || 0}
-                                            <span className="text-xs sm:text-sm text-gray-400 ml-1">cores</span>
+                                            <span className="text-xs sm:text-sm text-gray-400 ml-1">
+                                              cores
+                                            </span>
                                           </p>
                                         </div>
-                                        
+
                                         <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                           <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                             <MemoryStick className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -380,11 +499,13 @@ export default function OrdersPage() {
                                           </div>
                                           <p className="text-lg sm:text-xl font-bold text-white">
                                             {order.ramMb || 0}
-                                            <span className="text-xs sm:text-sm text-gray-400 ml-1">MB</span>
+                                            <span className="text-xs sm:text-sm text-gray-400 ml-1">
+                                              MB
+                                            </span>
                                           </p>
                                         </div>
                                       </div>
-                                      
+
                                       <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                         <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                           <HardDriveIcon className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -392,22 +513,28 @@ export default function OrdersPage() {
                                         </div>
                                         <p className="text-lg sm:text-xl font-bold text-white">
                                           {order.diskGb || 0}
-                                          <span className="text-xs sm:text-sm text-gray-400 ml-1">GB SSD</span>
+                                          <span className="text-xs sm:text-sm text-gray-400 ml-1">
+                                            GB SSD
+                                          </span>
                                         </p>
                                       </div>
-                                      
+
                                       <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                         <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                           <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
                                           <span>Operating System</span>
                                         </div>
-                                        <p className="text-sm sm:text-base font-medium text-white truncate">{order.isoName || "Not specified"}</p>
+                                        <p className="text-sm sm:text-base font-medium text-white truncate">
+                                          {order.isoName || "Not specified"}
+                                        </p>
                                       </div>
-                                      
+
                                       {order.vmid && (
                                         <div className="pt-3 border-t border-indigo-900/30">
                                           <div className="flex items-center justify-between">
-                                            <span className="text-xs sm:text-sm text-gray-400">VM ID</span>
+                                            <span className="text-xs sm:text-sm text-gray-400">
+                                              VM ID
+                                            </span>
                                             <code className="bg-indigo-900/30 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-mono">
                                               {order.vmid}
                                             </code>
@@ -427,7 +554,7 @@ export default function OrdersPage() {
                                         Order Details
                                       </h3>
                                     </div>
-                                    
+
                                     <div className="space-y-3 sm:space-y-4">
                                       <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                         <div className="bg-[#0e1525]/50 rounded-lg p-3">
@@ -439,7 +566,7 @@ export default function OrdersPage() {
                                             #{order.id}
                                           </p>
                                         </div>
-                                        
+
                                         <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                           <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                             <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -450,7 +577,7 @@ export default function OrdersPage() {
                                           </p>
                                         </div>
                                       </div>
-                                      
+
                                       <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                         <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                           <IndianRupee className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -460,10 +587,12 @@ export default function OrdersPage() {
                                           {formatCurrency(order.priceTotal)}
                                         </p>
                                       </div>
-                                      
+
                                       <div className="pt-3 border-t border-indigo-900/30">
                                         <div className="flex items-center justify-between">
-                                          <span className="text-xs sm:text-sm text-gray-400">Plan Type</span>
+                                          <span className="text-xs sm:text-sm text-gray-400">
+                                            Plan Type
+                                          </span>
                                           <span className="px-2 sm:px-3 py-1 bg-indigo-900/30 rounded-full text-xs sm:text-sm font-medium">
                                             {order.planType || "Standard"}
                                           </span>
@@ -482,7 +611,7 @@ export default function OrdersPage() {
                                         Customer Information
                                       </h3>
                                     </div>
-                                    
+
                                     <div className="space-y-3 sm:space-y-4">
                                       <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                         <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
@@ -490,10 +619,11 @@ export default function OrdersPage() {
                                           <span>Customer Name</span>
                                         </div>
                                         <p className="text-sm sm:text-base font-semibold text-white">
-                                          {order.user?.firstName} {order.user?.lastName}
+                                          {order.user?.firstName}{" "}
+                                          {order.user?.lastName}
                                         </p>
                                       </div>
-                                      
+
                                       <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                         <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                           <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -503,7 +633,7 @@ export default function OrdersPage() {
                                           {order.user?.email || "N/A"}
                                         </p>
                                       </div>
-                                      
+
                                       {order.user?.billingAddress && (
                                         <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                           <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-2">
@@ -512,25 +642,35 @@ export default function OrdersPage() {
                                           </div>
                                           <div className="space-y-1">
                                             <p className="text-sm text-white">
-                                              {order.user.billingAddress.streetAddress}
+                                              {
+                                                order.user.billingAddress
+                                                  .streetAddress
+                                              }
                                             </p>
                                             <p className="text-xs text-gray-300">
-                                              {order.user.billingAddress.city}, {order.user.billingAddress.state}
+                                              {order.user.billingAddress.city},{" "}
+                                              {order.user.billingAddress.state}
                                             </p>
                                             <p className="text-xs text-gray-400">
-                                              {order.user.billingAddress.country}
+                                              {
+                                                order.user.billingAddress
+                                                  .country
+                                              }
                                             </p>
                                           </div>
                                         </div>
                                       )}
-                                      
+
                                       {/* Payment Method - Only show if available */}
                                       {getPaymentMethod(order) !== "N/A" && (
                                         <div className="pt-3 border-t border-indigo-900/30">
                                           <div className="flex items-center gap-2">
                                             <CircleAlert className="w-4 h-4 text-gray-400" />
                                             <span className="text-xs sm:text-sm text-gray-400">
-                                              Payment Method: <span className="text-white">{getPaymentMethod(order)}</span>
+                                              Payment Method:{" "}
+                                              <span className="text-white">
+                                                {getPaymentMethod(order)}
+                                              </span>
                                             </span>
                                           </div>
                                         </div>
@@ -541,19 +681,71 @@ export default function OrdersPage() {
 
                                 {/* Action Buttons - Responsive */}
                                 <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
-                                  <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-sm sm:text-base transition-colors">
-                                    Manage Server
+                                  <button
+                                    onClick={() =>
+                                      handlePowerAction(order.id, "start")
+                                    }
+                                    disabled={
+                                      !canAction(order.liveState, "start") ||
+                                      powerLoading[order.id]
+                                    }
+                                    className="flex-1 sm:flex-none px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg font-medium text-sm"
+                                  >
+                                    Start
                                   </button>
-                                  <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium text-sm sm:text-base transition-colors">
-                                    View Invoice
+
+                                  <button
+                                    onClick={() =>
+                                      handlePowerAction(order.id, "stop")
+                                    }
+                                    disabled={
+                                      !canAction(order.liveState, "stop") ||
+                                      powerLoading[order.id]
+                                    }
+                                    className="flex-1 sm:flex-none px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white rounded-lg font-medium text-sm"
+                                  >
+                                    Stop
                                   </button>
-                                  {order.status !== "CANCELLED" && order.status !== "EXPIRED" && (
-                                    <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 border border-red-500/30 hover:bg-red-500/10 text-red-300 rounded-lg font-medium text-sm sm:text-base transition-colors">
-                                      Cancel Order
-                                    </button>
-                                  )}
-                                  <button className="flex-1 sm:flex-none px-3 sm:px-4 py-2 border border-indigo-500/30 hover:bg-indigo-500/10 text-indigo-300 rounded-lg font-medium text-sm sm:text-base transition-colors">
-                                    Contact Customer
+
+                                  <button
+                                    onClick={() =>
+                                      handlePowerAction(order.id, "reboot")
+                                    }
+                                    disabled={
+                                      !canAction(order.liveState, "reboot") ||
+                                      powerLoading[order.id]
+                                    }
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Reboot
+                                  </button>
+
+                                  <button
+                                    onClick={() =>
+                                      handlePowerAction(order.id, "hibernate")
+                                    }
+                                    disabled={
+                                      !canAction(
+                                        order.liveState,
+                                        "hibernate"
+                                      ) || powerLoading[order.id]
+                                    }
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-50 text-indigo-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Hibernate
+                                  </button>
+
+                                  <button
+                                    onClick={() =>
+                                      handlePowerAction(order.id, "resume")
+                                    }
+                                    disabled={
+                                      !canAction(order.liveState, "resume") ||
+                                      powerLoading[order.id]
+                                    }
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-50 text-indigo-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Resume
                                   </button>
                                 </div>
                               </div>
@@ -570,7 +762,9 @@ export default function OrdersPage() {
               <div className="p-4 sm:p-6 border-t border-indigo-900/30">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   <p className="text-xs sm:text-sm text-gray-400">
-                    Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, orders.length)} of {orders.length} entries
+                    Showing {startIndex + 1} to{" "}
+                    {Math.min(startIndex + itemsPerPage, orders.length)} of{" "}
+                    {orders.length} entries
                   </p>
 
                   <div className="flex items-center gap-1 sm:gap-2">
@@ -623,7 +817,9 @@ export default function OrdersPage() {
                     </div>
 
                     <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
                       disabled={currentPage === totalPages}
                       className="px-3 sm:px-4 py-1.5 sm:py-2 border border-indigo-900/50 rounded-lg text-indigo-300 hover:bg-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                     >
@@ -640,9 +836,12 @@ export default function OrdersPage() {
                 <div className="inline-block p-4 bg-indigo-900/20 rounded-full mb-4">
                   <Package className="w-12 h-12 text-indigo-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">No Orders Found</h3>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  No Orders Found
+                </h3>
                 <p className="text-gray-400 max-w-md mx-auto">
-                  There are no orders in the system yet. Orders will appear here once customers make purchases.
+                  There are no orders in the system yet. Orders will appear here
+                  once customers make purchases.
                 </p>
               </div>
             )}

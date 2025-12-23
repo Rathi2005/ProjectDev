@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { 
-  CheckCircle, 
-  AlertCircle, 
-  Server, 
-  Cpu, 
-  Globe, 
+import {
+  CheckCircle,
+  AlertCircle,
+  Server,
+  Cpu,
+  Globe,
   Calendar,
   Loader2,
   CreditCard,
@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-  Shield
+  Shield,
 } from "lucide-react";
 
 const SummarySidebar = ({
@@ -21,12 +21,15 @@ const SummarySidebar = ({
   selectedType,
   selectedResources,
   serverId,
+  onPaymentStart,
 }) => {
   const [serverCount, setServerCount] = useState(1);
   const [vmName, setVmName] = useState("my-shared-vm-test-3");
   const [isLoading, setIsLoading] = useState(false);
   const [months, setMonths] = useState("1");
-  const [configExpanded, setConfigExpanded] = useState(false);
+
+  // Open configuration by default
+  const [configExpanded, setConfigExpanded] = useState(true);
 
   // Function to check if token is valid
   const isTokenValid = (token) => {
@@ -58,8 +61,8 @@ const SummarySidebar = ({
   const calculatePricing = useMemo(() => {
     if (!selectedResources || !selectedResources.pricing) {
       return {
-        serverPrice: 590,
-        ipv4Price: 42,
+        serverPrice: 0,
+        ipv4Price: 0,
       };
     }
 
@@ -68,6 +71,19 @@ const SummarySidebar = ({
       ipv4Price: 42,
     };
   }, [selectedResources]);
+
+  // Calculate total monthly price
+  const monthlyTotal = useMemo(() => {
+    return (
+      (calculatePricing.serverPrice + calculatePricing.ipv4Price) * serverCount
+    );
+  }, [calculatePricing, serverCount]);
+
+  // Calculate total payable amount (monthlyTotal * months)
+  const totalPayable = useMemo(() => {
+    const monthsNum = Number(months) || 1;
+    return monthlyTotal * monthsNum;
+  }, [monthlyTotal, months]);
 
   // Prepare the complete server configuration object
   const serverConfig = useMemo(() => {
@@ -88,10 +104,6 @@ const SummarySidebar = ({
 
     return config;
   }, [vmName, serverId, selectedOS, selectedType, selectedResources, months]);
-
-  // Total price calculation
-  const total =
-    (calculatePricing.serverPrice + calculatePricing.ipv4Price) * serverCount;
 
   // Handle VM name change
   const handleVmNameChange = (e) => {
@@ -188,7 +200,11 @@ const SummarySidebar = ({
       });
 
       const data = await response.json();
-      alert("🎉 Server Created Successfully!");
+      if (data?.paymentSessionId && data?.paymentId) {
+        onPaymentStart?.(data.paymentSessionId, data.paymentId);
+      } else {
+        alert("Payment session not received");
+      }
     } catch (error) {
       let errorMessage = error.message || "Unknown error occurred";
 
@@ -223,7 +239,7 @@ const SummarySidebar = ({
       selectedResources?.ramPriceId &&
       selectedResources?.diskPriceId &&
       selectedResources?.bandwidthPriceId &&
-      months && 
+      months &&
       vmName.trim().length > 0 &&
       Number(months) > 0;
 
@@ -238,7 +254,13 @@ const SummarySidebar = ({
 
   // Calculate completion percentage
   const completionPercentage = useMemo(() => {
-    const steps = [serverId, selectedOS?.id, selectedType, selectedResources?.cpuPriceId, months];
+    const steps = [
+      serverId,
+      selectedOS?.id,
+      selectedType,
+      selectedResources?.cpuPriceId,
+      months,
+    ];
     const completed = steps.filter(Boolean).length;
     return Math.round((completed / steps.length) * 100);
   }, [serverId, selectedOS, selectedType, selectedResources, months]);
@@ -257,14 +279,20 @@ const SummarySidebar = ({
               <p className="text-sm text-gray-400">Review your configuration</p>
             </div>
           </div>
-          <div className={`px-3 py-1 rounded-full text-sm font-medium ${isConfigurationComplete() ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
+          <div
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              isConfigurationComplete()
+                ? "bg-green-900/30 text-green-400"
+                : "bg-yellow-900/30 text-yellow-400"
+            }`}
+          >
             {completionPercentage}%
           </div>
         </div>
-        
+
         {/* Progress Bar */}
         <div className="w-full bg-gray-800 rounded-full h-1.5">
-          <div 
+          <div
             className="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full transition-all duration-500"
             style={{ width: `${completionPercentage}%` }}
           />
@@ -305,7 +333,7 @@ const SummarySidebar = ({
           </div>
         </div>
 
-        {/* Configuration Details - Collapsible */}
+        {/* Configuration Details - Collapsible (Open by default) */}
         <div className="bg-gray-900/30 rounded-xl border border-gray-700/50">
           <button
             onClick={() => setConfigExpanded(!configExpanded)}
@@ -313,9 +341,19 @@ const SummarySidebar = ({
           >
             <div className="flex items-center gap-2">
               <Cpu className="w-4 h-4 text-gray-400" />
-              <span className="font-medium text-gray-300">Configuration Details</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${isConfigurationComplete() ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
-                {isConfigurationComplete() ? 'Complete' : `${completionPercentage}%`}
+              <span className="font-medium text-gray-300">
+                Configuration Details
+              </span>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  isConfigurationComplete()
+                    ? "bg-green-900/30 text-green-400"
+                    : "bg-yellow-900/30 text-yellow-400"
+                }`}
+              >
+                {isConfigurationComplete()
+                  ? "Complete"
+                  : `${completionPercentage}%`}
               </span>
             </div>
             {configExpanded ? (
@@ -330,8 +368,16 @@ const SummarySidebar = ({
               {/* Location */}
               <div className="flex items-center justify-between pt-3">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${serverId ? 'bg-green-900/20' : 'bg-gray-800'}`}>
-                    <Globe className={`w-4 h-4 ${serverId ? 'text-green-400' : 'text-gray-500'}`} />
+                  <div
+                    className={`p-2 rounded-lg ${
+                      serverId ? "bg-green-900/20" : "bg-gray-800"
+                    }`}
+                  >
+                    <Globe
+                      className={`w-4 h-4 ${
+                        serverId ? "text-green-400" : "text-gray-500"
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="font-medium text-sm">Location</p>
@@ -345,13 +391,23 @@ const SummarySidebar = ({
               {/* OS */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${selectedOS?.id ? 'bg-blue-900/20' : 'bg-gray-800'}`}>
-                    <Server className={`w-4 h-4 ${selectedOS?.id ? 'text-blue-400' : 'text-gray-500'}`} />
+                  <div
+                    className={`p-2 rounded-lg ${
+                      selectedOS?.id ? "bg-blue-900/20" : "bg-gray-800"
+                    }`}
+                  >
+                    <Server
+                      className={`w-4 h-4 ${
+                        selectedOS?.id ? "text-blue-400" : "text-gray-500"
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="font-medium text-sm">Operating System</p>
                     <p className="text-sm text-gray-400">
-                      {selectedOS ? `${selectedOS.name} ${selectedOS.version}` : "Not selected"}
+                      {selectedOS
+                        ? `${selectedOS.name} ${selectedOS.version}`
+                        : "Not selected"}
                     </p>
                   </div>
                 </div>
@@ -360,8 +416,16 @@ const SummarySidebar = ({
               {/* Server Type */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${selectedType ? 'bg-purple-900/20' : 'bg-gray-800'}`}>
-                    <Package className={`w-4 h-4 ${selectedType ? 'text-purple-400' : 'text-gray-500'}`} />
+                  <div
+                    className={`p-2 rounded-lg ${
+                      selectedType ? "bg-purple-900/20" : "bg-gray-800"
+                    }`}
+                  >
+                    <Package
+                      className={`w-4 h-4 ${
+                        selectedType ? "text-purple-400" : "text-gray-500"
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="font-medium text-sm">Server Type</p>
@@ -375,15 +439,27 @@ const SummarySidebar = ({
               {/* Resources */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${selectedResources?.cpuPriceId ? 'bg-amber-900/20' : 'bg-gray-800'}`}>
-                    <Cpu className={`w-4 h-4 ${selectedResources?.cpuPriceId ? 'text-amber-400' : 'text-gray-500'}`} />
+                  <div
+                    className={`p-2 rounded-lg ${
+                      selectedResources?.cpuPriceId
+                        ? "bg-amber-900/20"
+                        : "bg-gray-800"
+                    }`}
+                  >
+                    <Cpu
+                      className={`w-4 h-4 ${
+                        selectedResources?.cpuPriceId
+                          ? "text-amber-400"
+                          : "text-gray-500"
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="font-medium text-sm">Resources</p>
                     <p className="text-sm text-gray-400">
-                      {selectedResources?.vCPU ? 
-                        `${selectedResources.vCPU} vCPU • ${selectedResources.ram} RAM • ${selectedResources.disk} Disk` : 
-                        "Not configured"}
+                      {selectedResources?.vCPU
+                        ? `${selectedResources.vCPU} vCPU • ${selectedResources.ram} RAM • ${selectedResources.disk} Disk`
+                        : "Not configured"}
                     </p>
                   </div>
                 </div>
@@ -392,36 +468,79 @@ const SummarySidebar = ({
           )}
         </div>
 
-        {/* Pricing Summary - Always Visible & Compact */}
+        {/* Pricing Summary - Shows both monthly and total payable */}
         <div className="bg-gradient-to-br from-gray-900/50 to-gray-800/30 rounded-xl p-4 border border-gray-700/50 shadow-lg">
-          <h3 className="text-base font-semibold text-white mb-3">Pricing</h3>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-300">Server ({serverCount}x)</span>
-              <span className="text-sm font-medium text-white">
-                ₹{(calculatePricing.serverPrice * serverCount).toFixed(0)}
-                <span className="text-xs text-gray-400 ml-1">/mo</span>
-              </span>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-300">IPv4 Address</span>
-              <span className="text-sm font-medium text-white">
-                ₹{(calculatePricing.ipv4Price * serverCount).toFixed(0)}
-                <span className="text-xs text-gray-400 ml-1">/mo</span>
-              </span>
-            </div>
+          <h3 className="text-base font-semibold text-white mb-3">
+            Pricing Summary
+          </h3>
 
-            {/* Total - Prominent */}
-            <div className="pt-3 mt-2 border-t border-gray-700">
+          <div className="space-y-3">
+            {/* Monthly Breakdown */}
+            <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-white">Total Amount</span>
-                <div className="text-right">
-                  <div className="text-xl font-bold text-white">₹{total.toFixed(0)}</div>
-                  <div className="text-xs text-gray-400">per month</div>
+                <span className="text-sm text-gray-300">
+                  Server ({serverCount}x)
+                </span>
+                <span className="text-sm font-medium text-white">
+                  ₹{(calculatePricing.serverPrice * serverCount).toFixed(0)}
+                  <span className="text-xs text-gray-400 ml-1">/month</span>
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-300">IPv4 Address</span>
+                <span className="text-sm font-medium text-white">
+                  ₹{(calculatePricing.ipv4Price * serverCount).toFixed(0)}
+                  <span className="text-xs text-gray-400 ml-1">/month</span>
+                </span>
+              </div>
+
+              {/* Monthly Total */}
+              <div className="pt-2 border-t border-gray-700/50">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-300">
+                    Monthly Total
+                  </span>
+                  <span className="text-sm font-bold text-white">
+                    ₹{monthlyTotal.toFixed(0)}
+                    <span className="text-xs text-gray-400 ml-1">/month</span>
+                  </span>
                 </div>
               </div>
+            </div>
+
+            {/* Total Payable (for selected months) */}
+            <div className="pt-3 mt-2 border-t border-gray-700 bg-gray-900/30 rounded-lg p-3">
+              <div className="flex justify-between items-center mb-1">
+                <div>
+                  <span className="font-bold text-white">Total Payable</span>
+                  <div className="text-xs text-gray-400">
+                    {Number(months) > 1
+                      ? `For ${months} months`
+                      : "For 1 month"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xl font-bold text-white">
+                    ₹{totalPayable.toFixed(0)}
+                  </div>
+                  {Number(months) > 1 && (
+                    <div className="text-xs text-gray-400">
+                      (₹{monthlyTotal.toFixed(0)} × {months} months)
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Per month equivalent for longer durations */}
+              {Number(months) > 1 && (
+                <div className="flex justify-between items-center text-xs text-gray-400 mt-2 pt-2 border-t border-gray-700/30">
+                  <span>Equivalent to:</span>
+                  <span>
+                    ₹{(totalPayable / Number(months)).toFixed(0)}/month
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -432,18 +551,24 @@ const SummarySidebar = ({
         {/* Status Indicators - Inline */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-1 px-2 py-1 rounded ${hasValidToken ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+            <div
+              className={`flex items-center gap-1 px-2 py-1 rounded ${
+                hasValidToken
+                  ? "bg-green-900/30 text-green-400"
+                  : "bg-red-900/30 text-red-400"
+              }`}
+            >
               {hasValidToken ? (
                 <CheckCircle className="w-3 h-3" />
               ) : (
                 <AlertCircle className="w-3 h-3" />
               )}
               <span className="text-sm">
-                {hasValidToken ? 'Authenticated' : 'Login Required'}
+                {hasValidToken ? "Authenticated" : "Login Required"}
               </span>
             </div>
           </div>
-          
+
           <div className="text-sm text-gray-400">
             Est. setup: <span className="text-white">~2 minutes</span>
           </div>
@@ -454,9 +579,10 @@ const SummarySidebar = ({
           onClick={handleCreateServer}
           disabled={!isConfigurationComplete() || !hasValidToken || isLoading}
           className={`w-full py-3.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-base
-            ${isConfigurationComplete() && hasValidToken && !isLoading
-              ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-              : "bg-gray-800 text-gray-400 cursor-not-allowed"
+            ${
+              isConfigurationComplete() && hasValidToken && !isLoading
+                ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                : "bg-gray-800 text-gray-400 cursor-not-allowed"
             }`}
         >
           {isLoading ? (
@@ -477,7 +603,7 @@ const SummarySidebar = ({
           ) : (
             <>
               <CreditCard className="w-5 h-5" />
-              Deploy Server Now
+              Pay ₹{totalPayable.toFixed(0)} & Deploy
             </>
           )}
         </button>

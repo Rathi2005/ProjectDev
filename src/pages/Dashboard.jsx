@@ -107,6 +107,275 @@ export default function Dashboard() {
     );
   };
 
+  // const cashfreeRef = useRef(null);
+
+  // useEffect(() => {
+  //   cashfreeRef.current = Cashfree({ mode: "sandbox" });
+  // }, []);
+
+  // const [isVerifying, setIsVerifying] = useState(false);
+
+  // const token = localStorage.getItem("token");
+
+  // // Add this temporary function to test manually
+  // const testPaymentStatus = async (paymentId) => {
+  //   console.log("Testing payment status endpoint...");
+  //   try {
+  //     const res = await fetch(
+  //       `https://vps.devai.in/api/payments/${paymentId}/verify`,
+  //       {
+  //         headers: { Authorization: `Bearer ${token}` },
+  //       }
+  //     );
+  //     const data = await res.json();
+  //     console.log("Status API Response:", data);
+  //     return data;
+  //   } catch (error) {
+  //     console.error("Test failed:", error);
+  //   }
+  // };
+
+  // // Call this in console with: testPaymentStatus("your-payment-id")
+
+  // const verifyPayment = async (paymentId) => {
+  //   try {
+  //     setIsVerifying(true);
+
+  //     const res = await fetch(
+  //       `https://vps.devai.in/api/payments/${paymentId}/verify`,
+  //       {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
+
+  //     const data = await res.json();
+
+  //     if (data.success) {
+  //       alert("✅ Payment verified & server created!");
+  //       // Refresh servers list
+  //       window.location.reload(); // Or call a refresh function
+  //     } else {
+  //       alert("❌ Verification failed: " + (data.message || "Unknown error"));
+  //     }
+  //   } catch (error) {
+  //     console.error("Verification error:", error);
+  //     alert("❌ Error verifying payment. Please check your dashboard.");
+  //   } finally {
+  //     setIsVerifying(false);
+  //   }
+  // };
+
+  // // use "production" in live
+
+  // const handlePayment = async (sessionId, paymentId) => {
+  //   console.log("=== Starting Payment Flow ===");
+  //   console.log("Session ID:", sessionId);
+  //   console.log("Payment ID:", paymentId);
+  //   console.log("Token available:", !!token);
+  //   console.log("Cashfree ready:", !!cashfreeRef.current);
+
+  //   if (!cashfreeRef.current) {
+  //     console.error("Cashfree SDK not ready");
+  //     return;
+  //   }
+
+  //   // Store the poller reference globally
+  //   let poller = null;
+
+  //   // 1. START POLLING IMMEDIATELY (not waiting for onClose)
+  //   const startPolling = () => {
+  //     console.log("🔄 Starting polling for payment status...");
+  //     let pollCount = 0;
+  //     const maxPolls = 60; // 60 * 3 seconds = 3 minutes max
+  //     const pollInterval = 3000; // 3 seconds
+
+  //     poller = setInterval(async () => {
+  //       pollCount++;
+  //       console.log(`🔍 Poll attempt ${pollCount}/${maxPolls}`);
+
+  //       if (pollCount > maxPolls) {
+  //         clearInterval(poller);
+  //         console.log("⏰ Polling timeout reached");
+  //         alert(
+  //           "Payment verification taking longer than expected. Please check your dashboard."
+  //         );
+  //         return;
+  //       }
+
+  //       try {
+  //         // Check payment status
+  //         const statusRes = await fetch(
+  //           `https://vps.devai.in/api/payments/${paymentId}/verify`,
+  //           {
+  //             headers: {
+  //               Authorization: `Bearer ${token}`,
+  //             },
+  //           }
+  //         );
+
+  //         console.log("Status response status:", statusRes.status);
+
+  //         if (statusRes.ok) {
+  //           const statusData = await statusRes.json();
+  //           console.log("Payment status data:", statusData);
+
+  //           // Adjust these conditions based on your actual API response
+  //           if (
+  //             statusData.status === "SUCCESS" ||
+  //             statusData.status === "success" ||
+  //             statusData.status === "completed" ||
+  //             statusData.payment_status === "SUCCESS"
+  //           ) {
+  //             clearInterval(poller);
+  //             console.log("✅ Payment successful, calling verify...");
+  //             await verifyPayment(paymentId);
+  //           } else if (
+  //             statusData.status === "FAILED" ||
+  //             statusData.status === "failed" ||
+  //             statusData.payment_status === "FAILED"
+  //           ) {
+  //             clearInterval(poller);
+  //             console.log("❌ Payment failed");
+  //             alert("Payment failed. Please try again.");
+  //           } else {
+  //             console.log(
+  //               "⏳ Payment still pending, status:",
+  //               statusData.status
+  //             );
+  //           }
+  //         } else {
+  //           console.error("Status check failed:", statusRes.status);
+  //         }
+  //       } catch (error) {
+  //         console.error("Polling error:", error);
+  //       }
+  //     }, pollInterval);
+  //   };
+
+  //   // 2. Start polling BEFORE opening checkout
+  //   startPolling();
+
+  //   // 3. Configure checkout with multiple callbacks
+  //   const checkoutOptions = {
+  //     paymentSessionId: sessionId,
+  //     redirectTarget: "_modal",
+  //     onSuccess: (data) => {
+  //       console.log("🎉 Cashfree onSuccess called:", data);
+  //     },
+  //     onFailure: (data) => {
+  //       console.error("💥 Cashfree onFailure called:", data);
+  //     },
+  //     onClose: () => {
+  //       console.log("🚪 Modal closed callback triggered");
+  //       // Polling is already running, no need to restart
+  //     },
+  //   };
+
+  //   try {
+  //     console.log("🚀 Opening Cashfree checkout...");
+  //     cashfreeRef.current.checkout(checkoutOptions);
+  //   } catch (error) {
+  //     console.error("Checkout error:", error);
+  //     if (poller) clearInterval(poller);
+  //     alert("Error starting payment. Please try again.");
+  //   }
+  // };
+  const cashfreeRef = useRef(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const token = localStorage.getItem("token");
+
+  // Initialize Cashfree
+  useEffect(() => {
+    if (typeof Cashfree !== "undefined") {
+      cashfreeRef.current = Cashfree({ mode: "sandbox" });
+    }
+  }, []);
+
+  // Verify payment - only called after successful payment
+  const verifyPayment = async (paymentId) => {
+    try {
+      setIsVerifying(true);
+      console.log("🔐 Verifying payment:", paymentId);
+
+      const res = await fetch(
+        `https://vps.devai.in/api/payments/${paymentId}/verify`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert("✅ Payment verified & server created!");
+        // Refresh after delay to give server time
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        alert(`❌ ${data.message || "Verification failed"}`);
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      alert("❌ Error verifying payment");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handlePayment = async (sessionId, paymentId) => {
+    console.group("🔍 [DEBUG] Payment Flow Started");
+    console.log("1. Session ID (first 20 chars):", sessionId?.substring(0, 20));
+    console.log("2. Payment ID:", paymentId);
+    console.log("3. Token exists:", !!token);
+    console.log("4. Cashfree SDK loaded:", !!cashfreeRef.current);
+    console.groupEnd();
+
+    if (!cashfreeRef.current) {
+      alert("Payment system not ready. Please refresh.");
+      return;
+    }
+
+    // Define callbacks with clear logging
+    const checkoutOptions = {
+      paymentSessionId: sessionId,
+      redirectTarget: "_modal",
+      onSuccess: async (data) => {
+        console.log(
+          "🎉 [SUCCESS] Cashfree reported PAYMENT SUCCESS. Data:",
+          data
+        );
+        console.log("🔄 Now calling OUR BACKEND /verify endpoint...");
+        await verifyPayment(paymentId); // This is the critical line
+      },
+      onFailure: (data) => {
+        console.error(
+          "💥 [FAILURE] Cashfree reported PAYMENT FAILED. Data:",
+          data
+        );
+        alert("Payment failed or was cancelled. Please try again.");
+      },
+      onClose: () => {
+        console.log(
+          "🚪 [CLOSE] User closed the payment modal without completing."
+        );
+      },
+    };
+
+    try {
+      console.log("🚀 Opening Cashfree checkout modal...");
+      cashfreeRef.current.checkout(checkoutOptions);
+    } catch (error) {
+      console.error("🔥 [ERROR] Failed to open checkout:", error);
+    }
+  };
+
   return (
     <div className="bg-[#0e1525] text-gray-100 h-screen flex flex-col overflow-hidden">
       {/* 🧭 Dashboard Header Wrapper */}
@@ -399,6 +668,7 @@ export default function Dashboard() {
               onMobileCreate={() => {
                 alert("Server creation would proceed here!");
               }}
+              onPaymentStart={handlePayment}
               isMobile={false}
             />
           </aside>
@@ -448,6 +718,7 @@ export default function Dashboard() {
                       selectedResources={selectedResources}
                       serverId={serverId}
                       isMobile={true}
+                      onPaymentStart={handlePayment}
                     />
                   </div>
                 </div>
@@ -468,6 +739,13 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      {isVerifying && (
+        <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center">
+          <p className="text-white text-lg font-semibold">
+            Verifying payment, please wait…
+          </p>
+        </div>
+      )}
     </div>
   );
 }
