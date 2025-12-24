@@ -108,7 +108,7 @@ export default function Dashboard() {
   };
 
   const cashfreeRef = useRef(null);
-  
+
   useEffect(() => {
     cashfreeRef.current = Cashfree({ mode: "sandbox" });
   }, []);
@@ -217,7 +217,6 @@ export default function Dashboard() {
 
         // Payment still pending, continue polling
         console.log(`⏳ Payment status: ${data.status || "pending"}`);
-
       } catch (err) {
         console.error("Polling error:", err);
         // Don't stop on network errors, continue polling
@@ -473,7 +472,7 @@ export default function Dashboard() {
           <div
             id="main-content"
             ref={mainContentRef}
-            className={`flex-1 overflow-y-auto scroll-smooth transition-all duration-300 ${
+            className={`flex-1 overflow-y-auto scroll-smooth transition-all duration-300 no-scrollbar ${
               showSidebar ? "lg:pr-[340px]" : ""
             }`}
           >
@@ -645,7 +644,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      
+
       {/* Payment Verification Overlay */}
       {isVerifying && (
         <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center">
@@ -653,7 +652,7 @@ export default function Dashboard() {
             <div className="flex flex-col items-center gap-4">
               {/* Spinner */}
               <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-              
+
               <div className="text-center">
                 <p className="text-white text-lg font-semibold mb-2">
                   Verifying Payment
@@ -671,4 +670,4 @@ export default function Dashboard() {
       )}
     </div>
   );
-} 
+}
