@@ -463,7 +463,7 @@ export default function OrdersPage() {
                         {/* EXPANDED DROPDOWN ROW - Responsive */}
                         {expandedRow === order.id && (
                           <tr className="bg-[#0f172a] border-t border-indigo-900/30">
-                            <td colSpan="10" className="p-0">
+                            <td colSpan="11" className="p-0">
                               <div className="p-4 sm:p-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                   {/* Server Specifications Card */}
@@ -709,35 +709,6 @@ export default function OrdersPage() {
 
                                   <button
                                     onClick={() =>
-                                      handlePowerAction(order.id, "reboot")
-                                    }
-                                    disabled={
-                                      !canAction(order.liveState, "reboot") ||
-                                      powerLoading[order.id]
-                                    }
-                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
-                                  >
-                                    Hard Reboot
-                                  </button>
-
-                                  <button
-                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
-                                  >
-                                    Easy Reboot
-                                  </button>
-                                  <button
-                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
-                                  >
-                                    Destroy
-                                  </button>
-                                  <button
-                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
-                                  >
-                                    Rebuild
-                                  </button>
-
-                                  <button
-                                    onClick={() =>
                                       handlePowerAction(order.id, "hibernate")
                                     }
                                     disabled={
@@ -763,6 +734,37 @@ export default function OrdersPage() {
                                   >
                                     Resume
                                   </button>
+
+                                  <button
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Rebuild
+                                  </button>
+
+                                  <button
+                                    onClick={() =>
+                                      handlePowerAction(order.id, "reboot")
+                                    }
+                                    disabled={
+                                      !canAction(order.liveState, "reboot") ||
+                                      powerLoading[order.id]
+                                    }
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Hard Reboot
+                                  </button>
+
+                                  <button
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Easy Reboot
+                                  </button>
+                                  <button
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Destroy
+                                  </button>
+                                  
                                 </div>
                               </div>
                             </td>
