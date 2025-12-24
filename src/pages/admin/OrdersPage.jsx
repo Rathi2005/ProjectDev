@@ -226,7 +226,7 @@ export default function OrdersPage() {
     if (s === "running") return "START";
     if (s === "stopped") return "STOP";
     if (s === "not_provisioned") return "NOT_PROVISIONED";
-
+    if (s === "hibernated/paused") return "HIBERNATE"
     return "UNKNOWN";
   };
 
@@ -238,7 +238,7 @@ export default function OrdersPage() {
       STOP: ["start"],
       HIBERNATE: ["resume"],
       RESUME: ["stop"],
-      REBOOT: [],
+      REBOOT: ["start", "stop", "hibernate", "reboot", "resume"],
       NOT_PROVISIONED: [],
     };
 
@@ -717,7 +717,23 @@ export default function OrdersPage() {
                                     }
                                     className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
                                   >
-                                    Reboot
+                                    Hard Reboot
+                                  </button>
+
+                                  <button
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Easy Reboot
+                                  </button>
+                                  <button
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Destroy
+                                  </button>
+                                  <button
+                                    className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                  >
+                                    Rebuild
                                   </button>
 
                                   <button
