@@ -199,6 +199,7 @@ export default function Dashboard() {
         // ✅ SUCCESS - Payment completed
         if (
           data.status === "PAID" ||
+          data.status === "SUCCESS" ||
           data.payment_status === "PAID" ||
           data.success === true
         ) {
