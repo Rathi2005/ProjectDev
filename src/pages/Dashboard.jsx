@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/user/Sidebar";
 import Header from "../components/user/Header";
 import DashboardPage from "../components/user/dashboard/DashboardPage";
@@ -10,6 +11,8 @@ import SummarySidebar from "../components/user/server/SummarySidebar";
 import { Menu, X, ListChecks, User, Settings } from "lucide-react";
 
 export default function Dashboard() {
+  const navigate = useNavigate(); // Add this
+
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [serverId, setServerId] = useState(null);
   const [selectedOS, setSelectedOS] = useState(null);
@@ -117,170 +120,48 @@ export default function Dashboard() {
 
   const token = localStorage.getItem("token");
 
-  // Refs for polling management
-  const pollerRef = useRef(null);
-  const pollCountRef = useRef(0);
-  const paymentFinalizedRef = useRef(false); // Guard to prevent multiple handling
-  const paymentIdRef = useRef(null); // Track current payment ID
+  const handlePayment = async (sessionId) => {
+    console.log("1. Starting payment...");
 
-  const stopPolling = (reason = "unknown") => {
-    if (pollerRef.current) {
-      clearInterval(pollerRef.current);
-      pollerRef.current = null;
-      pollCountRef.current = 0;
-      paymentIdRef.current = null;
-      console.log(`🛑 Polling stopped: ${reason}`);
-    }
-  };
-
-  const finalizePayment = (status, message) => {
-    // Prevent multiple finalizations
-    if (paymentFinalizedRef.current) return;
-    paymentFinalizedRef.current = true;
-
-    // Stop polling immediately
-    stopPolling(status);
-
-    // Hide verification loader
-    setIsVerifying(false);
-
-    // Show appropriate message
-    alert(message);
-
-    // In future, replace with:
-    // 1. Show toast notification
-    // 2. Refresh server list
-    // 3. Navigate to dashboard
-
-    // For now, reload page on success
-    if (status === "success") {
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    }
-  };
-
-  const startPolling = (paymentId) => {
-    // Reset finalization guard for new payment
-    paymentFinalizedRef.current = false;
-    paymentIdRef.current = paymentId;
-
-    console.log("🔄 Starting polling...");
-    pollCountRef.current = 0;
-
-    pollerRef.current = setInterval(async () => {
-      pollCountRef.current++;
-
-      console.log(
-        `🔍 Poll ${pollCountRef.current}/60 for payment ${paymentId}`
-      );
-
-      // ⏰ Timeout after 60 attempts (3 minutes)
-      if (pollCountRef.current > 60) {
-        finalizePayment("timeout", "⏰ Payment verification timed out");
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          `https://vps.devai.in/api/payments/${paymentId}/verify`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        if (!res.ok) {
-          console.warn(`❌ Verify request failed: ${res.status}`);
-          return;
-        }
-
-        const data = await res.json();
-
-        // ✅ SUCCESS - Payment completed
-        if (
-          data.status === "PAID" ||
-          data.status === "SUCCESS" ||
-          data.payment_status === "PAID" ||
-          data.success === true
-        ) {
-          finalizePayment(
-            "success",
-            "✅ Payment successful! Server will be provisioned shortly."
-          );
-          return;
-        }
-
-        // ❌ FAILURE - Payment failed
-        if (data.status === "FAILED" || data.payment_status === "FAILED") {
-          finalizePayment("failed", "❌ Payment failed");
-          return;
-        }
-
-        // Payment still pending, continue polling
-        console.log(`⏳ Payment status: ${data.status || "pending"}`);
-      } catch (err) {
-        console.error("Polling error:", err);
-        // Don't stop on network errors, continue polling
-      }
-    }, 3000); // Poll every 3 seconds
-  };
-
-  const handlePayment = async (sessionId, paymentId) => {
     if (!cashfreeRef.current) {
+      console.log("Payment system not ready");
       alert("Payment system not ready");
       return;
     }
 
-    // Clear any previous polling
-    stopPolling("new payment initiated");
-
-    // Show verification loader
     setIsVerifying(true);
-
-    // 🚀 START POLLING BEFORE OPENING MODAL
-    startPolling(paymentId);
+    console.log("2. Setting verifying to true");
 
     const checkoutOptions = {
       paymentSessionId: sessionId,
       redirectTarget: "_modal",
 
-      onSuccess: (data) => {
-        console.log("🎉 Cashfree frontend success:", data);
-        // DO NOTHING here - backend polling will detect success
-        // This prevents double handling
+      onSuccess: () => {
+        console.log("3. onSuccess callback fired!");
+
+        setTimeout(() => {
+          console.log("4. Timeout completed, navigating...");
+          setIsVerifying(false);
+          navigate("/orders");
+        }, 2000);
       },
 
-      onFailure: (data) => {
-        console.log("💥 Cashfree frontend failure:", data);
-        // Only handle if not already finalized
-        if (!paymentFinalizedRef.current) {
-          finalizePayment("cashfree_failure", "Payment failed or cancelled");
-        }
+      onFailure: () => {
+        console.log("Payment failed");
+        setIsVerifying(false);
+        alert("❌ Payment failed or cancelled");
       },
 
       onClose: () => {
-        console.log("🚪 Cashfree modal closed");
-        // Don't stop polling immediately - payment may still be processing
-        // Give a grace period for UPI/async payments
-        setTimeout(() => {
-          // Only show "not completed" if payment hasn't been finalized yet
-          if (!paymentFinalizedRef.current && pollerRef.current) {
-            finalizePayment("modal_closed", "Payment not completed");
-          }
-        }, 10000); // 10 second grace period
+        console.log("Payment popup closed");
+        setIsVerifying(false);
       },
     };
 
-    // Open payment modal
+    console.log("5. Opening payment popup...");
     cashfreeRef.current.checkout(checkoutOptions);
+    console.log("6. Payment popup opened");
   };
-
-  // Clean up polling on unmount
-  useEffect(() => {
-    return () => {
-      stopPolling("component unmount");
-    };
-  }, []);
 
   return (
     <div className="bg-[#0e1525] text-gray-100 h-screen flex flex-col overflow-hidden">
@@ -645,30 +526,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* Payment Verification Overlay */}
-      {isVerifying && (
-        <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center">
-          <div className="bg-[#121a2a] p-6 rounded-xl border border-gray-700 shadow-2xl max-w-sm mx-4">
-            <div className="flex flex-col items-center gap-4">
-              {/* Spinner */}
-              <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-
-              <div className="text-center">
-                <p className="text-white text-lg font-semibold mb-2">
-                  Verifying Payment
-                </p>
-                <p className="text-gray-400 text-sm">
-                  Please wait while we confirm your payment...
-                </p>
-                <p className="text-gray-500 text-xs mt-2">
-                  This may take a few moments
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

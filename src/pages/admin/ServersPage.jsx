@@ -3,7 +3,8 @@ import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "react-hot-toast";   // ✅ Added toast
+import { toast } from "react-hot-toast"; // ✅ Added toast
+import { CheckCircle, XCircle, Wrench } from "lucide-react";
 
 export default function ServersPage() {
   const [showModal, setShowModal] = useState(false);
@@ -137,12 +138,14 @@ export default function ServersPage() {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case "Active":
+    const statusUpper = (status || "INACTIVE").toUpperCase();
+
+    switch (statusUpper) {
+      case "ACTIVE":
         return "text-green-400 bg-green-400/10 border-green-400/30";
-      case "Inactive":
+      case "INACTIVE":
         return "text-red-400 bg-red-400/10 border-red-400/30";
-      case "Maintenance":
+      case "MAINTENANCE":
         return "text-yellow-400 bg-yellow-400/10 border-yellow-400/30";
       default:
         return "text-gray-400 bg-gray-700/10 border-gray-700/30";
@@ -210,6 +213,44 @@ export default function ServersPage() {
     }
   };
 
+  // Add this function after the existing functions
+  const handleStatusChange = async (serverId, newStatus) => {
+    const token = localStorage.getItem("adminToken");
+
+    try {
+      const res = await fetch(`${BASE_URL}/admin/servers/${serverId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        toast.error(`Failed to update status: ${errorText}`);
+        return;
+      }
+
+      const data = await res.json();
+
+      // Update the server in local state
+      setServers((prev) =>
+        prev.map((server) =>
+          server.id === serverId ? { ...server, status: newStatus } : server
+        )
+      );
+
+      toast.success(`Status updated to ${newStatus}`);
+      console.log("Status updated:", data);
+    } catch (err) {
+      console.error("Error updating status:", err);
+      toast.error("Error updating server status");
+    }
+  };
 
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen flex flex-col">
@@ -308,13 +349,74 @@ export default function ServersPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
-                            server.status || "Inactive"
-                          )}`}
-                        >
-                          {server.status || "Inactive"}
-                        </span>
+                        <div className="relative group">
+                          {/* Mobile: Show status badge only */}
+                          <div className="sm:hidden">
+                            <span
+                              className={`
+        px-2 py-1 rounded-full text-xs font-semibold
+        ${getStatusColor(server.status || "INACTIVE")}
+      `}
+                            >
+                              {server.status === "ACTIVE"
+                                ? "Active"
+                                : server.status === "INACTIVE"
+                                ? "Inactive"
+                                : "Maint."}
+                            </span>
+                          </div>
+
+                          {/* Desktop: Show dropdown */}
+                          <div className="hidden sm:block relative">
+                            <select
+                              value={server.status || "INACTIVE"}
+                              onChange={(e) =>
+                                handleStatusChange(server.id, e.target.value)
+                              }
+                              className={`
+          w-full px-3 py-1.5 pr-8 rounded-lg text-xs font-medium cursor-pointer
+          transition-all duration-200 appearance-none
+          ${getStatusColor(server.status || "INACTIVE")}
+          hover:brightness-110 focus:outline-none focus:ring-1 focus:ring-indigo-500
+          bg-black/30 backdrop-blur-sm
+        `}
+                            >
+                              <option
+                                value="ACTIVE"
+                                className="bg-gray-900 text-green-400"
+                              >
+                                Active
+                              </option>
+                              <option
+                                value="INACTIVE"
+                                className="bg-gray-900 text-red-400"
+                              >
+                                Inactive
+                              </option>
+                              <option
+                                value="MAINTENANCE"
+                                className="bg-gray-900 text-yellow-400"
+                              >
+                                Maintenance
+                              </option>
+                            </select>
+                            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                              <svg
+                                className="w-3 h-3 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 9l-7 7-7-7"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3 sm:px-6 text-center whitespace-nowrap">
                         <div className="flex flex-col sm:flex-row gap-2 justify-center">

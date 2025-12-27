@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import LoginForm from "../../components/admin/LoginForm";
@@ -6,17 +6,37 @@ import AdminHeader from "../../components/admin/adminHeader";
 import AdminOtpVerification from "../../components/admin/adminOtpVerification";
 import { toast } from "react-hot-toast";  
 
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 const ADMIN_LOGIN_API = import.meta.env.VITE_ADMIN_LOGIN;
 const ADMIN_OTP_VERIFY = import.meta.env.VITE_ADMIN_OTP_VERIFY;
+const ADMIN_RESEND_OTP = import.meta.env.VITE_ADMIN_RESEND_OTP || `${BASE_URL}/admin/login/resend-otp`;
 
 export default function AdminLoginPage() {
   const [formData, setFormData] = useState({ email: "", otp: "" });
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const countdownRef = useRef(null);
+  
   const navigate = useNavigate();
   const adminToken = localStorage.getItem("adminToken");
+
+  // Start countdown timer for resend OTP
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      countdownRef.current = setTimeout(() => {
+        setResendCountdown(resendCountdown - 1);
+      }, 1000);
+    }
+    return () => {
+      if (countdownRef.current) {
+        clearTimeout(countdownRef.current);
+      }
+    };
+  }, [resendCountdown]);
 
   // Token validation for auto-login
   if (adminToken) {
@@ -48,6 +68,7 @@ export default function AdminLoginPage() {
 
       setOtpSent(true);
       setSuccess("OTP has been sent!");
+      setResendCountdown(60); // Set 60 seconds countdown
       toast.success("OTP sent to your email!");  
 
     } catch (err) {
@@ -80,7 +101,6 @@ export default function AdminLoginPage() {
 
       if (data?.token) {
         localStorage.setItem("adminToken", data.token);
-
         toast.success("LoggedIn Successfully!");
         setTimeout(() => navigate("/admin/dashboard"), 1200);
       } else {
@@ -90,12 +110,39 @@ export default function AdminLoginPage() {
     } catch (err) {
       setError(err.message || "Something went wrong!");
       toast.error(err.message || "OTP verification failed");
-
     } finally {
       setLoading(false);
     }
   };
-  
+
+  // Resend OTP function
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0 || resendLoading) return;
+    
+    setResendLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const res = await fetch(ADMIN_RESEND_OTP, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      if (!res.ok) throw new Error("Failed to resend OTP");
+
+      setResendCountdown(60); // Reset countdown
+      setSuccess("New OTP has been sent!");
+      toast.success("New OTP sent to your email!");
+
+    } catch (err) {
+      setError(err.message || "Failed to resend OTP");
+      toast.error(err.message || "Failed to resend OTP");
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0e1420] text-white flex flex-col">
@@ -118,6 +165,9 @@ export default function AdminLoginPage() {
               error={error}
               success={success}
               onVerify={handleVerifyOtp}
+              onResendOtp={handleResendOtp}
+              resendLoading={resendLoading}
+              resendCountdown={resendCountdown}
             />
           )}
 
@@ -127,14 +177,15 @@ export default function AdminLoginPage() {
                 setOtpSent(false);
                 setError("");
                 setSuccess("");
+                setResendCountdown(0);
               }}
-              className="mt-4 text-sm text-blue-400 hover:text-blue-300"
+              className="mt-4 text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
               ← Back to Login
             </button>
           ) : null}
 
-          <p className="text-gray-400 text-sm mt-3">
+          <p className="text-gray-400 text-sm mt-3 text-center">
             Only authorized admins can access this portal.
           </p>
         </div>

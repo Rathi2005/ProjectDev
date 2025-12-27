@@ -17,6 +17,7 @@ import VMsPage from "./pages/admin/VMs";
 import PricingDetailPage from "./pages/admin/PricingDetailPage";
 import Zones from "./pages/admin/Zones";
 import Orders from "./pages/Orders";
+import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
 
 export default function App() {
   return (
@@ -59,6 +60,9 @@ export default function App() {
             </AdminProtectedRoute>
           }
         />
+        <Route path="/admin/deleted-vms" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
+        <Route path="/admin/garbage-records" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
+        <Route path="/admin/users-overview" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
         <Route
           path="/admin/invoices"
           element={
@@ -75,7 +79,7 @@ export default function App() {
             </AdminProtectedRoute>
           }
         />
-        
+
         <Route
           path="/admin/zones/:id/ips"
           element={

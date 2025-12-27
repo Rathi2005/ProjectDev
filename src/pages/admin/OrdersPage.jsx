@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom"; // Add this import
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
@@ -29,12 +30,16 @@ import {
   Database,
   TrendingUp,
   BarChart3,
+  Users, // Add this import
+  ExternalLink, // Add this import
+  Eye, // Add this import
 } from "lucide-react";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedRow, setExpandedRow] = useState(null);
+  const [userCount, setUserCount] = useState(0);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -160,6 +165,9 @@ export default function OrdersPage() {
   }, []);
 
   // Fetch additional insights
+  // Fetch additional insights
+  // Update the fetchInsights function in your OrdersPage.jsx
+  // Fetch additional insights
   useEffect(() => {
     async function fetchInsights() {
       try {
@@ -211,8 +219,14 @@ export default function OrdersPage() {
           .then(async (res) => {
             if (res.ok) {
               const data = await res.json();
-              // Assuming data is an array of deleted VMs
-              return Array.isArray(data) ? data.length : 0;
+              // Handle both array and object responses
+              if (Array.isArray(data)) {
+                return data.length;
+              } else if (data && typeof data === "object") {
+                // If it's an object with a count property
+                return data.count || data.length || 0;
+              }
+              return 0;
             }
             return 0;
           })
@@ -232,19 +246,58 @@ export default function OrdersPage() {
           .then(async (res) => {
             if (res.ok) {
               const data = await res.json();
-              // Assuming data is an array of garbage records
-              return Array.isArray(data) ? data.length : 0;
+              // Handle both array and object responses
+              if (Array.isArray(data)) {
+                return data.length;
+              } else if (data && typeof data === "object") {
+                return data.count || data.length || 0;
+              }
+              return 0;
+            }
+            return 0;
+          })
+          .catch(() => 0);
+
+        // Fetch user count - Updated to handle the new API response format
+        const userCountPromise = fetch(`${BASE_URL}/admin/users/overview`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
+          },
+        })
+          .then(async (res) => {
+            if (res.ok) {
+              const data = await res.json();
+              // Handle different response formats
+              if (Array.isArray(data)) {
+                // Count unique users from the array
+                const uniqueUsers = new Set(
+                  data.map((user) => user.userId || user.id)
+                );
+                return uniqueUsers.size;
+              } else if (data && typeof data === "object") {
+                // If it's an object with users array
+                if (Array.isArray(data.users)) {
+                  return data.users.length;
+                }
+                // If it's an object with count
+                return data.count || 0;
+              }
+              return 0;
             }
             return 0;
           })
           .catch(() => 0);
 
         // Wait for all promises
-        const [revenueResults, deletedCount, garbageCount] = await Promise.all([
-          Promise.all(revenuePromises),
-          deletedVmsPromise,
-          garbageRecordsPromise,
-        ]);
+        const [revenueResults, deletedCount, garbageCount, userCount] =
+          await Promise.all([
+            Promise.all(revenuePromises),
+            deletedVmsPromise,
+            garbageRecordsPromise,
+            userCountPromise,
+          ]);
 
         // Process revenue results
         const revenueStatsObj = {};
@@ -255,6 +308,7 @@ export default function OrdersPage() {
         setRevenueStats(revenueStatsObj);
         setDeletedVmsCount(deletedCount);
         setGarbageRecordsCount(garbageCount);
+        setUserCount(userCount);
       } catch (err) {
         console.error("Error fetching insights:", err);
       } finally {
@@ -729,6 +783,16 @@ export default function OrdersPage() {
         color: "text-yellow-400",
       },
       {
+        title: "Total Users",
+        value: userCount,
+        icon: <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />,
+        subtitle: "Registered users",
+        color: "text-blue-400",
+        hasLink: true,
+        linkTo: "/admin/users-overview",
+        linkText: "View All Users",
+      },
+      {
         title: "Active Revenue",
         value: formatCurrency(activeRevenue),
         icon: (
@@ -751,6 +815,9 @@ export default function OrdersPage() {
         icon: <Trash2 className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />,
         subtitle: "Permanently removed",
         color: "text-red-400",
+        hasLink: true,
+        linkTo: "/admin/deleted-vms",
+        linkText: "View Details",
       },
       {
         title: "Garbage Records",
@@ -758,6 +825,9 @@ export default function OrdersPage() {
         icon: <Database className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400" />,
         subtitle: "Cleanup needed",
         color: "text-orange-400",
+        hasLink: true,
+        linkTo: "/admin/garbage-records",
+        linkText: "View Details",
       },
     ];
   }, [
@@ -765,6 +835,7 @@ export default function OrdersPage() {
     revenueStats,
     deletedVmsCount,
     garbageRecordsCount,
+    userCount, // Add this dependency
     selectedRevenuePeriod,
   ]);
 
@@ -925,6 +996,7 @@ export default function OrdersPage() {
         ) : (
           <>
             {/* Insights - Responsive Grid - Updated with more columns */}
+            {/* Insights - Responsive Grid - Updated with more columns */}
             <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               {insights.map((ins, i) => (
                 <div
@@ -963,6 +1035,20 @@ export default function OrdersPage() {
                           </div>
                         )}
                       </div>
+
+                      {/* Add link button if hasLink is true */}
+                      {ins.hasLink && (
+                        <div className="mt-3 pt-3 border-t border-indigo-900/30">
+                          <Link
+                            to={ins.linkTo}
+                            className="inline-flex items-center gap-1 text-xs text-indigo-300 hover:text-indigo-200 transition-colors hover:underline"
+                          >
+                            <Eye className="w-3 h-3" />
+                            {ins.linkText}
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      )}
                     </div>
                     <div className="p-2 sm:p-3 bg-[#0e1525] rounded-lg sm:rounded-xl border border-indigo-900/40">
                       {ins.icon}

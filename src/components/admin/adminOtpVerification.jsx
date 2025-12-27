@@ -1,6 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
 
-const AdminOtpVerification = ({ email, onVerify, loading, error, success }) => {
+const AdminOtpVerification = ({ 
+  email, 
+  onVerify, 
+  loading, 
+  error, 
+  success,
+  onResendOtp,
+  resendLoading,
+  resendCountdown 
+}) => {
   const [otp, setOtp] = useState(Array(6).fill(""));
   const inputRefs = useRef([]);
 
@@ -41,6 +50,12 @@ const AdminOtpVerification = ({ email, onVerify, loading, error, success }) => {
     if (onVerify) onVerify(otp.join(""));
   };
 
+  // Handle resend OTP
+  const handleResend = () => {
+    if (resendCountdown > 0 || resendLoading) return;
+    if (onResendOtp) onResendOtp();
+  };
+
   return (
     <div className="w-full max-w-md text-center space-y-6">
       <h2 className="text-2xl font-semibold mb-1">OTP Verification</h2>
@@ -66,22 +81,50 @@ const AdminOtpVerification = ({ email, onVerify, loading, error, success }) => {
               onPaste={handlePaste}
               className={`w-10 h-12 sm:w-12 sm:h-12 text-center text-xl font-semibold rounded-lg bg-[#1c2538] text-white border-2 
                 ${digit ? "border-red-500" : "border-gray-600"} 
-                focus:outline-none focus:ring-2 focus:ring-red-500`}
+                focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors`}
             />
           ))}
         </div>
 
-        {/* ERROR / SUCCESS */}
-        {error && (
-          <p className="text-sm text-red-400 bg-red-900/20 border border-red-700/40 rounded-md py-2">
-            {error}
+        {/* RESEND OTP SECTION */}
+        <div className="text-center">
+          <p className="text-sm text-gray-400 mb-2">
+            {resendCountdown > 0 ? (
+              <>
+                Resend OTP in{" "}
+                <span className="text-yellow-400 font-bold">
+                  {resendCountdown}s
+                </span>
+              </>
+            ) : (
+              "Didn't receive the code?"
+            )}
           </p>
-        )}
-        {success && (
-          <p className="text-sm text-green-400 bg-green-900/20 border border-green-700/40 rounded-md py-2">
-            {success}
-          </p>
-        )}
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resendLoading || resendCountdown > 0}
+            className={`text-sm px-4 py-2 rounded-lg transition-all ${
+              resendCountdown > 0 || resendLoading
+                ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                : "bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 border border-red-800/50"
+            }`}
+          >
+            {resendLoading ? (
+              <>
+                <svg className="inline w-3 h-3 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Sending...
+              </>
+            ) : resendCountdown > 0 ? (
+              `Resend (${resendCountdown}s)`
+            ) : (
+              "Resend OTP"
+            )}
+          </button>
+        </div>
 
         {/* VERIFY BUTTON */}
         <button
@@ -91,7 +134,17 @@ const AdminOtpVerification = ({ email, onVerify, loading, error, success }) => {
             loading ? "opacity-60 cursor-not-allowed" : ""
           }`}
         >
-          {loading ? "Verifying..." : "Verify OTP"}
+          {loading ? (
+            <>
+              <svg className="inline w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Verifying...
+            </>
+          ) : (
+            "Verify OTP"
+          )}
         </button>
       </form>
     </div>
