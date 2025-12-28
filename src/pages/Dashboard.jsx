@@ -11,7 +11,7 @@ import SummarySidebar from "../components/user/server/SummarySidebar";
 import { Menu, X, ListChecks, User, Settings } from "lucide-react";
 
 export default function Dashboard() {
-  const navigate = useNavigate(); // Add this
+  const navigate = useNavigate();
 
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [serverId, setServerId] = useState(null);
@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
   const [isMobileUserMenuOpen, setIsMobileUserMenuOpen] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   const mainContentRef = useRef(null);
 
@@ -116,8 +117,6 @@ export default function Dashboard() {
     cashfreeRef.current = Cashfree({ mode: "sandbox" });
   }, []);
 
-  const [isVerifying, setIsVerifying] = useState(false);
-
   const token = localStorage.getItem("token");
 
   const handlePayment = async (sessionId) => {
@@ -129,32 +128,26 @@ export default function Dashboard() {
       return;
     }
 
-    setIsVerifying(true);
-    console.log("2. Setting verifying to true");
-
     const checkoutOptions = {
       paymentSessionId: sessionId,
       redirectTarget: "_modal",
 
       onSuccess: () => {
-        console.log("3. onSuccess callback fired!");
-
+        console.log("Payment completed");
         setTimeout(() => {
-          console.log("4. Timeout completed, navigating...");
-          setIsVerifying(false);
-          navigate("/orders");
-        }, 2000);
+          setShouldRedirect(true);
+        }, 0);
       },
 
       onFailure: () => {
-        console.log("Payment failed");
-        setIsVerifying(false);
-        alert("❌ Payment failed or cancelled");
+        alert("❌ Payment failed");
       },
 
       onClose: () => {
-        console.log("Payment popup closed");
-        setIsVerifying(false);
+        console.log("Popup closed");
+        setTimeout(() => {
+          setShouldRedirect(true);
+        }, 0);
       },
     };
 
@@ -162,6 +155,12 @@ export default function Dashboard() {
     cashfreeRef.current.checkout(checkoutOptions);
     console.log("6. Payment popup opened");
   };
+
+  useEffect(() => {
+    if (shouldRedirect) {
+      navigate("/orders");
+    }
+  }, [shouldRedirect, navigate]);
 
   return (
     <div className="bg-[#0e1525] text-gray-100 h-screen flex flex-col overflow-hidden">
