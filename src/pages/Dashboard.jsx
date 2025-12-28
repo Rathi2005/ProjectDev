@@ -130,7 +130,7 @@ export default function Dashboard() {
 
     const checkoutOptions = {
       paymentSessionId: sessionId,
-      redirectTarget: "_modal",
+      redirectTarget: "_self",
 
       onSuccess: () => {
         console.log("Payment completed");

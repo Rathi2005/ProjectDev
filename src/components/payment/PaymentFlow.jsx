@@ -12,17 +12,12 @@ const PaymentFlow = ({ onCreateSession, onClose }) => {
   const [loading, setLoading] = useState(false);
 
   const handlePayNow = async () => {
-    if (loading) return; // ✅ Prevent double click
+    if (loading) return;
 
     try {
       setLoading(true);
-
-      // 🔥 Call parent-provided function
       const paymentSessionId = await onCreateSession();
-
-      if (!paymentSessionId) {
-        throw new Error("No payment session received");
-      }
+      if (!paymentSessionId) throw new Error("No payment session received");
 
       const cashfree = window.Cashfree({
         mode: import.meta.env.VITE_CASHFREE_MODE || "sandbox",
@@ -30,7 +25,7 @@ const PaymentFlow = ({ onCreateSession, onClose }) => {
 
       cashfree.checkout({
         paymentSessionId,
-        redirectTarget: "_modal",
+        redirectTarget: "_self",
         onClose,
       });
     } catch (err) {
@@ -47,15 +42,13 @@ const PaymentFlow = ({ onCreateSession, onClose }) => {
   };
 
   return (
-    <div className="space-y-4">
-      <button
-        onClick={handlePayNow}
-        disabled={loading}
-        className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold disabled:opacity-50"
-      >
-        {loading ? "Processing..." : "Pay Now"}
-      </button>
-    </div>
+    <button
+      onClick={handlePayNow}
+      disabled={loading}
+      className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-semibold disabled:opacity-50"
+    >
+      {loading ? "Processing..." : "Pay Now"}
+    </button>
   );
 };
 

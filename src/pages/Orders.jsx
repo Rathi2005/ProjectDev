@@ -52,8 +52,6 @@ export default function UserOrdersPage() {
   const [selectedBandwidth, setSelectedBandwidth] = useState(null);
   const [addMonths, setAddMonths] = useState(0);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
-  const [paymentSessionId, setPaymentSessionId] = useState(null);
-  const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -123,10 +121,39 @@ export default function UserOrdersPage() {
     fetchUserOrders();
   }, [BASE_URL]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("payment") === "success") {
+      DarkSwal.fire({
+        icon: "success",
+        title: "Payment Successful 🎉",
+        text: "Your plan has been updated successfully. It will be visible in a few moments.",
+      });
+
+      // remove ?payment=success from URL
+      window.history.replaceState({}, "", "/orders");
+    }
+  }, []);
+
+  const DarkSwal = Swal.mixin({
+    background: "#0e1525",
+    color: "#e5e7eb",
+    confirmButtonColor: "#4f46e5",
+    cancelButtonColor: "#334155",
+  });
+
   const handlePowerAction = async (order, action, isoId = null) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Session expired. Please login again.");
+      DarkSwal.fire({
+        icon: "warning",
+        title: "Session Expired",
+        text: "Please login again to continue.",
+      }).then(() => {
+        window.location.href = "/login";
+      });
+
       window.location.href = "/login";
       return;
     }
@@ -161,7 +188,11 @@ export default function UserOrdersPage() {
         throw new Error(errText || "Power action failed");
       }
 
-      alert(`✅ ${action.toUpperCase()} request sent`);
+      DarkSwal.fire({
+        icon: "success",
+        title: "Request Sent",
+        text: `${action.toUpperCase()} request sent successfully.`,
+      });
 
       // ✅ Optimistic UI update
       setOrders((prev) =>
@@ -192,7 +223,11 @@ export default function UserOrdersPage() {
         )
       );
     } catch (err) {
-      alert(`❌ ${err.message}`);
+      DarkSwal.fire({
+        icon: "error",
+        title: "Action Failed",
+        text: err.message,
+      });
     } finally {
       setPowerLoading((prev) => ({ ...prev, [vmId]: null }));
     }
@@ -216,13 +251,12 @@ export default function UserOrdersPage() {
 
   const preparePayment = () => {
     if (!selectedCpu || !selectedRam || !selectedDisk || !selectedBandwidth) {
-      Swal.fire({
+      DarkSwal.fire({
         icon: "error",
         title: "Incomplete Selection",
-        text: "Please select all resource options",
-        background: "#0e1525",
-        color: "#e5e7eb",
+        text: "Please select all resource options.",
       });
+
       return;
     }
 
@@ -424,7 +458,11 @@ export default function UserOrdersPage() {
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
+    DarkSwal.fire({
+      icon: "success",
+      title: "Copied",
+      text: "Copied to clipboard successfully.",
+    });
   };
 
   const statusOptions = [
