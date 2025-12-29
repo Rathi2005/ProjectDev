@@ -576,15 +576,16 @@ export default function UserOrdersPage() {
       if (!res.ok) throw new Error("Failed to load pricing");
 
       const data = await res.json();
+      console.log(data);
 
       setUpgradeVm(order);
       setPricingOptions(data);
 
       // Set defaults
-      setSelectedCpu(data.cpuOptions?.[0]?.id ?? null);
-      setSelectedRam(data.ramOptions?.[0]?.id ?? null);
-      setSelectedDisk(data.diskOptions?.[0]?.id ?? null);
-      setSelectedBandwidth(data.bandwidthOptions?.[0]?.id ?? null);
+      setSelectedCpu(data.cpuOptions?.[0]?.tier.id ?? null);
+      setSelectedRam(data.ramOptions?.[0]?.tier.id ?? null);
+      setSelectedDisk(data.diskOptions?.[0]?.tier.id ?? null);
+      setSelectedBandwidth(data.bandwidthOptions?.[0]?.tier.id ?? null);
       setAddMonths(1); // Default to 1 month
 
       setUpgradeModalOpen(true);
@@ -1314,11 +1315,11 @@ export default function UserOrdersPage() {
                               >
                                 {pricingOptions.cpuOptions.map((c) => (
                                   <option
-                                    key={c.id}
-                                    value={c.id}
+                                    key={c.tier.id}
+                                    value={c.tier.id}
                                     className="bg-[#151c2f] text-white"
                                   >
-                                    {c.label}
+                                    {c.tier.label}
                                   </option>
                                 ))}
                               </select>
@@ -1339,11 +1340,11 @@ export default function UserOrdersPage() {
                               >
                                 {pricingOptions.ramOptions.map((r) => (
                                   <option
-                                    key={r.id}
-                                    value={r.id}
+                                    key={r.tier.id}
+                                    value={r.tier.id}
                                     className="bg-[#151c2f] text-white"
                                   >
-                                    {r.label}
+                                    {r.tier.label}
                                   </option>
                                 ))}
                               </select>
@@ -1364,11 +1365,11 @@ export default function UserOrdersPage() {
                               >
                                 {pricingOptions.diskOptions.map((d) => (
                                   <option
-                                    key={d.id}
-                                    value={d.id}
+                                    key={d.tier.id}
+                                    value={d.tier.id}
                                     className="bg-[#151c2f] text-white"
                                   >
-                                    {d.label}
+                                    {d.tier.label}
                                   </option>
                                 ))}
                               </select>
@@ -1389,11 +1390,11 @@ export default function UserOrdersPage() {
                               >
                                 {pricingOptions.bandwidthOptions.map((b) => (
                                   <option
-                                    key={b.id}
-                                    value={b.id}
+                                    key={b.tier.id}
+                                    value={b.tier.id}
                                     className="bg-[#151c2f] text-white"
                                   >
-                                    {b.label}
+                                    {b.tier.label}
                                   </option>
                                 ))}
                               </select>
