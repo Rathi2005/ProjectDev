@@ -45,7 +45,8 @@ export default function Sidebar() {
     const handleScroll = () => {
       if (isManualClick) return; // 🚫 Skip if manually clicked
 
-      const scrollPos = window.scrollY + 100;
+      const container = document.getElementById("main-content");
+      const scrollPos = container.scrollTop + 100;
 
       const sectionIds = [
         "dashboard",
@@ -82,8 +83,10 @@ export default function Sidebar() {
       }
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const container = document.getElementById("main-content");
+    container?.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => container?.removeEventListener("scroll", handleScroll);
   }, [activeSection, activeSubSection, serversSubItems, isManualClick]);
 
   const scrollTo = (id) => {
@@ -94,33 +97,32 @@ export default function Sidebar() {
   };
 
   const onClickSection = (id) => {
-  setIsManualClick(true);
-  setActiveSection(id);
+    setIsManualClick(true);
+    setActiveSection(id);
 
-  if (id === "servers") {
-    setOpenServersMenu((prev) => !prev);
-    if (!openServersMenu) {
-      const target = activeSubSection || "create-server";
-      setActiveSubSection(target);
-      scrollTo(target);
+    if (id === "servers") {
+      setOpenServersMenu((prev) => !prev);
+      if (!openServersMenu) {
+        const target = activeSubSection || "create-server";
+        setActiveSubSection(target);
+        scrollTo(target);
+      }
+    } else {
+      setOpenServersMenu(false);
+      setActiveSubSection(null);
+      scrollTo(id);
     }
-  } else {
-    setOpenServersMenu(false);
-    setActiveSubSection(null);
+
+    setTimeout(() => setIsManualClick(false), 500); // Allow scroll updates again
+  };
+
+  const onClickSubSection = (id) => {
+    setIsManualClick(true);
+    setActiveSection("servers");
+    setActiveSubSection(id);
     scrollTo(id);
-  }
-
-  setTimeout(() => setIsManualClick(false), 500); // Allow scroll updates again
-};
-
-const onClickSubSection = (id) => {
-  setIsManualClick(true);
-  setActiveSection("servers");
-  setActiveSubSection(id);
-  scrollTo(id);
-  setTimeout(() => setIsManualClick(false), 500);
-};
-
+    setTimeout(() => setIsManualClick(false), 500);
+  };
 
   // ✅ Call logout from your hook when clicked
   const handleLogout = async () => {

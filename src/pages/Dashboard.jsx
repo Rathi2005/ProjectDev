@@ -79,6 +79,15 @@ export default function Dashboard() {
     return () => content?.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (!serverId) return;
+
+    // Reset dependent selections when server changes
+    setSelectedOS(null);
+    setSelectedType(null);
+    setSelectedResources({});
+  }, [serverId]);
+
   // Close mobile menu when resizing to desktop
   useEffect(() => {
     const handleResize = () => {
@@ -383,6 +392,7 @@ export default function Dashboard() {
                 className="min-h-screen px-4 sm:px-6 lg:px-8 py-6 lg:py-16"
               >
                 <ImageSelector
+                  key={serverId}
                   serverId={serverId}
                   setSelectedOS={setSelectedOS}
                 />
