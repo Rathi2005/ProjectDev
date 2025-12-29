@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
-import { PlusCircle, Loader2 } from "lucide-react";
+import {
+  PlusCircle,
+  Loader2,
+  Edit,
+  Trash2,
+  HardDrive,
+  File,
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "react-hot-toast"; // ✅ Added toast
-import { CheckCircle, XCircle, Wrench } from "lucide-react";
+import { toast } from "react-hot-toast";
+import Swal from "sweetalert2";
+
+
+// const MySwal = withReactContent(Swal);
 
 export default function ServersPage() {
   const [showModal, setShowModal] = useState(false);
@@ -12,6 +22,9 @@ export default function ServersPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [zones, setZones] = useState([]);
+  const [renameModal, setRenameModal] = useState(false);
+  const [renamingServer, setRenamingServer] = useState(null);
+  const [renameName, setRenameName] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -28,6 +41,83 @@ export default function ServersPage() {
   const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
   const BASE_URL = import.meta.env.VITE_BASE_URL;
   const { id: zoneId } = useParams();
+
+  // ✅ Configure SweetAlert2 dark theme
+  const swalDarkTheme = {
+    customClass: {
+      popup: "dark-swal-popup",
+      title: "dark-swal-title",
+      htmlContainer: "dark-swal-content",
+      confirmButton: "dark-swal-confirm",
+      cancelButton: "dark-swal-cancel",
+      input: "dark-swal-input",
+    },
+    background: "#0f172a",
+    color: "#e2e8f0",
+    confirmButtonColor: "#3b82f6",
+    cancelButtonColor: "#ef4444",
+  };
+
+  // ✅ Add SweetAlert2 styles
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      .dark-swal-popup {
+        background: #0f172a !important;
+        border: 1px solid #334155 !important;
+        border-radius: 0.75rem !important;
+      }
+      .dark-swal-title {
+        color: #e2e8f0 !important;
+        font-size: 1.5rem !important;
+        font-weight: 600 !important;
+      }
+      .dark-swal-content {
+        color: #cbd5e1 !important;
+        font-size: 1rem !important;
+      }
+      .dark-swal-confirm {
+        background-color: #3b82f6 !important;
+        border: none !important;
+        border-radius: 0.5rem !important;
+        padding: 0.625rem 1.5rem !important;
+        font-weight: 500 !important;
+        transition: all 0.2s !important;
+      }
+      .dark-swal-confirm:hover {
+        background-color: #2563eb !important;
+        transform: translateY(-1px) !important;
+      }
+      .dark-swal-cancel {
+        background-color: #4b5563 !important;
+        border: none !important;
+        border-radius: 0.5rem !important;
+        padding: 0.625rem 1.5rem !important;
+        font-weight: 500 !important;
+        transition: all 0.2s !important;
+      }
+      .dark-swal-cancel:hover {
+        background-color: #374151 !important;
+        transform: translateY(-1px) !important;
+      }
+      .dark-swal-input {
+        background-color: #1e293b !important;
+        border: 1px solid #475569 !important;
+        color: #e2e8f0 !important;
+        border-radius: 0.5rem !important;
+        padding: 0.75rem !important;
+      }
+      .dark-swal-input:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Fetch servers (GET)
   useEffect(() => {
@@ -213,7 +303,130 @@ export default function ServersPage() {
     }
   };
 
-  // Add this function after the existing functions
+  // ✅ Delete Server with confirmation
+  const handleDeleteServer = async (serverId, serverName) => {
+    const result = await Swal.fire({
+      ...swalDarkTheme,
+      title: "Delete Server",
+      html: `
+    <div class="text-left space-y-4">
+      <p class="text-red-300">
+        Are you sure you want to delete the server "<strong>${serverName}</strong>"?
+      </p>
+      <p class="text-gray-400 text-sm">
+        This action cannot be undone. All associated VMs and data will be permanently removed.
+      </p>
+      <p class="text-gray-400 text-sm">
+        Type <strong>delete</strong> below to confirm:
+      </p>
+    </div>
+  `,
+      input: "text",
+      inputPlaceholder: 'Type "delete" to confirm',
+      showCancelButton: true,
+      confirmButtonText: "Delete Server",
+      cancelButtonText: "Cancel",
+      preConfirm: (input) => {
+        if (input?.toLowerCase() !== "delete") {
+          Swal.showValidationMessage('You must type "delete" to confirm');
+          return false;
+        }
+        return true;
+      },
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem("adminToken");
+        const res = await fetch(`${BASE_URL}/admin/servers/${serverId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        // Remove server from state
+        setServers(servers.filter((server) => server.id !== serverId));
+
+        await Swal.fire({
+          ...swalDarkTheme,
+          icon: "success",
+          title: "Deleted!",
+          text: `Server "${serverName}" has been deleted successfully.`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        console.error("Error deleting server:", err);
+        Swal.fire({
+          ...swalDarkTheme,
+          icon: "error",
+          title: "Error",
+          text: "Failed to delete server. Please try again.",
+        });
+      }
+    }
+  };
+
+  // ✅ Rename Server
+  const handleRenameServer = async () => {
+    if (!renameName.trim() || !renamingServer) {
+      toast.error("Please enter a valid server name");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("adminToken");
+      const res = await fetch(
+        `${BASE_URL}/admin/servers/${
+          renamingServer.id
+        }/rename?name=${encodeURIComponent(renameName)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      // Update server in state
+      setServers(
+        servers.map((server) =>
+          server.id === renamingServer.id
+            ? { ...server, name: renameName }
+            : server
+        )
+      );
+
+      setRenameModal(false);
+      setRenamingServer(null);
+      setRenameName("");
+
+      toast.success(`Server renamed to "${renameName}" successfully!`);
+    } catch (err) {
+      console.error("Error renaming server:", err);
+      toast.error("Failed to rename server");
+    }
+  };
+
+  // ✅ Open rename modal
+  const openRenameModal = (server) => {
+    setRenamingServer(server);
+    setRenameName(server.name);
+    setRenameModal(true);
+  };
+
+  // ✅ Handle Status Change
   const handleStatusChange = async (serverId, newStatus) => {
     const token = localStorage.getItem("adminToken");
 
@@ -245,7 +458,6 @@ export default function ServersPage() {
       );
 
       toast.success(`Status updated to ${newStatus}`);
-      console.log("Status updated:", data);
     } catch (err) {
       console.error("Error updating status:", err);
       toast.error("Error updating server status");
@@ -264,19 +476,13 @@ export default function ServersPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-wide">Servers</h1>
           <div className="flex flex-wrap gap-3">
-            {/* <button
-              onClick={() => setShowZoneModal(true)} // ✅ add zone button
-              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl shadow-md hover:shadow-green-600/30 transition-all duration-300 text-sm sm:text-base"
-            >
-              <PlusCircle className="w-5 h-5" />
-              Add Zone
-            </button> */}
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl shadow-md hover:shadow-indigo-600/30 transition-all duration-300 text-sm sm:text-base"
+              className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 sm:px-5 sm:py-2 rounded-xl shadow-md hover:shadow-indigo-600/30 transition-all duration-300 text-xs sm:text-sm"
             >
-              <PlusCircle className="w-5 h-5" />
-              Add Server
+              <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Add Server</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </div>
         </div>
@@ -292,7 +498,7 @@ export default function ServersPage() {
               No servers found.
             </div>
           ) : (
-            <div className="w-full min-w-[900px]">
+            <div className="w-full min-w-[900px] sm:min-w-0">
               <table className="w-full text-left border-collapse text-sm sm:text-base">
                 <thead className="bg-[#151c2f] text-gray-300 uppercase tracking-wider text-xs sm:text-sm">
                   <tr>
@@ -301,7 +507,9 @@ export default function ServersPage() {
                     <th className="px-4 py-3 sm:px-6">IP</th>
                     <th className="px-4 py-3 sm:px-6">Location</th>
                     <th className="px-4 py-3 sm:px-6">Node</th>
-                    <th className="px-4 py-3 sm:px-6">Token ID</th>
+                    <th className="px-4 py-3 sm:px-6 hidden md:table-cell">
+                      Token ID
+                    </th>
                     <th className="px-4 py-3 sm:px-6 text-center">VMs</th>
                     <th className="px-4 py-3 sm:px-6">Status</th>
                     <th className="px-4 py-3 sm:px-6 text-center">Actions</th>
@@ -330,8 +538,14 @@ export default function ServersPage() {
                       <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
                         {server.node || "—"}
                       </td>
-                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
-                        {server.tokenId || "—"}
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap hidden md:table-cell">
+                        {server.tokenId ? (
+                          <span className="text-xs bg-gray-800/50 px-2 py-1 rounded">
+                            {server.tokenId.slice(0, 8)}...
+                          </span>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="px-4 py-3 sm:px-6 text-center whitespace-nowrap">
                         {server.vmCount === null ? (
@@ -344,7 +558,9 @@ export default function ServersPage() {
                             className="flex items-center justify-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white font-semibold px-3 py-1 rounded-full transition-all duration-300 text-xs shadow-sm hover:shadow-indigo-700/30"
                           >
                             <span>{server.vmCount ?? "—"}</span>
-                            <span className="text-[10px] opacity-80">VMs</span>
+                            <span className="text-[10px] opacity-80 hidden sm:inline">
+                              VMs
+                            </span>
                           </button>
                         )}
                       </td>
@@ -354,9 +570,9 @@ export default function ServersPage() {
                           <div className="sm:hidden">
                             <span
                               className={`
-        px-2 py-1 rounded-full text-xs font-semibold
-        ${getStatusColor(server.status || "INACTIVE")}
-      `}
+                                px-2 py-1 rounded-full text-xs font-semibold
+                                ${getStatusColor(server.status || "INACTIVE")}
+                              `}
                             >
                               {server.status === "ACTIVE"
                                 ? "Active"
@@ -374,12 +590,12 @@ export default function ServersPage() {
                                 handleStatusChange(server.id, e.target.value)
                               }
                               className={`
-          w-full px-3 py-1.5 pr-8 rounded-lg text-xs font-medium cursor-pointer
-          transition-all duration-200 appearance-none
-          ${getStatusColor(server.status || "INACTIVE")}
-          hover:brightness-110 focus:outline-none focus:ring-1 focus:ring-indigo-500
-          bg-black/30 backdrop-blur-sm
-        `}
+                                w-full px-3 py-1.5 pr-8 rounded-lg text-xs font-medium cursor-pointer
+                                transition-all duration-200 appearance-none
+                                ${getStatusColor(server.status || "INACTIVE")}
+                                hover:brightness-110 focus:outline-none focus:ring-1 focus:ring-indigo-500
+                                bg-black/30 backdrop-blur-sm
+                              `}
                             >
                               <option
                                 value="ACTIVE"
@@ -419,22 +635,44 @@ export default function ServersPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 sm:px-6 text-center whitespace-nowrap">
-                        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                        <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
                           <button
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/isos`)
                             }
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300"
+                            className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all duration-300"
+                            title="Add ISOs"
                           >
-                            Add ISOs
+                            <File className="w-3 h-3" />
+                            <span className="hidden sm:inline">ISOs</span>
                           </button>
                           <button
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/disks`)
                             }
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300"
+                            className="flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all duration-300"
+                            title="Add Disk"
                           >
-                            Add Disk
+                            <HardDrive className="w-3 h-3" />
+                            <span className="hidden sm:inline">Disk</span>
+                          </button>
+                          <button
+                            onClick={() => openRenameModal(server)}
+                            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all duration-300"
+                            title="Rename Server"
+                          >
+                            <Edit className="w-3 h-3" />
+                            <span className="hidden sm:inline">Rename</span>
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDeleteServer(server.id, server.name)
+                            }
+                            className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all duration-300"
+                            title="Delete Server"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span className="hidden sm:inline">Delete</span>
                           </button>
                         </div>
                       </td>
@@ -449,17 +687,19 @@ export default function ServersPage() {
 
       {/* ✅ Add Server Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-fadeIn overflow-y-auto flex justify-center">
-          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl my-10 p-8 sm:p-10 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-fadeIn overflow-y-auto flex justify-center items-start">
+          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl my-10 p-4 sm:p-8 lg:p-10 max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="flex items-center justify-between top-0 bg-[#111827] pb-3 z-10">
-              <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-300 flex items-center gap-2">
-                <PlusCircle className="w-6 h-6 text-indigo-400" />
-                Add New Server
+            <div className="flex items-center justify-between pb-3 border-b border-indigo-900/40 mb-4">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-indigo-300 flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" />
+                <span className="text-sm sm:text-lg lg:text-xl">
+                  Add New Server
+                </span>
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-red-400 transition-colors text-xl"
+                className="text-gray-400 hover:text-red-400 transition-colors text-lg sm:text-xl"
                 title="Close"
               >
                 ×
@@ -467,7 +707,7 @@ export default function ServersPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5 mt-4">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               {/* ✅ Zone Dropdown */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">
@@ -478,7 +718,7 @@ export default function ServersPage() {
                   value={formData.zoneId}
                   onChange={handleChange}
                   required
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                 >
                   <option value="">-- Select a Zone --</option>
                   {zones.map((zone) => (
@@ -501,12 +741,12 @@ export default function ServersPage() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                 />
               </div>
 
               {/* IP + Location */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">
                     IP Address
@@ -518,7 +758,7 @@ export default function ServersPage() {
                     value={formData.ip}
                     onChange={handleChange}
                     required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                   />
                 </div>
                 <div>
@@ -532,13 +772,13 @@ export default function ServersPage() {
                     value={formData.location}
                     onChange={handleChange}
                     required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                   />
                 </div>
               </div>
 
               {/* Node + Port */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">
                     Node
@@ -550,7 +790,7 @@ export default function ServersPage() {
                     value={formData.node}
                     onChange={handleChange}
                     required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                   />
                 </div>
                 <div>
@@ -563,13 +803,13 @@ export default function ServersPage() {
                     placeholder="8006"
                     value={formData.port}
                     onChange={handleChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                   />
                 </div>
               </div>
 
               {/* Network Bridge + Token Secret */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">
                     Network Bridge
@@ -580,7 +820,7 @@ export default function ServersPage() {
                     placeholder="vmbr0"
                     value={formData.networkBridge}
                     onChange={handleChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                   />
                 </div>
 
@@ -594,7 +834,7 @@ export default function ServersPage() {
                     placeholder="Enter Token Secret"
                     value={formData.tokenSecret}
                     onChange={handleChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                   />
                 </div>
               </div>
@@ -610,36 +850,120 @@ export default function ServersPage() {
                   placeholder="Enter API Token ID"
                   value={formData.tokenId}
                   onChange={handleChange}
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-4 py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                 />
               </div>
 
               {/* Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-indigo-900/40 mt-6 bottom-0 bg-[#111827] pb-3 z-10">
+              <div className="flex justify-end gap-2 sm:gap-3 pt-4 border-t border-indigo-900/40 mt-4 sm:mt-6">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 rounded-md border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200"
+                  className="px-3 sm:px-5 py-2 rounded-md border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200 text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-all duration-200 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-all duration-200 disabled:opacity-50 text-sm"
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                      <span>Saving...</span>
                     </>
                   ) : (
                     <>
-                      <PlusCircle className="w-4 h-4" /> Add Server
+                      <PlusCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span>Add Server</span>
                     </>
                   )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Rename Server Modal */}
+      {renameModal && renamingServer && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-fadeIn overflow-y-auto flex justify-center items-start">
+          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-md my-10 p-4 sm:p-8 lg:p-10">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-indigo-900/40 mb-4">
+              <h2 className="text-xl sm:text-2xl font-semibold text-indigo-300 flex items-center gap-2">
+                <Edit className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
+                <span className="text-sm sm:text-lg">Rename Server</span>
+              </h2>
+              <button
+                onClick={() => {
+                  setRenameModal(false);
+                  setRenamingServer(null);
+                  setRenameName("");
+                }}
+                className="text-gray-400 hover:text-red-400 transition-colors text-lg sm:text-xl"
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Current Server Info */}
+            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-indigo-900/20 rounded-lg border border-indigo-700/30">
+              <p className="text-sm text-gray-400">Server ID:</p>
+              <p className="text-base sm:text-lg font-semibold text-indigo-300">
+                {renamingServer.id}
+              </p>
+              <p className="text-sm text-gray-400 mt-2">Current Name:</p>
+              <p className="text-base sm:text-lg font-medium text-gray-200">
+                {renamingServer.name}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                IP: {renamingServer.ip}
+              </p>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  New Server Name
+                </label>
+                <input
+                  type="text"
+                  value={renameName}
+                  onChange={(e) => setRenameName(e.target.value)}
+                  placeholder="Enter new server name"
+                  required
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end gap-2 sm:gap-3 pt-4 border-t border-indigo-900/40 mt-4 sm:mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRenameModal(false);
+                    setRenamingServer(null);
+                    setRenameName("");
+                  }}
+                  className="px-3 sm:px-5 py-2 rounded-md border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRenameServer}
+                  disabled={!renameName.trim()}
+                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all duration-200 disabled:opacity-50 text-sm"
+                >
+                  <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span>Rename Server</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
