@@ -156,9 +156,20 @@ export default function ZonesPage() {
                               navigate(`/admin/${zone.id}/servers`)
                               // navigate(`/admin/zones/${zone.id}/servers`)
                             }
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300 shadow-sm hover:shadow-indigo-600/30"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300 shadow-sm hover:shadow-indigo-600/30"
+                          //   yellow
                           >
                             Servers
+                          </button>
+                          <button
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300 shadow-sm hover:shadow-indigo-600/30"
+                          >
+                            Rename
+                          </button>
+                          <button
+                            className="bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm px-4 py-1 rounded-md transition-all duration-300 shadow-sm hover:shadow-indigo-600/30"
+                          >
+                            Delete
                           </button>
                         </div>
                       </td>

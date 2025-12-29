@@ -70,97 +70,97 @@ export default function OrdersPage() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  // Fetch Orders from API
-  useEffect(() => {
-    async function fetchOrders() {
-      try {
-        const adminToken = localStorage.getItem("adminToken");
+  async function fetchOrders() {
+    try {
+      const adminToken = localStorage.getItem("adminToken");
 
-        const res = await fetch(`${BASE_URL}/admin/vms`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${adminToken}`,
-          },
-        });
+      const res = await fetch(`${BASE_URL}/admin/vms`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`,
+        },
+      });
 
-        if (res.status === 401) {
-          console.error("Unauthorized — invalid or expired token");
-          DarkSwal.fire({
-            icon: "error",
-            title: "Unauthorized",
-            text: "Please login again",
-            timer: 3000,
-            showConfirmButton: false,
-          });
-          return;
-        }
-
-        const data = await res.json();
-
-        const transformedOrders = Array.isArray(data)
-          ? data.map((order) => ({
-              // UI identity
-              id: order.dbOrderId, // used everywhere in UI
-              dbOrderId: order.dbOrderId,
-
-              // VM / infra identifiers
-              serverId: order.serverId,
-              vmid: order.proxmoxVmid,
-
-              // Display info
-              vmName: order.vmName,
-              isoName: order.os, // ✅ os → isoName
-              planType: order.planType,
-
-              // Resources
-              cores: order.cores,
-              ramMb: order.ramMb,
-              diskGb: order.diskGb,
-
-              // Network
-              ipAddress: order.ipAddress || "",
-
-              // Dates
-              createdAt: order.createdAt,
-              expiresAt: order.expiresAt,
-
-              // Billing
-              priceTotal: order.totalAmount, // ✅ totalAmount → priceTotal
-              totalAmount: order.totalAmount,
-
-              // Status
-              status: order.status,
-              liveState: order.liveState,
-
-              // Customer (normalize to user object)
-              user: {
-                firstName: order.customerName || "—",
-                lastName: "",
-                email: order.customerEmail || "—",
-                billingAddress: order.billingAddress || null,
-              },
-
-              // Keep original for API calls
-              originalData: order,
-            }))
-          : [];
-
-        setOrders(transformedOrders);
-      } catch (err) {
-        console.error("Error fetching orders:", err);
+      if (res.status === 401) {
+        console.error("Unauthorized — invalid or expired token");
         DarkSwal.fire({
           icon: "error",
-          title: "Error",
-          text: "Failed to fetch orders",
+          title: "Unauthorized",
+          text: "Please login again",
           timer: 3000,
           showConfirmButton: false,
         });
-      } finally {
-        setLoading(false);
+        return;
       }
-    }
 
+      const data = await res.json();
+
+      const transformedOrders = Array.isArray(data)
+        ? data.map((order) => ({
+            // UI identity
+            id: order.dbOrderId, // used everywhere in UI
+            dbOrderId: order.dbOrderId,
+
+            // VM / infra identifiers
+            serverId: order.serverId,
+            vmid: order.proxmoxVmid,
+
+            // Display info
+            vmName: order.vmName,
+            isoName: order.os, // ✅ os → isoName
+            planType: order.planType,
+
+            // Resources
+            cores: order.cores,
+            ramMb: order.ramMb,
+            diskGb: order.diskGb,
+
+            // Network
+            ipAddress: order.ipAddress || "",
+
+            // Dates
+            createdAt: order.createdAt,
+            expiresAt: order.expiresAt,
+
+            // Billing
+            priceTotal: order.totalAmount, // ✅ totalAmount → priceTotal
+            totalAmount: order.totalAmount,
+
+            // Status
+            status: order.status,
+            liveState: order.liveState,
+
+            // Customer (normalize to user object)
+            user: {
+              firstName: order.customerName || "—",
+              lastName: "",
+              email: order.customerEmail || "—",
+              billingAddress: order.billingAddress || null,
+            },
+
+            // Keep original for API calls
+            originalData: order,
+          }))
+        : [];
+
+      setOrders(transformedOrders);
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+      DarkSwal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to fetch orders",
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Fetch Orders from API
+  useEffect(() => {
     fetchOrders();
   }, []);
 
@@ -361,6 +361,8 @@ export default function OrdersPage() {
         const text = await res.text();
         throw new Error(text || "Power operation failed");
       }
+
+      await fetchOrders();
 
       DarkSwal.close();
       DarkSwal.fire({
