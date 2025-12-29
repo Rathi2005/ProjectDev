@@ -8,7 +8,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const BASE_URL = import.meta.env.VITE_BASE_URL;
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("adminToken");
 
   const fetchInvoices = useCallback(async () => {
     if (!token) {
