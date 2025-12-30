@@ -122,18 +122,21 @@ export default function UserOrdersPage() {
   }, [BASE_URL]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
 
-    if (params.get("payment") === "success") {
-      DarkSwal.fire({
-        icon: "success",
-        title: "Payment Successful 🎉",
-        text: "Your plan has been updated successfully. It will be visible in a few moments.",
-      });
+      if (params.get("payment") === "success") {
+        DarkSwal.fire({
+          icon: "success",
+          title: "Payment Successful 🎉",
+          text: "Your plan has been updated successfully. It will be visible in a few moments.",
+        });
 
-      // remove ?payment=success from URL
-      window.history.replaceState({}, "", "/orders");
-    }
+        // remove ?payment=success from URL
+        window.history.replaceState({}, "", "/orders");
+      }
+    }, 2000); // ⏱️ 2 seconds delay
+    return () => clearTimeout(timer);
   }, []);
 
   const DarkSwal = Swal.mixin({
@@ -652,7 +655,7 @@ export default function UserOrdersPage() {
                 <a className="text-gray-400 text-sm mt-1" href="/dashboard">
                   ← Back to dashboard
                 </a>
-                <br/>
+                <br />
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-wide">
                   My Servers
                 </h1>
@@ -1525,8 +1528,8 @@ export default function UserOrdersPage() {
                     <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
                       <div className="bg-gradient-to-b from-[#0e1525] to-[#151c2f] w-full max-w-md rounded-xl border border-indigo-900/50 shadow-2xl shadow-indigo-900/20 overflow-hidden">
                         {/* Modal Header */}
-                        <div className="p-6 border-b border-indigo-900/40">
-                          <div className="flex items-center gap-3 mb-1">
+                        <div className="p-6 border-b border-indigo-900/40 flex items-start justify-between">
+                          <div className="flex items-center gap-3">
                             <div className="p-2 bg-indigo-900/30 rounded-lg">
                               <IndianRupee className="w-5 h-5 text-indigo-400" />
                             </div>
@@ -1539,6 +1542,18 @@ export default function UserOrdersPage() {
                               </p>
                             </div>
                           </div>
+
+                          {/* ❌ Close Button */}
+                          <button
+                            onClick={() => {
+                              setShowPaymentFlow(false);
+                              setUpgradeModalOpen(false);
+                            }}
+                            className="text-gray-400 hover:text-white transition text-xl leading-none"
+                            aria-label="Close modal"
+                          >
+                            ✕
+                          </button>
                         </div>
 
                         {/* Modal Content */}

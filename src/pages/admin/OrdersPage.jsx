@@ -33,6 +33,7 @@ import {
   Users, // Add this import
   ExternalLink, // Add this import
   Eye, // Add this import
+  Edit,
 } from "lucide-react";
 
 export default function OrdersPage() {
@@ -105,6 +106,8 @@ export default function OrdersPage() {
             // VM / infra identifiers
             serverId: order.serverId,
             vmid: order.proxmoxVmid,
+
+            internalVmid : order.internalVmId,
 
             // Display info
             vmName: order.vmName,
@@ -729,6 +732,74 @@ export default function OrdersPage() {
     }
   };
 
+  // ✅ Add this function BEFORE the insights useMemo:
+  const handleVmidEdit = async (vmid, currentVmid) => {
+    const { value: newVmid } = await DarkSwal.fire({
+      title: "Edit VMID",
+      input: "number",
+      inputLabel: `Current VMID: ${currentVmid}`,
+      inputPlaceholder: "Enter new VMID (e.g., 105)",
+      inputValue: currentVmid,
+      showCancelButton: true,
+      confirmButtonText: "Update",
+      cancelButtonText: "Cancel",
+      background: "#1e2640",
+      color: "#ffffff",
+      confirmButtonColor: "#6366f1",
+      cancelButtonColor: "#4b5563",
+      inputValidator: (value) => {
+        if (!value) return "VMID is required";
+        const numValue = Number(value);
+        if (isNaN(numValue)) return "Must be a number";
+        if (numValue > 9999) return "VMID must be less than 10000";
+      },
+    });
+
+    if (!newVmid || Number(newVmid) === currentVmid) return;
+
+    try {
+      const adminToken = localStorage.getItem("adminToken");
+      const res = await fetch(
+        `${BASE_URL}/admin/vms/${currentVmid}/manual-vmid-sync?newVmid=${newVmid}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({ newProxmoxVmid: Number(newVmid) }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to update VMID");
+      }
+
+      await DarkSwal.fire({
+        icon: "success",
+        title: "VMID Updated",
+        text: `VMID changed from ${vmid} to ${newVmid}`,
+        timer: 3000,
+        showConfirmButton: false,
+        background: "#1e2640",
+        color: "#ffffff",
+      });
+
+      // Refresh orders
+      fetchOrders();
+    } catch (err) {
+      console.error(err);
+      DarkSwal.fire({
+        icon: "error",
+        title: "Update Failed",
+        text: err.message || "Failed to update VMID",
+        background: "#1e2640",
+        color: "#ffffff",
+      });
+    }
+  };
+
   // Dynamic insights calculation - Updated with new APIs
   const insights = useMemo(() => {
     const totalOrders = orders.length;
@@ -1180,6 +1251,8 @@ export default function OrdersPage() {
                               </span>
                             </td>
                           </tr>
+                                                                        {console.log(order)}
+
 
                           {/* EXPANDED DROPDOWN ROW - Responsive */}
                           {expandedRow === order.id && (
@@ -1249,16 +1322,32 @@ export default function OrdersPage() {
                                             {order.isoName || "Not specified"}
                                           </p>
                                         </div>
-
+                                        
                                         {order.vmid && (
                                           <div className="pt-3 border-t border-indigo-900/30">
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex items-center justify-between gap-2">
                                               <span className="text-xs sm:text-sm text-gray-400">
                                                 VM ID
                                               </span>
-                                              <code className="bg-indigo-900/30 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-mono">
-                                                {order.vmid}
-                                              </code>
+
+                                              <div className="flex items-center gap-2">
+                                                <code className="bg-indigo-900/30 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-mono">
+                                                  {order.vmid}
+                                                </code>
+
+                                                <button
+                                                  onClick={() =>
+                                                    handleVmidEdit(
+                                                      order.vmid,
+                                                      order.internalVmid
+                                                    )
+                                                  }
+                                                  className="p-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white transition"
+                                                  title="Edit VMID"
+                                                >
+                                                  <Edit className="w-3 h-3" />
+                                                </button>
+                                              </div>
                                             </div>
                                           </div>
                                         )}
