@@ -26,7 +26,37 @@ export default function Dashboard() {
   const [shouldRedirect, setShouldRedirect] = useState(false);
 
   const mainContentRef = useRef(null);
+  // Add this useEffect right after your other useEffect hooks
+  useEffect(() => {
+    console.log("📊 selectedResources updated:", selectedResources);
+    console.log(
+      "📊 Full structure:",
+      JSON.stringify(selectedResources, null, 2)
+    );
 
+    if (selectedResources && Object.keys(selectedResources).length > 0) {
+      console.log("📊 Keys:", Object.keys(selectedResources));
+
+      // Check for important keys
+      const importantKeys = [
+        "vCPU",
+        "cpu",
+        "cpuPriceId",
+        "ram",
+        "ramPriceId",
+        "disk",
+        "diskPriceId",
+        "bandwidth",
+        "bandwidthPriceId",
+      ];
+
+      importantKeys.forEach((key) => {
+        if (selectedResources[key]) {
+          console.log(`📊 ${key}:`, selectedResources[key]);
+        }
+      });
+    }
+  }, [selectedResources]); // This will run whenever selectedResources changes
   // Track when we're in server sections
   useEffect(() => {
     const handleScroll = () => {

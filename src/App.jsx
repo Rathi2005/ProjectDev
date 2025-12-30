@@ -18,6 +18,7 @@ import PricingDetailPage from "./pages/admin/PricingDetailPage";
 import Zones from "./pages/admin/Zones";
 import Orders from "./pages/Orders";
 import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
+import Profile from "./components/user/Profile";
 
 export default function App() {
   return (
@@ -39,6 +40,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Orders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />

@@ -11,8 +11,9 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
-  Info,
-  Shield,
+  Database,
+  HardDrive,
+  Wifi,
 } from "lucide-react";
 
 const SummarySidebar = ({
@@ -27,9 +28,89 @@ const SummarySidebar = ({
   const [vmName, setVmName] = useState("my-shared-vm-test-3");
   const [isLoading, setIsLoading] = useState(false);
   const [months, setMonths] = useState("1");
-
-  // Open configuration by default
   const [configExpanded, setConfigExpanded] = useState(true);
+
+  // Function to extract numeric value from resource string
+  // const extractNumericValue = (str) => {
+  //   if (!str) return 0;
+  //   const match = str.match(/(\d+\.?\d*)/);
+  //   return match ? parseFloat(match[1]) : 0;
+  // };
+
+  // Function to extract display name without price
+  const extractDisplayName = (str) => {
+    if (!str) return "";
+    // Remove price part like " - Rs 40/hr"
+    return str.split(" - Rs")[0].trim();
+  };
+
+  // const extractPriceFromString = (str) => {
+  //   if (!str) return 0;
+  //   // Extract price from "4 cores - Rs 40/hr" or "4 gb - Rs 40/hr"
+  //   const match = str.match(/Rs\s*(\d+\.?\d*)\s*\/?hr?/i);
+  //   return match ? parseFloat(match[1]) : 0;
+  // };
+
+  // Calculate pricing based on selected resources
+  const calculatePricing = useMemo(() => {
+    if (!selectedResources?.pricing) {
+      return {
+        hourlyTotal: 0,
+        monthlyTotal: 0,
+        ipv4Price: 42,
+      };
+    }
+
+    return {
+      hourlyTotal: Number(selectedResources.pricing.hourly),
+      monthlyTotal: Number(selectedResources.pricing.monthly),
+      ipv4Price: 42,
+    };
+  }, [selectedResources]);
+
+  // Calculate total monthly price (including IPv4)
+  const monthlyTotal = useMemo(() => {
+    return (
+      (calculatePricing.monthlyTotal + calculatePricing.ipv4Price) * serverCount
+    );
+  }, [calculatePricing, serverCount]);
+
+  // Calculate total payable amount (monthlyTotal * months)
+  const totalPayable = useMemo(() => {
+    const monthsNum = Number(months) || 1;
+    return monthlyTotal * monthsNum;
+  }, [monthlyTotal, months]);
+
+  // Debug: Log selectedResources when it changes
+  useEffect(() => {
+    console.log(
+      "🔍 SummarySidebar received selectedResources:",
+      selectedResources
+    );
+    console.log("🔍 Calculated pricing:", calculatePricing);
+  }, [selectedResources, calculatePricing]);
+
+  // Prepare the complete server configuration object
+  const serverConfig = useMemo(() => {
+    return {
+      vmName: vmName,
+      serverId: serverId || null,
+      isoId: selectedOS?.id || null,
+      planType: selectedType
+        ? selectedType.toUpperCase().replace(/\s+/g, "_").replace("_VCPU", "")
+        : null,
+      cpuPriceId: selectedResources?.cpuPriceId || null,
+      ramPriceId: selectedResources?.ramPriceId || null,
+      diskPriceId: selectedResources?.diskPriceId || null,
+      bandwidthPriceId: selectedResources?.bandwidthPriceId || null,
+      months: Number(months),
+    };
+  }, [vmName, serverId, selectedOS, selectedType, selectedResources, months]);
+
+  // Handle VM name change
+  const handleVmNameChange = (e) => {
+    setVmName(e.target.value);
+  };
 
   // Function to check if token is valid
   const isTokenValid = (token) => {
@@ -49,68 +130,7 @@ const SummarySidebar = ({
     }
   };
 
-  // Check token on component mount
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!isTokenValid(token)) {
-      console.warn("⚠️ No valid token found");
-    }
-  }, []);
-
-  // Function to calculate pricing based on selected resources
-  const calculatePricing = useMemo(() => {
-    if (!selectedResources || !selectedResources.pricing) {
-      return {
-        serverPrice: 0,
-        ipv4Price: 0,
-      };
-    }
-
-    return {
-      serverPrice: parseFloat(selectedResources.pricing.monthly) || 590,
-      ipv4Price: 42,
-    };
-  }, [selectedResources]);
-
-  // Calculate total monthly price
-  const monthlyTotal = useMemo(() => {
-    return (
-      (calculatePricing.serverPrice + calculatePricing.ipv4Price) * serverCount
-    );
-  }, [calculatePricing, serverCount]);
-
-  // Calculate total payable amount (monthlyTotal * months)
-  const totalPayable = useMemo(() => {
-    const monthsNum = Number(months) || 1;
-    return monthlyTotal * monthsNum;
-  }, [monthlyTotal, months]);
-
-  // Prepare the complete server configuration object
-  const serverConfig = useMemo(() => {
-    const config = {
-      vmName: vmName,
-      serverId: serverId || null,
-      isoId: selectedOS?.id || null,
-      planType: selectedType
-        ? selectedType.toUpperCase().replace(/\s+/g, "_").replace("_VCPU", "")
-        : null,
-
-      cpuPriceId: selectedResources?.cpuPriceId || null,
-      ramPriceId: selectedResources?.ramPriceId || null,
-      diskPriceId: selectedResources?.diskPriceId || null,
-      bandwidthPriceId: selectedResources?.bandwidthPriceId || null,
-      months: Number(months),
-    };
-
-    return config;
-  }, [vmName, serverId, selectedOS, selectedType, selectedResources, months]);
-
-  // Handle VM name change
-  const handleVmNameChange = (e) => {
-    setVmName(e.target.value);
-  };
-
-  // Enhanced API request function with better error handling
+  // Enhanced API request function
   const apiRequest = async (url, options = {}) => {
     const token = localStorage.getItem("token");
 
@@ -148,7 +168,7 @@ const SummarySidebar = ({
     }
   };
 
-  // Test token validity before making the main request
+  // Test token validity
   const testTokenValidity = async () => {
     const token = localStorage.getItem("token");
 
@@ -265,9 +285,20 @@ const SummarySidebar = ({
     return Math.round((completed / steps.length) * 100);
   }, [serverId, selectedOS, selectedType, selectedResources, months]);
 
+  // Format resource display string
+  const formatResourceDisplay = () => {
+    if (!selectedResources || !selectedResources.vCPU) return "Not configured";
+
+    return `${extractDisplayName(
+      selectedResources.vCPU
+    )} • ${extractDisplayName(selectedResources.ram)} • ${extractDisplayName(
+      selectedResources.disk
+    )} • ${extractDisplayName(selectedResources.bandwidth)}`;
+  };
+
   return (
     <aside className="w-full bg-[#121a2a] border-l border-gray-800 flex flex-col h-full">
-      {/* Header - Compact but Clear */}
+      {/* Header */}
       <div className="p-5 border-b border-gray-800">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
@@ -299,9 +330,9 @@ const SummarySidebar = ({
         </div>
       </div>
 
-      {/* Main Content - Smart Layout */}
+      {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
-        {/* Essential Inputs - Always Visible */}
+        {/* Essential Inputs */}
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -333,7 +364,7 @@ const SummarySidebar = ({
           </div>
         </div>
 
-        {/* Configuration Details - Collapsible (Open by default) */}
+        {/* Configuration Details */}
         <div className="bg-gray-900/30 rounded-xl border border-gray-700/50">
           <button
             onClick={() => setConfigExpanded(!configExpanded)}
@@ -457,9 +488,7 @@ const SummarySidebar = ({
                   <div>
                     <p className="font-medium text-sm">Resources</p>
                     <p className="text-sm text-gray-400">
-                      {selectedResources?.vCPU
-                        ? `${selectedResources.vCPU} vCPU • ${selectedResources.ram} RAM • ${selectedResources.disk} Disk`
-                        : "Not configured"}
+                      {formatResourceDisplay()}
                     </p>
                   </div>
                 </div>
@@ -468,48 +497,55 @@ const SummarySidebar = ({
           )}
         </div>
 
-        {/* Pricing Summary - Shows both monthly and total payable */}
+        {/* Pricing Summary */}
         <div className="bg-gradient-to-br from-gray-900/50 to-gray-800/30 rounded-xl p-4 border border-gray-700/50 shadow-lg">
           <h3 className="text-base font-semibold text-white mb-3">
             Pricing Summary
           </h3>
 
           <div className="space-y-3">
-            {/* Monthly Breakdown */}
+            {/* Resource Breakdown */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-300">
-                  Server ({serverCount}x)
-                </span>
+                <span className="text-sm text-gray-300">Server Resources</span>
                 <span className="text-sm font-medium text-white">
-                  ₹{(calculatePricing.serverPrice * serverCount).toFixed(0)}
+                  ₹{calculatePricing.hourlyTotal.toFixed(4)}
+                  <span className="text-xs text-gray-400 ml-1">/hr</span>
+                </span>
+              </div>
+
+              <div className="text-xs text-gray-400">
+                Includes CPU, RAM, Disk & Bandwidth
+              </div>
+
+              <div className="pt-2 border-t border-gray-700/30 flex justify-between items-center">
+                <span className="text-sm text-gray-300">Server Resources</span>
+                <span className="text-sm font-medium text-white">
+                  ₹{calculatePricing.monthlyTotal.toFixed(2)}
                   <span className="text-xs text-gray-400 ml-1">/month</span>
                 </span>
               </div>
 
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pt-2">
                 <span className="text-sm text-gray-300">IPv4 Address</span>
                 <span className="text-sm font-medium text-white">
-                  ₹{(calculatePricing.ipv4Price * serverCount).toFixed(0)}
+                  ₹{calculatePricing.ipv4Price.toFixed(2)}
                   <span className="text-xs text-gray-400 ml-1">/month</span>
                 </span>
               </div>
 
-              {/* Monthly Total */}
-              <div className="pt-2 border-t border-gray-700/50">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-300">
-                    Monthly Total
-                  </span>
-                  <span className="text-sm font-bold text-white">
-                    ₹{monthlyTotal.toFixed(0)}
-                    <span className="text-xs text-gray-400 ml-1">/month</span>
-                  </span>
-                </div>
+              <div className="pt-2 border-t border-gray-700/50 flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-300">
+                  Monthly Total
+                </span>
+                <span className="text-sm font-bold text-white">
+                  ₹{monthlyTotal.toFixed(2)}
+                  <span className="text-xs text-gray-400 ml-1">/month</span>
+                </span>
               </div>
             </div>
 
-            {/* Total Payable (for selected months) */}
+            {/* Total Payable */}
             <div className="pt-3 mt-2 border-t border-gray-700 bg-gray-900/30 rounded-lg p-3">
               <div className="flex justify-between items-center mb-1">
                 <div>
@@ -522,22 +558,21 @@ const SummarySidebar = ({
                 </div>
                 <div className="text-right">
                   <div className="text-xl font-bold text-white">
-                    ₹{totalPayable.toFixed(0)}
+                    ₹{totalPayable.toFixed(2)}
                   </div>
                   {Number(months) > 1 && (
                     <div className="text-xs text-gray-400">
-                      (₹{monthlyTotal.toFixed(0)} × {months} months)
+                      (₹{monthlyTotal.toFixed(2)} × {months} months)
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Per month equivalent for longer durations */}
               {Number(months) > 1 && (
                 <div className="flex justify-between items-center text-xs text-gray-400 mt-2 pt-2 border-t border-gray-700/30">
                   <span>Equivalent to:</span>
                   <span>
-                    ₹{(totalPayable / Number(months)).toFixed(0)}/month
+                    ₹{(totalPayable / Number(months)).toFixed(2)}/month
                   </span>
                 </div>
               )}
@@ -546,9 +581,9 @@ const SummarySidebar = ({
         </div>
       </div>
 
-      {/* Footer - Action Area */}
+      {/* Footer */}
       <div className="p-5 border-t border-gray-800 space-y-4 bg-[#0e1525]/50">
-        {/* Status Indicators - Inline */}
+        {/* Status Indicators */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
@@ -603,7 +638,7 @@ const SummarySidebar = ({
           ) : (
             <>
               <CreditCard className="w-5 h-5" />
-              Pay ₹{totalPayable.toFixed(0)} & Deploy
+              Pay ₹{totalPayable.toFixed(2)} & Deploy
             </>
           )}
         </button>

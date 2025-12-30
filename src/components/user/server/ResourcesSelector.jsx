@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { CheckCircle } from "lucide-react";
 
-const ResourcesSelector = ({ 
-  selectedType, 
+const ResourcesSelector = ({
+  selectedType,
   setSelectedResources,
   onVerifyAndCreate, // Add this prop
-  isServerCreationComplete // Add this prop
+  isServerCreationComplete, // Add this prop
 }) => {
   const [vCPU, setVCPU] = useState("");
   const [ram, setRam] = useState("");
@@ -153,28 +153,22 @@ const ResourcesSelector = ({
     const bandwidthOption = bandwidthOptions.find((b) => b.label === bandwidth);
 
     const cpuPrice = cpuOption?.price || 0;
-    const ramMultiplier = ramOption?.multiplier || 1;
-    const diskAddon = diskOption?.addon || 0;
-    const bandwidthAddon = bandwidthOption?.addon || 0;
+    const ramPrice = ramOption?.price || 0;
+    const diskPrice = diskOption?.price || 0;
+    const bandwidthPrice = bandwidthOption?.price || 0;
 
     const hourly = (
-      cpuPrice * ramMultiplier +
-      diskAddon +
-      bandwidthAddon
+      cpuPrice +
+      ramPrice +
+      diskPrice +
+      bandwidthPrice
     ).toFixed(4);
+
     const monthly = (parseFloat(hourly) * 720).toFixed(2);
 
-    return { hourly, monthly };
-  }, [
-    vCPU,
-    ram,
-    disk,
-    bandwidth,
-    vcpuOptions,
-    ramOptions,
-    diskOptions,
-    bandwidthOptions,
-  ]);
+    return { hourly, monthly, cpuPrice, ramPrice, diskPrice, bandwidthPrice };
+  }, [vCPU,ram,disk,bandwidth,vcpuOptions,ramOptions,diskOptions,bandwidthOptions]
+  );
 
   // Update parent component when resources change
   useEffect(() => {
@@ -195,6 +189,14 @@ const ResourcesSelector = ({
         ramPriceId: ramOption?.id || null,
         diskPriceId: diskOption?.id || null,
         bandwidthPriceId: bandwidthOption?.id || null,
+        // Store individual prices
+        individualPrices: {
+          cpuHourly: pricing.cpuPrice || 0,
+          ramHourly: pricing.ramPrice || 0,
+          diskHourly: pricing.diskPrice || 0,
+          bandwidthHourly: pricing.bandwidthPrice || 0,
+        },
+        // Keep total pricing
         pricing: {
           hourly: pricing.hourly,
           monthly: pricing.monthly,
@@ -313,9 +315,7 @@ const ResourcesSelector = ({
             <span className="font-semibold text-green-400">Configuring:</span>{" "}
             {selectedType}
           </p>
-          <p className="text-gray-400 text-xs mt-1">
-            Current vCPU: {vCPU}
-          </p>
+          <p className="text-gray-400 text-xs mt-1">Current vCPU: {vCPU}</p>
         </div>
 
         {error && (
