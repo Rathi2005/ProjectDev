@@ -107,7 +107,7 @@ export default function OrdersPage() {
             serverId: order.serverId,
             vmid: order.proxmoxVmid,
 
-            internalVmid : order.internalVmId,
+            internalVmid: order.internalVmId,
 
             // Display info
             vmName: order.vmName,
@@ -912,6 +912,24 @@ export default function OrdersPage() {
     selectedRevenuePeriod,
   ]);
 
+  const showOrderDetailsModal = (order) => {
+    Swal.fire({
+      title: "Order Full Details",
+      html: `
+      <div class="text-left">
+        <pre class="text-xs bg-[#0b1220] p-4 rounded-lg overflow-auto max-h-[500px] text-gray-200">
+${JSON.stringify(order.originalData ?? order, null, 2)}
+        </pre>
+      </div>
+    `,
+      width: "900px",
+      confirmButtonText: "Close",
+      background: "#1e2640",
+      color: "#ffffff",
+      confirmButtonColor: "#6366f1",
+    });
+  };
+
   // Derived values
   const totalPages = Math.ceil(orders.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -1251,8 +1269,7 @@ export default function OrdersPage() {
                               </span>
                             </td>
                           </tr>
-                                                                        {console.log(order)}
-
+                          {console.log(order)}
 
                           {/* EXPANDED DROPDOWN ROW - Responsive */}
                           {expandedRow === order.id && (
@@ -1322,7 +1339,7 @@ export default function OrdersPage() {
                                             {order.isoName || "Not specified"}
                                           </p>
                                         </div>
-                                        
+
                                         {order.vmid && (
                                           <div className="pt-3 border-t border-indigo-900/30">
                                             <div className="flex items-center justify-between gap-2">
@@ -1407,6 +1424,18 @@ export default function OrdersPage() {
                                               {order.planType || "Standard"}
                                             </span>
                                           </div>
+                                        </div>
+
+                                        <div className="pt-4 border-t border-indigo-900/30">
+                                          <button
+                                            onClick={() =>
+                                              showOrderDetailsModal(order)
+                                            }
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                                          >
+                                            <Eye className="w-4 h-4" />
+                                            View Full Order Details
+                                          </button>
                                         </div>
                                       </div>
                                     </div>

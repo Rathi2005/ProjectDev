@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
+import Swal from "sweetalert2";
 import { FileText, CheckCircle, Clock, XCircle, Download } from "lucide-react";
 
 export default function InvoicesPage() {
@@ -98,6 +99,24 @@ export default function InvoicesPage() {
       year: "numeric",
       month: "short",
       day: "numeric",
+    });
+  };
+
+  const showJsonModal = (title, data) => {
+    Swal.fire({
+      title,
+      html: `
+      <div class="text-left">
+        <pre class="text-xs bg-[#0b1220] p-4 rounded-lg overflow-auto max-h-[500px] text-gray-200">
+${JSON.stringify(data, null, 2)}
+        </pre>
+      </div>
+    `,
+      width: "900px",
+      confirmButtonText: "Close",
+      background: "#1e2640",
+      color: "#ffffff",
+      confirmButtonColor: "#6366f1",
     });
   };
 
@@ -362,17 +381,57 @@ export default function InvoicesPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      {invoice.paymentId ? (
-                        <button
-                          onClick={() => generateInvoice(invoice.paymentId)}
-                          className="flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-sm transition-all"
-                        >
-                          <Download className="w-4 h-4" />
-                          Download
-                        </button>
-                      ) : (
-                        <span className="text-gray-500 text-sm">N/A</span>
-                      )}
+                      <div className="flex flex-col gap-2 min-w-[180px]">
+                        {/* Top row */}
+                        <div className="flex gap-2">
+                          {invoice.paymentId && (
+                            <button
+                              onClick={() => generateInvoice(invoice.paymentId)}
+                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-xs transition-all"
+                            >
+                              <Download className="w-4 h-4" />
+                              Invoice
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() =>
+                              showJsonModal("Payment Overview", {
+                                invoiceId: invoice.invoiceId,
+                                paymentId: invoice.paymentId,
+                                customerName: invoice.customerName,
+                                server: invoice.server,
+                                amount: invoice.amount,
+                                status: invoice.status,
+                                paymentMethod: invoice.paymentMethod,
+                                transactionId: invoice.transactionId,
+                                issueDate: invoice.issueDate,
+                                dueDate: invoice.dueDate,
+                              })
+                            }
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-indigo-500/40 hover:bg-indigo-500/10 text-indigo-300 text-xs"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Overview
+                          </button>
+                        </div>
+
+                        {/* Bottom row */}
+                        {invoice.ledgerData && (
+                          <button
+                            onClick={() =>
+                              showJsonModal(
+                                "Ledger Details",
+                                invoice.ledgerData
+                              )
+                            }
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-300 text-xs"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Ledger
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

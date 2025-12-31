@@ -565,6 +565,24 @@ export default function UserOrdersPage() {
     return s === "ACTIVE" || s === "STOPPED";
   };
 
+  const showDetailsModal = (order) => {
+    Swal.fire({
+      title: "Server Details",
+      html: `
+      <div class="text-left">
+        <pre class="text-xs bg-[#0b1220] p-4 rounded-lg overflow-auto max-h-[500px] text-gray-200">
+${JSON.stringify(order.originalData ?? order, null, 2)}
+        </pre>
+      </div>
+    `,
+      width: "850px",
+      confirmButtonText: "Close",
+      background: "#0e1525",
+      color: "#e5e7eb",
+      confirmButtonColor: "#4f46e5",
+    });
+  };
+
   // Update openUpgradeModal to prepare payment config
   const openUpgradeModal = async (order) => {
     try {
@@ -985,6 +1003,18 @@ export default function UserOrdersPage() {
                                               <p className="text-sm font-semibold text-white font-mono">
                                                 #{order.id}
                                               </p>
+                                            </div>
+
+                                            <div className="pt-4 border-t border-indigo-900/30">
+                                              <button
+                                                onClick={() =>
+                                                  showDetailsModal(order)
+                                                }
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                                              >
+                                                <FileText className="w-4 h-4" />
+                                                View Full Details
+                                              </button>
                                             </div>
                                           </div>
                                         </div>
