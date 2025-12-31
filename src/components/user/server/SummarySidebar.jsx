@@ -81,15 +81,6 @@ const SummarySidebar = ({
     return monthlyTotal * monthsNum;
   }, [monthlyTotal, months]);
 
-  // Debug: Log selectedResources when it changes
-  useEffect(() => {
-    console.log(
-      "🔍 SummarySidebar received selectedResources:",
-      selectedResources
-    );
-    console.log("🔍 Calculated pricing:", calculatePricing);
-  }, [selectedResources, calculatePricing]);
-
   // Prepare the complete server configuration object
   const serverConfig = useMemo(() => {
     return {
@@ -119,12 +110,10 @@ const SummarySidebar = ({
       const payload = JSON.parse(atob(token.split(".")[1]));
       const isExpired = payload.exp * 1000 < Date.now();
       if (isExpired) {
-        console.log("❌ Token expired");
         localStorage.removeItem("token");
       }
       return !isExpired;
     } catch (error) {
-      console.error("❌ Invalid token format:", error);
       localStorage.removeItem("token");
       return false;
     }

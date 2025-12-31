@@ -28,15 +28,7 @@ export default function Dashboard() {
   const mainContentRef = useRef(null);
   // Add this useEffect right after your other useEffect hooks
   useEffect(() => {
-    console.log("📊 selectedResources updated:", selectedResources);
-    console.log(
-      "📊 Full structure:",
-      JSON.stringify(selectedResources, null, 2)
-    );
-
     if (selectedResources && Object.keys(selectedResources).length > 0) {
-      console.log("📊 Keys:", Object.keys(selectedResources));
-
       // Check for important keys
       const importantKeys = [
         "vCPU",
@@ -50,11 +42,11 @@ export default function Dashboard() {
         "bandwidthPriceId",
       ];
 
-      importantKeys.forEach((key) => {
-        if (selectedResources[key]) {
-          console.log(`📊 ${key}:`, selectedResources[key]);
-        }
-      });
+      // importantKeys.forEach((key) => {
+      //   if (selectedResources[key]) {
+      //     console.log(`📊 ${key}:`, selectedResources[key]);
+      //   }
+      // });
     }
   }, [selectedResources]); // This will run whenever selectedResources changes
   // Track when we're in server sections
@@ -159,10 +151,8 @@ export default function Dashboard() {
   const token = localStorage.getItem("token");
 
   const handlePayment = async (sessionId) => {
-    console.log("1. Starting payment...");
 
     if (!cashfreeRef.current) {
-      console.log("Payment system not ready");
       alert("Payment system not ready");
       return;
     }
@@ -172,7 +162,6 @@ export default function Dashboard() {
       redirectTarget: "_self",
 
       onSuccess: () => {
-        console.log("Payment completed");
         setTimeout(() => {
           setShouldRedirect(true);
         }, 0);
@@ -183,16 +172,12 @@ export default function Dashboard() {
       },
 
       onClose: () => {
-        console.log("Popup closed");
         setTimeout(() => {
           setShouldRedirect(true);
         }, 0);
       },
     };
-
-    console.log("5. Opening payment popup...");
     cashfreeRef.current.checkout(checkoutOptions);
-    console.log("6. Payment popup opened");
   };
 
   useEffect(() => {

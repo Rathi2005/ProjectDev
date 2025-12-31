@@ -71,6 +71,12 @@ export default function OrdersPage() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
+  const refreshOrdersWithDelay = async () => {
+    await fetchOrders(); // immediate
+    setTimeout(fetchOrders, 3000); // backend async update
+    setTimeout(fetchOrders, 6000); // final state
+  };
+
   async function fetchOrders() {
     try {
       const adminToken = localStorage.getItem("adminToken");
@@ -365,7 +371,7 @@ export default function OrdersPage() {
         throw new Error(text || "Power operation failed");
       }
 
-      await fetchOrders();
+      await refreshOrdersWithDelay();
 
       DarkSwal.close();
       DarkSwal.fire({
@@ -462,6 +468,7 @@ export default function OrdersPage() {
     } finally {
       setAdminActionLoading((p) => ({ ...p, [orderId]: null }));
     }
+    await refreshOrdersWithDelay();
   };
 
   // ---------- REBUILD HANDLER ----------
@@ -624,6 +631,7 @@ export default function OrdersPage() {
         showConfirmButton: false,
       });
     }
+    await refreshOrdersWithDelay();
   };
 
   // Remove the old handleRebuild function and use this new one
@@ -714,7 +722,12 @@ export default function OrdersPage() {
     } finally {
       setAdminActionLoading((p) => ({ ...p, [orderId]: null }));
     }
+    await refreshOrdersWithDelay();
   };
+
+  useEffect(() => {
+    setExpandedRow(null);
+  }, [orders]);
 
   // Add this function before the insights useMemo:
   const getRevenueSubtitle = (period) => {
@@ -1188,17 +1201,17 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                           {/* CLICKABLE MAIN ROW */}
                           <tr
                             className={`border-t border-indigo-900/20 hover:bg-indigo-900/10 transition-all ${
-                              expandedRow === order.dbOrderId
+                              expandedRow === order.id
                                 ? "bg-indigo-900/10"
                                 : ""
                             }`}
                           >
                             <td className="py-3 px-4 sm:px-6">
                               <button
-                                onClick={() => toggleRow(order.dbOrderId)}
+                                onClick={() => toggleRow(order.id)}
                                 className="text-left w-full flex items-center gap-2 text-indigo-300 font-medium hover:text-indigo-200 transition-colors"
                               >
-                                {expandedRow === order.dbOrderId ? (
+                                {expandedRow === order.id  ? (
                                   <ChevronUp className="w-4 h-4" />
                                 ) : (
                                   <ChevronDown className="w-4 h-4" />
@@ -1340,34 +1353,35 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                           </p>
                                         </div>
 
-                                        {order.vmid && (
-                                          <div className="pt-3 border-t border-indigo-900/30">
-                                            <div className="flex items-center justify-between gap-2">
-                                              <span className="text-xs sm:text-sm text-gray-400">
-                                                VM ID
-                                              </span>
+                                        {order.vmid !== null &&
+                                          order.vmid !== undefined && (
+                                            <div className="pt-3 border-t border-indigo-900/30">
+                                              <div className="flex items-center justify-between gap-2">
+                                                <span className="text-xs sm:text-sm text-gray-400">
+                                                  VM ID
+                                                </span>
 
-                                              <div className="flex items-center gap-2">
-                                                <code className="bg-indigo-900/30 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-mono">
-                                                  {order.vmid}
-                                                </code>
+                                                <div className="flex items-center gap-2">
+                                                  <code className="bg-indigo-900/30 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-mono">
+                                                    {order.vmid}
+                                                  </code>
 
-                                                <button
-                                                  onClick={() =>
-                                                    handleVmidEdit(
-                                                      order.vmid,
-                                                      order.internalVmid
-                                                    )
-                                                  }
-                                                  className="p-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white transition"
-                                                  title="Edit VMID"
-                                                >
-                                                  <Edit className="w-3 h-3" />
-                                                </button>
+                                                  <button
+                                                    onClick={() =>
+                                                      handleVmidEdit(
+                                                        order.vmid,
+                                                        order.internalVmid
+                                                      )
+                                                    }
+                                                    className="p-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white transition"
+                                                    title="Edit VMID"
+                                                  >
+                                                    <Edit className="w-3 h-3" />
+                                                  </button>
+                                                </div>
                                               </div>
                                             </div>
-                                          </div>
-                                        )}
+                                          )}
                                       </div>
                                     </div>
 

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { CheckCircle } from "lucide-react";
+import Swal from "sweetalert2";
 
 const ResourcesSelector = ({
   selectedType,
   setSelectedResources,
-  onVerifyAndCreate, // Add this prop
-  isServerCreationComplete, // Add this prop
+  onVerifyAndCreate,
+  isServerCreationComplete,
 }) => {
   const [vCPU, setVCPU] = useState("");
   const [ram, setRam] = useState("");
@@ -38,7 +39,7 @@ const ResourcesSelector = ({
   // Fetch prices based on selected type
   useEffect(() => {
     if (!selectedType) {
-      return; // Don't fetch yet
+      return;
     }
 
     const fetchPrices = async () => {
@@ -83,9 +84,39 @@ const ResourcesSelector = ({
         if (ramData.length > 0) setRam(ramData[0].label);
         if (diskData.length > 0) setDisk(diskData[0].label);
         if (bandwidthData.length > 0) setBandwidth(bandwidthData[0].label);
+
+        // Show success notification
+        Swal.fire({
+          icon: 'success',
+          title: 'Resources Loaded',
+          text: `${vcpuData.length} vCPU options available`,
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true,
+          background: '#0e1525',
+          color: '#ffffff',
+          iconColor: '#4f46e5'
+        });
       } catch (err) {
         setError("Failed to load resource prices.");
         setDefaultOptions(selectedType);
+        
+        // Show error notification
+        Swal.fire({
+          icon: 'error',
+          title: 'Using Default Prices',
+          text: 'Could not fetch live prices, using default values',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          background: '#0e1525',
+          color: '#ffffff',
+          iconColor: '#f59e0b'
+        });
       } finally {
         setLoading(false);
       }
@@ -96,7 +127,6 @@ const ResourcesSelector = ({
 
   // Fallback default options if API fails
   const setDefaultOptions = (type = "Shared vCPU") => {
-    // Default options based on server type
     const isDedicated = type === "Dedicated vCPU";
 
     const defaultVcpuOptions = isDedicated
@@ -134,7 +164,6 @@ const ResourcesSelector = ({
     setDiskOptions(defaultDiskOptions);
     setBandwidthOptions(defaultBandwidthOptions);
 
-    // Set default values
     if (defaultVcpuOptions.length > 0) {
       setVCPU(defaultVcpuOptions[0].label);
     }
@@ -144,7 +173,6 @@ const ResourcesSelector = ({
       setBandwidth(defaultBandwidthOptions[0].label);
   };
 
-  // Rest of the component remains exactly the same...
   // Compute pricing dynamically
   const pricing = useMemo(() => {
     const cpuOption = vcpuOptions.find((c) => c.label === vCPU);
@@ -167,8 +195,7 @@ const ResourcesSelector = ({
     const monthly = (parseFloat(hourly) * 720).toFixed(2);
 
     return { hourly, monthly, cpuPrice, ramPrice, diskPrice, bandwidthPrice };
-  }, [vCPU,ram,disk,bandwidth,vcpuOptions,ramOptions,diskOptions,bandwidthOptions]
-  );
+  }, [vCPU,ram,disk,bandwidth,vcpuOptions,ramOptions,diskOptions,bandwidthOptions]);
 
   // Update parent component when resources change
   useEffect(() => {
@@ -189,14 +216,12 @@ const ResourcesSelector = ({
         ramPriceId: ramOption?.id || null,
         diskPriceId: diskOption?.id || null,
         bandwidthPriceId: bandwidthOption?.id || null,
-        // Store individual prices
         individualPrices: {
           cpuHourly: pricing.cpuPrice || 0,
           ramHourly: pricing.ramPrice || 0,
           diskHourly: pricing.diskPrice || 0,
           bandwidthHourly: pricing.bandwidthPrice || 0,
         },
-        // Keep total pricing
         pricing: {
           hourly: pricing.hourly,
           monthly: pricing.monthly,
@@ -219,10 +244,10 @@ const ResourcesSelector = ({
   // Show loading state
   if (loading) {
     return (
-      <div className="flex-1 px-8">
-        {/* Back link */}
+      <div className="flex-1 px-4 sm:px-8">
+        {/* Back link with icon */}
         <div
-          className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline"
+          className="flex items-center text-sm text-gray-400 mb-4 cursor-pointer hover:text-gray-300 transition-colors group"
           onClick={() => {
             const typeSection = document.getElementById("server-type");
             if (typeSection) {
@@ -233,18 +258,32 @@ const ResourcesSelector = ({
             }
           }}
         >
-          ← Back to type
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform"
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M10 19l-7-7m0 0l7-7m-7 7h18" 
+            />
+          </svg>
+          Back to type
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold mb-6">Resources</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Resources</h1>
 
         {/* Enhanced Loading Indicator */}
         <div className="space-y-6">
           {/* Server Type Info with Loading */}
           <div className="p-4 bg-[#1a2238] rounded-lg border border-gray-700">
             <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-red-500 border-t-transparent"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent"></div>
               <div>
                 <p className="text-gray-300 text-sm">
                   <span className="font-semibold text-green-400">
@@ -271,7 +310,7 @@ const ResourcesSelector = ({
 
           {/* Loading Message */}
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent mx-auto mb-3"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mx-auto mb-3"></div>
             <p className="text-gray-400 text-sm">
               Fetching{" "}
               {selectedType === "Dedicated vCPU" ? "dedicated" : "shared"}{" "}
@@ -286,13 +325,37 @@ const ResourcesSelector = ({
     );
   }
 
+  // Handle verify and create with confirmation
+  const handleVerifyAndCreate = () => {
+    if (!isServerCreationComplete) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Incomplete Configuration',
+        text: 'Please complete all server creation steps first',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        background: '#0e1525',
+        color: '#ffffff',
+        iconColor: '#f59e0b'
+      });
+      return;
+    }
+
+    if (onVerifyAndCreate) {
+      onVerifyAndCreate();
+    }
+  };
+
   return (
     <div className="flex bg-[#0e1525] text-white w-full">
-      {/* Left Section */}
+      {/* Left Section - Not 100vh */}
       <div className="flex-1 px-4 sm:px-8">
-        {/* Back link */}
+        {/* Back link with icon */}
         <div
-          className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline"
+          className="flex items-center text-sm text-gray-400 mb-4 cursor-pointer hover:text-gray-300 transition-colors group"
           onClick={() => {
             const typeSection = document.getElementById("server-type");
             if (typeSection) {
@@ -303,25 +366,79 @@ const ResourcesSelector = ({
             }
           }}
         >
-          ← Back to type
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform"
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M10 19l-7-7m0 0l7-7m-7 7h18" 
+            />
+          </svg>
+          Back to type
         </div>
 
-        {/* Title */}
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Resources</h1>
+        {/* Title with info button */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold">Resources</h1>
+        </div>
 
         {/* Server Type Info */}
         <div className="mb-6 p-4 bg-[#1a2238] rounded-lg border border-gray-700">
-          <p className="text-gray-300 text-sm">
-            <span className="font-semibold text-green-400">Configuring:</span>{" "}
-            {selectedType}
-          </p>
-          <p className="text-gray-400 text-xs mt-1">Current vCPU: {vCPU}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 text-green-400" 
+                viewBox="0 0 20 20" 
+                fill="currentColor"
+              >
+                <path 
+                  fillRule="evenodd" 
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" 
+                  clipRule="evenodd" 
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-gray-300">
+                <span className="font-semibold text-green-400">Configuring:</span>{" "}
+                {selectedType}
+              </p>
+              <p className="text-gray-400 text-xs mt-1">Adjust resources based on your needs</p>
+            </div>
+          </div>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-700 rounded-lg">
-            <p className="text-red-400 text-sm">{error}</p>
-            <p className="text-red-400 text-xs mt-1">Using default pricing</p>
+          <div className="mb-6 p-4 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-yellow-900/30 flex items-center justify-center">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4 text-yellow-400" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.226 16.5c-.77.833.192 2.5 1.732 2.5z" 
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-yellow-400">{error}</p>
+                <p className="text-yellow-400 text-xs mt-1">Using default pricing</p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -351,7 +468,7 @@ const ResourcesSelector = ({
             <select
               value={vCPU}
               onChange={(e) => setVCPU(e.target.value)}
-              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
             >
               {vcpuOptions.map((opt) => (
                 <option key={opt.id} value={opt.label}>
@@ -367,7 +484,7 @@ const ResourcesSelector = ({
             <select
               value={ram}
               onChange={(e) => setRam(e.target.value)}
-              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
             >
               {ramOptions.map((opt) => (
                 <option key={opt.id} value={opt.label}>
@@ -385,7 +502,7 @@ const ResourcesSelector = ({
             <select
               value={disk}
               onChange={(e) => setDisk(e.target.value)}
-              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
             >
               {diskOptions.map((opt) => (
                 <option key={opt.id} value={opt.label}>
@@ -403,7 +520,7 @@ const ResourcesSelector = ({
             <select
               value={bandwidth}
               onChange={(e) => setBandwidth(e.target.value)}
-              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="bg-[#111827] border border-gray-700 rounded-md px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
             >
               {bandwidthOptions.map((opt) => (
                 <option key={opt.id} value={opt.label}>
@@ -411,7 +528,7 @@ const ResourcesSelector = ({
                 </option>
               ))}
             </select>
-            <p className="text-gray-500 text-xs mt-1">
+            <p className="text-gray-500 text-xs mt-2">
               Additional usage: ₹0.293/GB
             </p>
           </div>
@@ -420,17 +537,22 @@ const ResourcesSelector = ({
         {/* Pricing Summary */}
         {pricing.hourly !== "0.0000" && (
           <div className="mt-8 border-t border-gray-700 pt-6">
-            <h2 className="text-lg font-semibold mb-3">Pricing Summary</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Pricing Summary</h2>
+              <div className="text-sm text-gray-400">
+                {selectedType}
+              </div>
+            </div>
             <div className="flex items-center justify-between text-gray-300 mb-1">
               <span className="text-sm">
                 {vCPU}, {ram}, {disk}, {bandwidth}
               </span>
-              <span className="font-bold text-red-400">
+              <span className="font-bold text-indigo-400">
                 ₹{pricing.hourly} / hour
               </span>
             </div>
             <div className="text-sm text-gray-400">
-              ≈ ₹{pricing.monthly} / month
+              ≈ ₹{pricing.monthly} / month (720 hours)
             </div>
           </div>
         )}
@@ -438,7 +560,7 @@ const ResourcesSelector = ({
         {/* Mobile-only Verify and Create Button */}
         <div className="lg:hidden mt-8 pt-6 border-t border-gray-700">
           <button
-            onClick={() => onVerifyAndCreate && onVerifyAndCreate()}
+            onClick={handleVerifyAndCreate}
             disabled={!isServerCreationComplete}
             className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold transition-colors ${
               isServerCreationComplete

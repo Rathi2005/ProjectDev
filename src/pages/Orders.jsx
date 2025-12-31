@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Header from "../components/user/Header";
 import PaymentFlow from "../components/payment/PaymentFlow";
 import Swal from "sweetalert2";
+import toast, { Toaster } from "react-hot-toast";
 
 import {
   Cpu,
@@ -135,7 +136,7 @@ export default function UserOrdersPage() {
         // remove ?payment=success from URL
         window.history.replaceState({}, "", "/orders");
       }
-    }, 2000); // ⏱️ 2 seconds delay
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -171,10 +172,8 @@ export default function UserOrdersPage() {
       let method = "POST";
 
       if (action === "rebuild") {
-        // ✅ Separate rebuild API
         url = `${BASE_URL}/users/${userId}/vms/${vmId}/rebuild?isoId=${isoId}`;
       } else {
-        // ✅ Normal power actions
         url = `${BASE_URL}/users/${userId}/vms/${vmId}/control?action=${action}`;
       }
 
@@ -197,7 +196,6 @@ export default function UserOrdersPage() {
         text: `${action.toUpperCase()} request sent successfully.`,
       });
 
-      // ✅ Optimistic UI update
       setOrders((prev) =>
         prev.map((o) =>
           o.id === vmId
@@ -322,6 +320,25 @@ export default function UserOrdersPage() {
         color: "#e5e7eb",
         confirmButtonColor: "#ef4444",
         cancelButtonColor: "#334155",
+
+        didOpen: () => {
+          const select = Swal.getInput();
+          if (select) {
+            // Style the select box
+            select.style.backgroundColor = "#151c2f";
+            select.style.color = "#e5e7eb";
+            select.style.border = "1px solid #4f46e5";
+            select.style.borderRadius = "6px";
+            select.style.padding = "10px";
+
+            // 🔹 THIS is the part you were looking for
+            select.querySelectorAll("option").forEach((opt) => {
+              opt.style.background = "#151c2f";
+              opt.style.color = "#e5e7eb";
+            });
+          }
+        },
+
         inputValidator: (value) => {
           if (!value) return "Please select an ISO";
         },
@@ -329,7 +346,6 @@ export default function UserOrdersPage() {
 
       if (!isoId) return;
 
-      // 🔥 Call rebuild API
       await handlePowerAction(order, "rebuild", isoId);
     } catch (err) {
       Swal.fire({
@@ -522,7 +538,9 @@ export default function UserOrdersPage() {
     const password = passwordInputs[order.id];
 
     if (!password || password.length < 6 || !/^[a-zA-Z0-9]+$/.test(password)) {
-      alert("Password must be alphanumeric and at least 6 characters long");
+      toast.error(
+        "Password must be alphanumeric and at least 6 characters long"
+      );
       return;
     }
 
@@ -549,12 +567,12 @@ export default function UserOrdersPage() {
         throw new Error(errText || "Failed to save password");
       }
 
-      alert("✅ Password saved successfully");
+      toast.success("Password saved successfully");
 
       // Optional: clear input after save
       setPasswordInputs((prev) => ({ ...prev, [order.id]: "" }));
     } catch (err) {
-      alert(`❌ ${err.message}`);
+      toast.error(`❌ ${err.message}`);
     } finally {
       setPasswordLoading((prev) => ({ ...prev, [vmId]: false }));
     }
@@ -655,6 +673,18 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen">
       <Header />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: "#151c2f",
+            color: "#ffffff",
+            border: "1px solid #4f46e5",
+            borderRadius: "8px",
+          },
+        }}
+      />
 
       <main className="p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Loading state */}
@@ -1210,7 +1240,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   </a>
                                                   <button
                                                     onClick={() =>
-                                                      alert(
+                                                      toast.success(
                                                         "Console access would open here"
                                                       )
                                                     }

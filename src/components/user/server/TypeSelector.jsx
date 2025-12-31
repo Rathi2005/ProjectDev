@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Swal from "sweetalert2";
 
 const TypeSelector = ({ setSelectedType, selectedOS }) => {
   const [selectedType, setSelectedTypeState] = useState(null);
@@ -12,26 +13,66 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
         "Medium traffic websites & applications",
         "Low to medium CPU usage",
       ],
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
     },
     {
       name: "Dedicated vCPU",
       description:
         "Best choice for critical production as well as high CPU usage applications. Delivers predictable performance and response times.",
       tags: ["High traffic applications", "Sustained high CPU usage"],
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      ),
     },
   ];
 
   // Handle type selection and auto-scroll to next section
   const handleTypeSelect = (typeName) => {
     // Prevent selection if no OS is selected
-    if (!selectedOS) return;
+    if (!selectedOS) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Select OS First',
+        text: 'Please select an operating system before choosing a server type',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        background: '#0e1525',
+        color: '#ffffff',
+        iconColor: '#f59e0b'
+      });
+      return;
+    }
 
     setSelectedTypeState(typeName);
 
     // Update parent component immediately
     setSelectedType(typeName);
 
-    // 🧭 Smooth scroll to Resources section
+    // Show selection notification
+    Swal.fire({
+      icon: 'success',
+      title: 'Type Selected',
+      text: `You've selected ${typeName}`,
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true,
+      background: '#0e1525',
+      color: '#ffffff',
+      iconColor: '#10b981'
+    });
+
+    // Smooth scroll to Resources section
     setTimeout(() => {
       const resourcesSection = document.getElementById("server-resources");
       if (resourcesSection) {
@@ -44,9 +85,9 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
     <div className="flex bg-[#0e1525] text-white w-full">
       {/* Left Section */}
       <div className="flex-1 px-8">
-        {/* Back link */}
+        {/* Back link with icon */}
         <div
-          className="text-sm text-gray-400 mb-4 cursor-pointer hover:underline"
+          className="flex items-center text-sm text-gray-400 mb-4 cursor-pointer hover:text-gray-300 transition-colors group"
           onClick={() => {
             const imageSection = document.getElementById("server-image");
             if (imageSection) {
@@ -57,11 +98,27 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
             }
           }}
         >
-          ← Back to image
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform"
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M10 19l-7-7m0 0l7-7m-7 7h18" 
+            />
+          </svg>
+          Back to image
         </div>
 
-        {/* Title */}
-        <h1 className="text-3xl font-bold mb-6">Choose Type</h1>
+        {/* Title with info button */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Choose Type</h1>
+        </div>
 
         {/* Description */}
         <p className="text-gray-400 text-sm mb-6 max-w-3xl leading-relaxed">
@@ -73,9 +130,29 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
         {/* Warning message if no OS selected */}
         {!selectedOS && (
           <div className="mb-6 p-4 bg-yellow-900/30 border border-yellow-700 rounded-lg">
-            <p className="text-yellow-400 text-sm font-medium">
-              ⚠️ Please select a server image first before choosing a type.
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-yellow-900/30 flex items-center justify-center">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4 text-yellow-400" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.226 16.5c-.77.833.192 2.5 1.732 2.5z" 
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-yellow-400 font-medium">
+                  Please select a server image first before choosing a type.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -88,17 +165,37 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
                 !selectedOS
                   ? "cursor-not-allowed opacity-50 border-gray-800 bg-[#0d1421]"
                   : selectedType === type.name
-                  ? "cursor-pointer border-red-500 bg-[#1a2238] shadow-lg"
+                  ? "cursor-pointer border-indigo-500 bg-[#1a2238] shadow-lg"
                   : "cursor-pointer border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
               }`}
               onClick={() => handleTypeSelect(type.name)}
             >
               {/* Card Header */}
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold">{type.name}</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    selectedType === type.name 
+                      ? "bg-indigo-900/30" 
+                      : "bg-gray-800"
+                  }`}>
+                    {type.icon}
+                  </div>
+                  <h2 className="text-lg font-semibold">{type.name}</h2>
+                </div>
                 {selectedType === type.name && (
-                  <div className="text-green-400 text-sm font-medium">
-                    ✓ Selected
+                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-3 w-3 text-white" 
+                      viewBox="0 0 20 20" 
+                      fill="currentColor"
+                    >
+                      <path 
+                        fillRule="evenodd" 
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
+                        clipRule="evenodd" 
+                      />
+                    </svg>
                   </div>
                 )}
               </div>
@@ -112,7 +209,11 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
                 {type.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="bg-gray-800 text-gray-300 text-xs px-3 py-1 rounded-md"
+                    className={`text-xs px-3 py-1 rounded-md ${
+                      selectedType === type.name
+                        ? "bg-indigo-900/50 text-indigo-200"
+                        : "bg-gray-800 text-gray-300"
+                    }`}
                   >
                     {tag}
                   </span>
@@ -121,21 +222,6 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
             </div>
           ))}
         </div>
-
-        {/* Next Step Suggestion */}
-        {selectedType && (
-          <div className="mt-8 p-4 bg-[#1a2238] rounded-lg border border-gray-700">
-            <p className="text-gray-300 text-sm">
-              <span className="font-semibold text-green-400">
-                ✓ Type Selected:
-              </span>{" "}
-              {selectedType}
-            </p>
-            <p className="text-gray-400 text-xs mt-2">
-              Continue to the next step to choose your server resources.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
