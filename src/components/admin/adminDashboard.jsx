@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminHeader from "./adminHeader";
 import Footer from "../user/Footer";
-import LiveDemoChart from "../user/liveGraphs/LiveDemoChart";
+import MetricChart from "./liveGraphs/MetricChart";
+
 import {
   Users,
   Server,
@@ -32,6 +33,7 @@ import {
   Cpu,
   MemoryStick,
   Wifi,
+  LineChart,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -50,6 +52,7 @@ export default function AdminDashboard() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const token = localStorage.getItem("adminToken");
 
   // Mock data for search
   const [allData, setAllData] = useState({
@@ -704,7 +707,15 @@ export default function AdminDashboard() {
                   <div className="w-2 h-2 rounded-full bg-green-500"></div>
                   <span className="text-gray-400">Memory</span>
                 </div>
-                <button className="ml-2 p-2 hover:bg-gray-800/50 rounded-lg">
+                {/* Add this button to view detailed metrics */}
+                <button
+                  onClick={() => navigate("/admin/metrics")}
+                  className="ml-2 px-3 py-1.5 text-sm bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300 rounded-lg flex items-center gap-1 transition-colors"
+                >
+                  <LineChart className="w-4 h-4" />
+                  View Metrics
+                </button>
+                <button className="p-2 hover:bg-gray-800/50 rounded-lg">
                   <MoreVertical className="w-4 h-4 text-gray-400" />
                 </button>
               </div>
@@ -713,13 +724,12 @@ export default function AdminDashboard() {
             {/* Chart Visualization */}
             {/* Live Performance Chart */}
             <div className="mb-6">
-              <LiveDemoChart
-                title="CPU Usage"
-                height={300}
-                min={20}
-                max={90}
-                intervalMs={5000}
-                color="#6366f1" // indigo (matches dashboard theme)
+              <MetricChart
+                title="CPU Usage (%)"
+                serverId="1"
+                token={token}
+                color="#6366f1"
+                extract={(h) => Math.round(h.cpu * 100)}
               />
             </div>
 
@@ -894,6 +904,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Quick Actions */}
+          {/* Quick Actions */}
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
             <div className="mb-6">
               <h3 className="text-lg md:text-xl font-semibold mb-1">
@@ -905,6 +916,22 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-3">
+              {/* Add this new Performance Metrics button at the top */}
+              <button
+                onClick={() => navigate("/admin/metrics")}
+                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-blue-500/20 border border-gray-700 hover:border-blue-500 rounded-lg transition-all group"
+              >
+                <div className="p-2 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30">
+                  <LineChart className="w-5 h-5 text-blue-400 group-hover:text-blue-300" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium">Performance Metrics</p>
+                  <p className="text-xs text-gray-400">
+                    View detailed server metrics
+                  </p>
+                </div>
+              </button>
+
               <button
                 onClick={() => navigate("/admin/users")}
                 className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-indigo-500/20 border border-gray-700 hover:border-indigo-500 rounded-lg transition-all group"

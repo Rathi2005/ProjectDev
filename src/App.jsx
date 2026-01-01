@@ -19,7 +19,7 @@ import Zones from "./pages/admin/Zones";
 import Orders from "./pages/Orders";
 import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
 import Profile from "./components/user/Profile";
-import LiveDemoChart from "./components/user/liveGraphs/LiveDemoChart";
+import PerformancePage from "./pages/admin/PerformancePage";
 
 export default function App() {
   return (
@@ -67,6 +67,14 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <OrdersPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/metrics"
+          element={
+            <AdminProtectedRoute>
+              <PerformancePage />
             </AdminProtectedRoute>
           }
         />
