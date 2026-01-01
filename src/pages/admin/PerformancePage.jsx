@@ -314,6 +314,17 @@ export default function PerformancePage() {
     },
   ];
 
+    useEffect(() => {
+    if (!metrics?.current || !metrics?.history?.length) return;
+
+    console.log(
+      "current cpu:",
+      Math.round(metrics.current.cpu * 100),
+      "last history cpu:",
+      Math.round(metrics.history.at(-1)?.cpu * 100)
+    );
+  }, [metrics]);
+
   if (isLoading || !metrics?.current) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0e1420] via-[#121a2a] to-[#0e1420] flex items-center justify-center">
@@ -349,6 +360,8 @@ export default function PerformancePage() {
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${days}d ${hours}h ${minutes}m`;
   };
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0e1420] via-[#121a2a] to-[#0e1420] text-white">
@@ -517,7 +530,87 @@ export default function PerformancePage() {
             </div>
           </div>
 
-          {/* Current Server Metrics Dashboard */}
+          {/* Real-time Charts */}
+          {selectedServer && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold">Historical Trends</h3>
+                  <p className="text-gray-400">
+                    Performance trends over time for {selectedServer.name}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className={`grid gap-6 ${
+                  selectedMetric === "all"
+                    ? "grid-cols-1 lg:grid-cols-2"
+                    : "grid-cols-1"
+                }`}
+              >
+                {/* CPU Usage Chart */}
+                {(selectedMetric === "all" || selectedMetric === "cpu") && (
+                  <MetricChart
+                    title="CPU Usage (%)"
+                    data={metrics}
+                    extract={(h) => Math.round(h.cpu * 100)}
+                    color="#8b5cf6"
+                  />
+                )}
+
+                {/* Memory Usage Chart */}
+                {(selectedMetric === "all" || selectedMetric === "memory") && (
+                  <MetricChart
+                    title="Memory Usage (%)"
+                    data={metrics}
+                    extract={(h) => Math.round((h.memused / h.memtotal) * 100)}
+                    color="#10b981"
+                  />
+                )}
+
+                {/* Disk Usage Chart */}
+                {(selectedMetric === "all" || selectedMetric === "disk") && (
+                  <MetricChart
+                    title="Disk Usage (%)"
+                    data={metrics}
+                    extract={(h) =>
+                      Math.round((h.rootused / h.roottotal) * 100)
+                    }
+                    color="#f59e0b"
+                  />
+                )}
+
+                {/* Network In/Out Chart */}
+                {(selectedMetric === "all" || selectedMetric === "network") && (
+                  <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] p-6 rounded-xl border border-gray-800/50">
+                    <h3 className="text-lg font-semibold mb-4">
+                      Network Traffic
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <MetricChart
+                        title="Network In (MB/s)"
+                        data={metrics}
+                        extract={(h) =>
+                          Number((h.netin / 1024 / 1024).toFixed(2))
+                        }
+                        color="#3b82f6"
+                      />
+                      <MetricChart
+                        title="Network Out (MB/s)"
+                        data={metrics}
+                        extract={(h) =>
+                          Number((h.netout / 1024 / 1024).toFixed(2))
+                        }
+                        color="#ef4444"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Current Server Metrics Dashboard */}
           {selectedServer && metrics?.current && (
             <div className="mb-6 h-50">
@@ -666,158 +759,6 @@ export default function PerformancePage() {
               </div>
             </div>
           )}
-
-          {/* Real-time Charts */}
-          {selectedServer && (
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-semibold">Historical Trends</h3>
-                  <p className="text-gray-400">
-                    Performance trends over time for {selectedServer.name}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className={`grid gap-6 ${
-                  selectedMetric === "all"
-                    ? "grid-cols-1 lg:grid-cols-2"
-                    : "grid-cols-1"
-                }`}
-              >
-                {/* CPU Usage Chart */}
-                {(selectedMetric === "all" || selectedMetric === "cpu") && (
-                  <MetricChart
-                    title="CPU Usage (%)"
-                    data={metrics}
-                    extract={(h) => Math.round(h.cpu * 100)}
-                    color="#8b5cf6"
-                  />
-                )}
-
-                {/* Memory Usage Chart */}
-                {(selectedMetric === "all" || selectedMetric === "memory") && (
-                  <MetricChart
-                    title="Memory Usage (%)"
-                    data={metrics}
-                    extract={(h) => Math.round((h.memused / h.memtotal) * 100)}
-                    color="#10b981"
-                  />
-                )}
-
-                {/* Disk Usage Chart */}
-                {(selectedMetric === "all" || selectedMetric === "disk") && (
-                  <MetricChart
-                    title="Disk Usage (%)"
-                    data={metrics}
-                    extract={(h) =>
-                      Math.round((h.rootused / h.roottotal) * 100)
-                    }
-                    color="#f59e0b"
-                  />
-                )}
-
-                {/* Network In/Out Chart */}
-                {(selectedMetric === "all" || selectedMetric === "network") && (
-                  <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] p-6 rounded-xl border border-gray-800/50">
-                    <h3 className="text-lg font-semibold mb-4">
-                      Network Traffic
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <MetricChart
-                        title="Network In (MB/s)"
-                        data={metrics}
-                        extract={(h) =>
-                          Number((h.netin / 1024 / 1024).toFixed(2))
-                        }
-                        color="#3b82f6"
-                      />
-                      <MetricChart
-                        title="Network Out (MB/s)"
-                        data={metrics}
-                        extract={(h) =>
-                          Number((h.netout / 1024 / 1024).toFixed(2))
-                        }
-                        color="#ef4444"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Server Grid for Quick Selection */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4">
-              Quick Server Selection
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {servers.map((server) => (
-                <div
-                  key={server.id}
-                  onClick={() => setSelectedServer(server)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.02] ${
-                    selectedServer?.id === server.id
-                      ? "border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-purple-500/10"
-                      : "border-gray-800/50 bg-gradient-to-br from-[#1d2438] to-[#1a2237] hover:border-gray-700"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(server.status)}
-                      <div>
-                        <h4 className="font-semibold">{server.name}</h4>
-                        <p className="text-xs text-gray-400">{server.region}</p>
-                      </div>
-                    </div>
-                    <div
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                        server.status
-                      )}`}
-                    >
-                      {server.status}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">CPU:</span>
-                      <span
-                        className={`font-medium ${
-                          server.cpu > 80
-                            ? "text-red-400"
-                            : server.cpu > 60
-                            ? "text-yellow-400"
-                            : "text-green-400"
-                        }`}
-                      >
-                        {server.cpu}%
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">Memory:</span>
-                      <span
-                        className={`font-medium ${
-                          server.memory > 80
-                            ? "text-red-400"
-                            : server.memory > 60
-                            ? "text-yellow-400"
-                            : "text-green-400"
-                        }`}
-                      >
-                        {server.memory}%
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">Uptime:</span>
-                      <span className="font-medium">{server.uptime}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </main>
 
