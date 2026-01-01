@@ -19,6 +19,7 @@ import Zones from "./pages/admin/Zones";
 import Orders from "./pages/Orders";
 import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
 import Profile from "./components/user/Profile";
+import LiveDemoChart from "./components/user/liveGraphs/LiveDemoChart";
 
 export default function App() {
   return (
