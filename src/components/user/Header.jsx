@@ -130,18 +130,6 @@ const Header = () => {
               <div className="absolute right-0 mt-2 w-48 bg-[#121a2a] border border-gray-700 rounded-xl shadow-lg py-2 z-50">
                 {isLoggedIn ? (
                   <>
-                    {/* User Info Section */}
-                    {user && (
-                      <div className="px-4 py-3 border-b border-gray-700">
-                        <p className="text-sm font-medium text-white">
-                          {user.name || "User"}
-                        </p>
-                        <p className="text-xs text-gray-400 truncate">
-                          {user.email || "user@example.com"}
-                        </p>
-                      </div>
-                    )}
-                    
                     {/* Menu Items */}
                     <a
                       href="/profile"
@@ -154,20 +142,11 @@ const Header = () => {
                     
                     <a
                       href="/live-chart"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-gray-700"
                       onClick={() => setIsDropdownOpen(false)}
                     >
                       <span className="material-icons text-[18px]">dashboard</span>
                       <span>Dashboard</span>
-                    </a>
-                    
-                    <a
-                      href="/settings"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-gray-700"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <span className="material-icons text-[18px]">settings</span>
-                      <span>Settings</span>
                     </a>
                     
                     <button

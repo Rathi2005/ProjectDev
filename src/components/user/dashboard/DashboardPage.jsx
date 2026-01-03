@@ -60,12 +60,12 @@ const DashboardHeader = () => (
         />
       </div>
       <button className="p-2.5 rounded-lg bg-[#2c3548] hover:bg-gray-700 transition-all hover:scale-105">
-        <FaBell className="text-gray-300 h-5 w-5" />
-      </button>
-      <button className="p-2.5 rounded-lg bg-[#2c3548] hover:bg-gray-700 transition-all hover:scale-105">
         <FaCog className="text-gray-300 h-5 w-5" />
       </button>
-      <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg text-white font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/25">
+      <button 
+      className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg text-white font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/25"
+      >
+      
         <FaPlus />
         Create Resource
         <FaChevronDown className="h-3 w-3" />

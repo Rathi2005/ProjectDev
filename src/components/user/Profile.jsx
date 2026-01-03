@@ -9,80 +9,153 @@ import {
   ArrowLeft,
   Edit,
   Save,
-  X
+  X,
 } from "lucide-react";
 
 const Profile = () => {
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [billing, setBilling] = useState({});
+  const [editBilling, setEditBilling] = useState(false);
+  const [editDetails, setEditDetails] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState({});
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
-    try {
-      // Decode the JWT token
-      const decoded = jwtDecode(token);
-      setUser(decoded);
-      setEditedUser(decoded);
-    } catch (error) {
-      console.error("Failed to decode token:", error);
-      localStorage.removeItem("token");
-      navigate("/login");
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate]);
-
-  const handleEdit = () => {
-    setIsEditing(true);
+  const billingLabels = {
+    companyName: "Company Name",
+    phoneNumber: "Phone Number",
+    streetAddress: "Street Address",
+    streetAddress2: "Street Address 2",
+    city: "City",
+    state: "State",
+    postcode: "Postcode",
+    country: "Country",
+    taxId: "Tax ID",
   };
 
-  const handleSave = async () => {
-    try {
+  const navigate = useNavigate();
+
+  const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+  useEffect(() => {
+    const fetchProfile = async () => {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/profile", {
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${BASE_URL}/users/profile`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch profile");
+
+        const data = await res.json();
+        setProfile(data);
+        setEditedUser(data);
+        setBilling(data.billingAddress || {});
+      } catch (err) {
+        console.error(err);
+        localStorage.removeItem("token");
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [navigate, BASE_URL]);
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditDetails(false);
+    setEditedUser(profile);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditedUser({ ...editedUser, [name]: value });
+  };
+
+  const saveDetails = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await fetch(`${BASE_URL}/users/profile/details`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editedUser),
+        body: JSON.stringify({
+          firstName: editedUser.firstName,
+          lastName: editedUser.lastName,
+        }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        setIsEditing(false);
-        
-        // Update token if new one is returned
-        if (data.token) {
-          localStorage.setItem("token", data.token);
-        }
+      if (!res.ok) {
+        throw new Error("Update failed");
       }
+
+      // Update the profile state with the edited user data
+      const updatedProfile = { ...profile, ...editedUser };
+      setProfile(updatedProfile);
+      
+      // Reset editing states
+      setEditDetails(false);
+      setIsEditing(false);
+      
+      // Optional: Show success message
+      console.log("Profile updated successfully!");
     } catch (error) {
-      console.error("Failed to update profile:", error);
+      console.error("Failed to save details:", error);
+      // Optional: Show error message to user
     }
   };
 
-  const handleCancel = () => {
-    setEditedUser(user);
-    setIsEditing(false);
+  const saveBilling = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await fetch(`${BASE_URL}/users/profile/billing`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(billing),
+      });
+
+      if (!res.ok) {
+        throw new Error("Update failed");
+      }
+
+      // Update the profile state with new billing data
+      const updatedProfile = { 
+        ...profile, 
+        billingAddress: { ...billing } 
+      };
+      setProfile(updatedProfile);
+      
+      // Reset billing edit mode
+      setEditBilling(false);
+      
+      // Optional: Show success message
+      console.log("Billing address updated successfully!");
+    } catch (error) {
+      console.error("Failed to save billing:", error);
+      // Optional: Show error message to user
+    }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditedUser((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  // Reset billing data when canceling edit
+  const handleCancelBilling = () => {
+    setEditBilling(false);
+    setBilling(profile.billingAddress || {});
   };
 
   if (loading) {
@@ -93,15 +166,41 @@ const Profile = () => {
     );
   }
 
-  if (!user) {
-    return null;
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-[#0e1525] flex items-center justify-center">
+        <div className="text-white">No profile data found</div>
+      </div>
+    );
   }
 
   // Format date if it exists
   const formatDate = (dateString) => {
     if (!dateString) return "Not available";
-    return new Date(dateString).toLocaleDateString();
+    
+    try {
+      // If it's a timestamp (in seconds), convert to milliseconds
+      if (typeof dateString === 'number' && dateString < 10000000000) {
+        dateString = dateString * 1000;
+      }
+      
+      return new Date(dateString).toLocaleDateString();
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Invalid date";
+    }
   };
+
+  // Decode JWT token for additional info
+  let decodedToken = {};
+  try {
+    const token = localStorage.getItem("token");
+    if (token) {
+      decodedToken = jwtDecode(token);
+    }
+  } catch (error) {
+    console.error("Error decoding token:", error);
+  }
 
   return (
     <div className="min-h-screen bg-[#0e1525] text-gray-200">
@@ -128,33 +227,34 @@ const Profile = () => {
               </div>
               <div>
                 {isEditing ? (
-                  <input
-                    type="text"
-                    name="name"
-                    value={editedUser.name || ""}
-                    onChange={handleInputChange}
-                    className="text-2xl font-bold bg-transparent border-b border-gray-600 focus:outline-none focus:border-[#4f46e5]"
-                    placeholder="Enter name"
-                  />
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={editedUser.firstName || ""}
+                      onChange={handleInputChange}
+                      className="text-2xl font-bold bg-transparent border-b border-gray-600 focus:outline-none focus:border-[#4f46e5]"
+                      placeholder="Enter first name"
+                    />
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={editedUser.lastName || ""}
+                      onChange={handleInputChange}
+                      className="text-lg bg-transparent border-b border-gray-600 focus:outline-none focus:border-[#4f46e5]"
+                      placeholder="Enter last name"
+                    />
+                  </div>
                 ) : (
-                  <h1 className="text-2xl font-bold text-white">
-                    {user.name || "User"}
-                  </h1>
+                  <>
+                    <h1 className="text-2xl font-bold text-white">
+                      {profile.firstName} {profile.lastName}
+                    </h1>
+                  </>
                 )}
                 <div className="flex items-center gap-2 mt-1">
                   <Mail className="w-4 h-4 text-gray-400" />
-                  {isEditing ? (
-                    <input
-                      type="email"
-                      name="email"
-                      value={editedUser.email || ""}
-                      onChange={handleInputChange}
-                      className="text-gray-400 bg-transparent border-b border-gray-600 focus:outline-none focus:border-[#4f46e5]"
-                      placeholder="Enter email"
-                    />
-                  ) : (
-                    <span className="text-gray-400">{user.email}</span>
-                  )}
+                  <span className="text-gray-400">{profile.email}</span>
                 </div>
               </div>
             </div>
@@ -162,7 +262,7 @@ const Profile = () => {
               {isEditing ? (
                 <div className="flex gap-2">
                   <button
-                    onClick={handleSave}
+                    onClick={saveDetails}
                     className="flex items-center gap-2 px-4 py-2 bg-[#4f46e5] text-white rounded-lg hover:bg-[#4338ca] transition"
                   >
                     <Save className="w-4 h-4" />
@@ -178,7 +278,11 @@ const Profile = () => {
                 </div>
               ) : (
                 <button
-                  onClick={handleEdit}
+                  onClick={() => {
+                    setIsEditing(true);
+                    setEditDetails(true);
+                    setEditedUser({ ...profile });
+                  }}
                   className="flex items-center gap-2 px-4 py-2 bg-[#4f46e5] text-white rounded-lg hover:bg-[#4338ca] transition"
                 >
                   <Edit className="w-4 h-4" />
@@ -189,7 +293,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Profile Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Account Information */}
           <div className="bg-[#121a2a] rounded-xl border border-gray-700 p-6">
@@ -199,27 +302,38 @@ const Profile = () => {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-gray-400">Username</label>
-                {isEditing ? (
+                <label className="text-sm text-gray-400">First Name</label>
+                {editDetails ? (
                   <input
-                    type="text"
-                    name="username"
-                    value={editedUser.username || ""}
-                    onChange={handleInputChange}
+                    value={editedUser.firstName || ""}
+                    onChange={(e) =>
+                      setEditedUser({ ...editedUser, firstName: e.target.value })
+                    }
                     className="w-full mt-1 px-3 py-2 bg-[#0e1525] border border-gray-600 rounded-lg focus:outline-none focus:border-[#4f46e5]"
-                    placeholder="Enter username"
                   />
                 ) : (
-                  <p className="text-white mt-1">{user.username || "Not set"}</p>
+                  <p className="text-white mt-1">{profile.firstName}</p>
                 )}
               </div>
-              
+
               <div>
-                <label className="text-sm text-gray-400">Member Since</label>
-                <p className="text-white mt-1 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {formatDate(user.createdAt)}
-                </p>
+                <label className="text-sm text-gray-400">Last Name</label>
+                {editDetails ? (
+                  <input
+                    value={editedUser.lastName || ""}
+                    onChange={(e) =>
+                      setEditedUser({ ...editedUser, lastName: e.target.value })
+                    }
+                    className="w-full mt-1 px-3 py-2 bg-[#0e1525] border border-gray-600 rounded-lg focus:outline-none focus:border-[#4f46e5]"
+                  />
+                ) : (
+                  <p className="text-white mt-1">{profile.lastName}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400">Email</label>
+                <p className="text-white mt-1">{profile.email}</p>
               </div>
             </div>
           </div>
@@ -234,19 +348,19 @@ const Profile = () => {
               <div>
                 <label className="text-sm text-gray-400">User ID</label>
                 <p className="text-white mt-1 font-mono text-sm break-all">
-                  {user.id || user._id || "N/A"}
+                  {profile.id || profile._id || "N/A"}
                 </p>
               </div>
-              
+
               <div>
                 <label className="text-sm text-gray-400">Role</label>
                 <div className="mt-1">
                   <span className="inline-block px-3 py-1 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-full text-sm">
-                    {user.role || "User"}
+                    {profile.role || "User"}
                   </span>
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm text-gray-400">Account Status</label>
                 <div className="mt-1">
@@ -262,38 +376,113 @@ const Profile = () => {
 
         {/* Additional Information Section */}
         <div className="mt-6 bg-[#121a2a] rounded-xl border border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Additional Information</h2>
+          <h2 className="text-lg font-semibold text-white mb-4">
+            Additional Information
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm text-gray-400">Token Issued At</label>
               <p className="text-white mt-1">
-                {user.iat ? formatDate(user.iat * 1000) : "N/A"}
+                {decodedToken.iat ? formatDate(decodedToken.iat) : "N/A"}
               </p>
             </div>
             <div>
               <label className="text-sm text-gray-400">Token Expires</label>
               <p className="text-white mt-1">
-                {user.exp ? formatDate(user.exp * 1000) : "N/A"}
+                {decodedToken.exp ? formatDate(decodedToken.exp) : "N/A"}
               </p>
             </div>
             <div>
               <label className="text-sm text-gray-400">Issuer</label>
-              <p className="text-white mt-1">{user.iss || "N/A"}</p>
+              <p className="text-white mt-1">{decodedToken.iss || "N/A"}</p>
             </div>
+          </div>
+        </div>
+
+        {/* Billing Address Section */}
+        <div className="bg-[#121a2a] rounded-xl border border-gray-700 p-6 mt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-white">
+              Billing Address
+            </h2>
+            {!editBilling ? (
+              <button
+                onClick={() => setEditBilling(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#4f46e5] text-white rounded-lg hover:bg-[#4338ca] transition"
+              >
+                <Edit className="w-4 h-4" />
+                Edit Billing
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={saveBilling}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#4f46e5] text-white rounded-lg hover:bg-[#4338ca] transition"
+                >
+                  <Save className="w-4 h-4" />
+                  Save
+                </button>
+                <button
+                  onClick={handleCancelBilling}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(billingLabels).map(([key, label]) => (
+              <div key={key} className="mb-3">
+                <label className="text-sm text-gray-400">{label}</label>
+                {editBilling ? (
+                  <input
+                    value={billing[key] || ""}
+                    onChange={(e) =>
+                      setBilling({ ...billing, [key]: e.target.value })
+                    }
+                    className="w-full mt-1 px-3 py-2 bg-[#0e1525] border border-gray-600 rounded-lg focus:outline-none focus:border-[#4f46e5]"
+                    placeholder={`Enter ${label.toLowerCase()}`}
+                  />
+                ) : (
+                  <p className="text-white mt-1">{profile.billingAddress?.[key] || "Not provided"}</p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Danger Zone */}
         <div className="mt-8 bg-red-900/10 border border-red-700/50 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-red-400 mb-4">Danger Zone</h2>
+          <h2 className="text-lg font-semibold text-red-400 mb-4">
+            Danger Zone
+          </h2>
           <p className="text-gray-400 mb-4">
             These actions are irreversible. Please proceed with caution.
           </p>
           <div className="flex flex-wrap gap-4">
             <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                navigate("/login");
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem("token");
+                  const res = await fetch(`${BASE_URL}/users/profile`, {
+                    method: "DELETE",
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                    },
+                  });
+                  
+                  if (res.ok) {
+                    localStorage.removeItem("token");
+                    navigate("/login");
+                  } else {
+                    console.error("Failed to delete account");
+                  }
+                } catch (error) {
+                  console.error("Error deleting account:", error);
+                }
               }}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
             >
