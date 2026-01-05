@@ -4,7 +4,7 @@ import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
 import Pagination from "../../components/Pagination";
-import VMPerformanceModal from "../../components/admin/liveGraphs/VMPerformanceModal";
+import { useNavigate } from "react-router-dom";
 import {
   Package,
   CheckCircle,
@@ -44,8 +44,6 @@ export default function OrdersPage() {
   const [expandedRow, setExpandedRow] = useState(null);
   const [userCount, setUserCount] = useState(0);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
-  const [showPerformanceModal, setShowPerformanceModal] = useState(false);
-  const [selectedVm, setSelectedVm] = useState(null);
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -71,23 +69,10 @@ export default function OrdersPage() {
   const [deletedVmsCount, setDeletedVmsCount] = useState(0);
   const [garbageRecordsCount, setGarbageRecordsCount] = useState(0);
   const [loadingInsights, setLoadingInsights] = useState(true);
+  const navigate = useNavigate();
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
-  };
-
-  const openPerformanceModal = (order) => {
-    setSelectedVm({
-      vmid: order.vmid, // Make sure this is the proxmox VMID
-      serverId: order.serverId,
-      vmName: order.vmName,
-    });
-    setShowPerformanceModal(true);
-  };
-
-  const closePerformanceModal = () => {
-    setShowPerformanceModal(false);
-    setSelectedVm(null);
   };
 
   const refreshOrdersWithDelay = async () => {
@@ -1332,16 +1317,39 @@ export default function OrdersPage() {
                               </span>
                             </td>
                             <td className="py-3 px-4 sm:px-6">
-                              <button
-                                onClick={() => openPerformanceModal(order)}
-                                className="inline-flex items-center gap-2 px-3 py-1.5
-               rounded-md bg-indigo-600/20 hover:bg-indigo-600/40
-               text-indigo-300 hover:text-white text-xs
-               border border-indigo-500/30 transition"
-                              >
-                                <Activity className="w-4 h-4" />
-                                Performance
-                              </button>
+                              {(() => {
+                                const isVmStopped =
+                                  normalizeLiveStatus(order.liveState) ===
+                                  "STOP";
+
+                                return (
+                                  <button
+                                    onClick={() =>
+                                      navigate(
+                                        `/admin/vms/${order.internalVmid}/performance`,
+                                        {
+                                          state: {
+                                            vmid: order.internalVmid,
+                                            serverId: order.serverId,
+                                            vmName: order.vmName,
+                                          },
+                                        }
+                                      )
+                                    }
+                                    disabled={isVmStopped}
+                                    className={`inline-flex items-center gap-2 px-3 py-1.5
+        rounded-md text-xs border transition
+        ${
+          isVmStopped
+            ? "bg-gray-700/40 text-gray-500 border-gray-600 cursor-not-allowed"
+            : "bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border-indigo-500/30"
+        }`}
+                                  >
+                                    <Activity className="w-4 h-4" />
+                                    Performance
+                                  </button>
+                                );
+                              })()}
                             </td>
                           </tr>
                           {console.log(order)}
@@ -1837,16 +1845,6 @@ export default function OrdersPage() {
               </div>
             )}
           </>
-        )}
-
-        {showPerformanceModal && selectedVm && (
-          <VMPerformanceModal
-            isOpen={showPerformanceModal}
-            onClose={closePerformanceModal}
-            vmid={selectedVm.vmid}
-            serverId={selectedVm.serverId}
-            vmName={selectedVm.vmName}
-          />
         )}
       </main>
 

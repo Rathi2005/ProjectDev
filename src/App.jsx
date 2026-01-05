@@ -20,6 +20,7 @@ import Orders from "./pages/Orders";
 import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
 import Profile from "./components/user/Profile";
 import PerformancePage from "./pages/admin/PerformancePage";
+import VMPerformancePage from "./pages/admin/VMPerformancePage";
 
 export default function App() {
   return (
@@ -75,6 +76,14 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <PerformancePage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/vms/:vmid/performance"
+          element={
+            <AdminProtectedRoute>
+              <VMPerformancePage />
             </AdminProtectedRoute>
           }
         />
