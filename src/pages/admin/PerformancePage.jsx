@@ -41,74 +41,10 @@ export default function PerformancePage() {
   const refreshIntervalRef = useRef(null);
   const token = localStorage.getItem("adminToken");
   const [metrics, setMetrics] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Server data
-  const [servers, setServers] = useState([
-    {
-      id: 1,
-      name: "web-server-01",
-      status: "healthy",
-      cpu: 42,
-      memory: 38,
-      disk: 48,
-      network: 85,
-      uptime: "45d 12h",
-      region: "US East",
-      alerts: 0,
-      ip: "192.168.1.101",
-      type: "Dedicated vCPU",
-      cpuCores: 8,
-      memoryGB: 32,
-    },
-    {
-      id: 2,
-      name: "db-server-01",
-      status: "warning",
-      cpu: 78,
-      memory: 82,
-      disk: 65,
-      network: 42,
-      uptime: "128d 6h",
-      region: "EU West",
-      alerts: 2,
-      ip: "192.168.1.102",
-      type: "Shared vCPU",
-      cpuCores: 4,
-      memoryGB: 16,
-    },
-    {
-      id: 3,
-      name: "cache-server-01",
-      status: "healthy",
-      cpu: 31,
-      memory: 25,
-      disk: 22,
-      network: 91,
-      uptime: "92d 18h",
-      region: "Asia Pacific",
-      alerts: 0,
-      ip: "192.168.1.103",
-      type: "Dedicated vCPU",
-      cpuCores: 4,
-      memoryGB: 8,
-    },
-    {
-      id: 4,
-      name: "app-server-01",
-      status: "critical",
-      cpu: 95,
-      memory: 88,
-      disk: 91,
-      network: 12,
-      uptime: "12d 3h",
-      region: "US West",
-      alerts: 5,
-      ip: "192.168.1.104",
-      type: "Dedicated vCPU",
-      cpuCores: 16,
-      memoryGB: 64,
-    },
-  ]);
+  const [servers, setServers] = useState([]);
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -129,9 +65,9 @@ export default function PerformancePage() {
   // Fetch metrics for selected server
   useEffect(() => {
     if (!selectedServer || !token) return;
-
     const fetchMetrics = async () => {
       try {
+        setIsRefreshing(true);
         const res = await fetch(
           `${BASE_URL}/admin/servers/${selectedServer.id}/metrics`,
           {
@@ -144,6 +80,8 @@ export default function PerformancePage() {
         setMetrics(data);
       } catch (err) {
         console.error("Metrics fetch failed:", err);
+      } finally {
+        setIsRefreshing(false);
       }
     };
 
@@ -155,6 +93,49 @@ export default function PerformancePage() {
 
     return () => clearInterval(refreshIntervalRef.current);
   }, [selectedServer, token, autoRefresh]);
+
+  useEffect(() => {
+    const fetchServers = async () => {
+      try {
+        const token = localStorage.getItem("adminToken");
+        if (!token) return;
+
+        const res = await fetch(`${BASE_URL}/admin/servers/overview`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch servers");
+
+        const data = await res.json();
+
+        // Normalize API response → UI format
+        const normalized = data.map((s) => ({
+          id: s.id,
+          name: s.name,
+          ip: s.ip || "N/A",
+          node: s.node,
+          region: s.location,
+          zoneId: s.zoneId,
+          zoneName: s.zoneName,
+          status: s.status === "ACTIVE" ? "healthy" : "critical",
+        }));
+
+        setServers(normalized);
+
+        // Auto-select first ACTIVE server
+        if (!selectedServer) {
+          const activeServer = normalized.find((s) => s.status === "healthy");
+          setSelectedServer(activeServer || normalized[0]);
+        }
+      } catch (err) {
+        console.error("Server fetch failed:", err);
+      }
+    };
+
+    fetchServers();
+  }, [BASE_URL]);
 
   // Calculate average metrics
   useEffect(() => {
@@ -314,7 +295,7 @@ export default function PerformancePage() {
     },
   ];
 
-    useEffect(() => {
+  useEffect(() => {
     if (!metrics?.current || !metrics?.history?.length) return;
 
     // console.log(
@@ -360,8 +341,6 @@ export default function PerformancePage() {
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${days}d ${hours}h ${minutes}m`;
   };
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0e1420] via-[#121a2a] to-[#0e1420] text-white">

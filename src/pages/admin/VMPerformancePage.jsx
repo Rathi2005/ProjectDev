@@ -156,8 +156,7 @@ export default function VMPerformancePage() {
               </div>
               <div className="text-xs text-gray-400">
                 ⬇ {latest?.netin?.toFixed(1) ?? 0} KB/s
-                <br />
-                ⬆ {latest?.netout?.toFixed(1) ?? 0} KB/s
+                <br />⬆ {latest?.netout?.toFixed(1) ?? 0} KB/s
               </div>
             </div>
           </div>
@@ -167,25 +166,25 @@ export default function VMPerformancePage() {
             <MetricChart
               title="CPU Usage (%)"
               data={metrics}
-              extract={(h) => h.cpu * 100}
+              extract={(h) => Math.max(h.cpu * 100, 0.1)}
             />
 
             <MetricChart
               title="Memory Usage (GB)"
               data={metrics}
-              extract={(h) => h.mem / 1024 ** 3}
+              extract={(h) => Math.max(h.mem / 1024 ** 3, 0.01)}
             />
 
             <MetricChart
               title="Disk Write (KB/s)"
               data={metrics}
-              extract={(h) => h.diskwrite ?? 0}
+              extract={(h) => Math.max(h.diskwrite ?? 0, 0.1)}
             />
 
             <MetricChart
               title="Network In (KB/s)"
               data={metrics}
-              extract={(h) => h.netin ?? 0}
+              extract={(h) => Math.max(h.netin ?? 0, 0.1)}
             />
           </div>
         </>

@@ -176,43 +176,53 @@ export default function AdminDashboard() {
     ],
   });
 
-  const [recentActivity, setRecentActivity] = useState([
-    {
-      id: 1,
-      user: "John Doe",
-      action: "Created new server",
-      time: "2 min ago",
-      type: "success",
-    },
-    {
-      id: 2,
-      user: "Sarah Smith",
-      action: "Payment failed",
-      time: "15 min ago",
-      type: "error",
-    },
-    {
-      id: 3,
-      user: "Mike Johnson",
-      action: "Upgraded plan",
-      time: "1 hour ago",
-      type: "info",
-    },
-    {
-      id: 4,
-      user: "Emma Wilson",
-      action: "Server rebooted",
-      time: "2 hours ago",
-      type: "warning",
-    },
-    {
-      id: 5,
-      user: "Alex Chen",
-      action: "Account created",
-      time: "5 hours ago",
-      type: "success",
-    },
-  ]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAuditLogs = async () => {
+      try {
+        const token = localStorage.getItem("adminToken");
+        if (!token) return;
+
+        const res = await fetch(
+          `${import.meta.env.VITE_BASE_URL}/admin/audit-logs/all`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Failed to fetch audit logs");
+
+        const data = await res.json();
+
+        // Normalize for UI
+        const normalized = data.slice(0, 5).map((log) => ({
+          id: log.id,
+          user: log.userEmail,
+          action: `${log.operation} on ${log.vmName}`,
+          time: new Date(log.timestamp).toLocaleString(),
+          type:
+            log.status === "SUCCESS"
+              ? "success"
+              : log.status === "FAILED"
+              ? "error"
+              : "info",
+          node: log.parentNodeName,
+        }));
+
+        setRecentActivity(normalized);
+      } catch (err) {
+        console.error("Audit log fetch failed:", err);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+
+    fetchAuditLogs();
+  }, []);
 
   const [serverLocations, setServerLocations] = useState([
     { region: "US East", servers: 45, status: "healthy", utilization: 82 },
@@ -220,6 +230,44 @@ export default function AdminDashboard() {
     { region: "Asia Pacific", servers: 29, status: "warning", utilization: 91 },
     { region: "US West", servers: 42, status: "healthy", utilization: 68 },
   ]);
+
+  const [servers, setServers] = useState([]);
+
+  useEffect(() => {
+    const fetchServers = async () => {
+      try {
+        const token = localStorage.getItem("adminToken");
+        if (!token) return;
+
+        const res = await fetch(
+          `${import.meta.env.VITE_BASE_URL}/admin/servers/overview`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Failed to fetch servers");
+
+        const data = await res.json();
+
+        const normalized = data.map((s) => ({
+          id: s.id,
+          name: s.name,
+          ip: s.ip || "N/A",
+          region: s.location,
+          status: s.status === "ACTIVE" ? "healthy" : "critical",
+        }));
+
+        setServers(normalized);
+      } catch (err) {
+        console.error("Failed to fetch servers:", err);
+      }
+    };
+
+    fetchServers();
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -778,25 +826,33 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-3 p-3 hover:bg-gray-800/30 rounded-lg transition-colors"
-                >
-                  <div className="pt-1">{getActivityIcon(activity.type)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {activity.user}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">
-                      {activity.action}
-                    </p>
+              {activityLoading ? (
+                <p className="text-gray-400 text-sm">Loading activity...</p>
+              ) : recentActivity.length === 0 ? (
+                <p className="text-gray-400 text-sm">No recent activity</p>
+              ) : (
+                recentActivity.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 p-3 hover:bg-gray-800/30 rounded-lg transition-colors"
+                  >
+                    <div className="pt-1">{getActivityIcon(activity.type)}</div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {activity.user}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {activity.action}
+                      </p>
+                    </div>
+
+                    <div className="text-xs text-gray-500 whitespace-nowrap">
+                      {activity.time}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 whitespace-nowrap">
-                    {activity.time}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             <div className="mt-6 pt-5 border-t border-gray-800/50">
@@ -808,34 +864,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Quick Search Prompts */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-4">Quick Search Examples</h3>
-          <div className="flex flex-wrap gap-2">
-            {[
-              "john@example.com",
-              "web-server",
-              "pending orders",
-              "US East",
-              "Premium plan",
-              "failed payment",
-            ].map((term) => (
-              <button
-                key={term}
-                onClick={() => {
-                  setSearchQuery(term);
-                  setSearchCategory("all");
-                  setShowSearchResults(true);
-                }}
-                className="px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg text-sm text-gray-300 hover:text-white transition-colors flex items-center gap-2"
-              >
-                <Search className="w-3 h-3" />
-                {term}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Server Locations & Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Server Locations */}
@@ -843,57 +871,53 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg md:text-xl font-semibold mb-1">
-                  Server Locations
+                  Servers Overview
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  Regional distribution and health
+                  All servers and their current status
                 </p>
               </div>
-              <button className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                <Eye className="w-4 h-4" />
-                View map
-              </button>
             </div>
 
             <div className="space-y-4">
-              {serverLocations.map((location, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                      <Server className="w-5 h-5 text-indigo-400" />
+              {servers.length === 0 ? (
+                <p className="text-gray-400 text-sm">No servers found</p>
+              ) : (
+                servers.map((server) => (
+                  <div
+                    key={server.id}
+                    className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition"
+                  >
+                    {/* Left */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                        <Server className="w-5 h-5 text-indigo-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{server.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {server.ip} • {server.region}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{location.region}</p>
-                      <p className="text-xs text-gray-400">
-                        {location.servers} servers
-                      </p>
+
+                    {/* Right */}
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          server.status
+                        )}`}
+                      >
+                        {server.status.charAt(0).toUpperCase() +
+                          server.status.slice(1)}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-sm font-semibold">
-                        {location.utilization}%
-                      </p>
-                      <p className="text-xs text-gray-400">Utilization</p>
-                    </div>
-                    <div
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                        location.status
-                      )}`}
-                    >
-                      {location.status.charAt(0).toUpperCase() +
-                        location.status.slice(1)}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
-          {/* Quick Actions */}
           {/* Quick Actions */}
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
             <div className="mb-6">
@@ -923,61 +947,31 @@ export default function AdminDashboard() {
               </button>
 
               <button
-                onClick={() => navigate("/admin/users")}
+                onClick={() => navigate("/admin/orders")}
                 className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-indigo-500/20 border border-gray-700 hover:border-indigo-500 rounded-lg transition-all group"
               >
                 <div className="p-2 bg-indigo-500/20 rounded-lg group-hover:bg-indigo-500/30">
                   <Users className="w-5 h-5 text-indigo-400 group-hover:text-indigo-300" />
                 </div>
                 <div className="text-left">
-                  <p className="font-medium">Manage Users</p>
+                  <p className="font-medium">Manage Orders</p>
                   <p className="text-xs text-gray-400">
-                    View and manage user accounts
+                    View and manage orders
                   </p>
                 </div>
               </button>
 
               <button
-                onClick={() => navigate("/admin/servers")}
+                onClick={() => navigate("/admin/invoices")}
                 className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-green-500/20 border border-gray-700 hover:border-green-500 rounded-lg transition-all group"
               >
                 <div className="p-2 bg-green-500/20 rounded-lg group-hover:bg-green-500/30">
                   <Server className="w-5 h-5 text-green-400 group-hover:text-green-300" />
                 </div>
                 <div className="text-left">
-                  <p className="font-medium">Manage Servers</p>
+                  <p className="font-medium">Manage Invoices</p>
                   <p className="text-xs text-gray-400">
-                    Monitor and control all servers
-                  </p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate("/admin/billing")}
-                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-emerald-500/20 border border-gray-700 hover:border-emerald-500 rounded-lg transition-all group"
-              >
-                <div className="p-2 bg-emerald-500/20 rounded-lg group-hover:bg-emerald-500/30">
-                  <CreditCard className="w-5 h-5 text-emerald-400 group-hover:text-emerald-300" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">Billing & Reports</p>
-                  <p className="text-xs text-gray-400">
-                    View financial reports
-                  </p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate("/admin/settings")}
-                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-purple-500/20 border border-gray-700 hover:border-purple-500 rounded-lg transition-all group"
-              >
-                <div className="p-2 bg-purple-500/20 rounded-lg group-hover:bg-purple-500/30">
-                  <Settings className="w-5 h-5 text-purple-400 group-hover:text-purple-300" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">System Settings</p>
-                  <p className="text-xs text-gray-400">
-                    Configure platform settings
+                    Manage & view all invoices
                   </p>
                 </div>
               </button>
