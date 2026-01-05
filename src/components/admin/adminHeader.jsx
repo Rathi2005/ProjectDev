@@ -66,7 +66,7 @@ const AdminHeader = () => {
         { href: "/admin/pricing/shared", label: "Shared" },
       ],
     },
-    { href: "/admin/settings", icon: Settings, label: "Settings" },
+    // { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 
   const handleDropdownClick = (e) => {

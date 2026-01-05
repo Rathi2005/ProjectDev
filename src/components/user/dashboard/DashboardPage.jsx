@@ -37,28 +37,8 @@ const DashboardHeader = () => (
           <p className="text-gray-400 text-sm">Welcome back! Here's what's happening.</p>
         </div>
       </div>
-      <div className="flex gap-2">
-        <span className="bg-gradient-to-r from-indigo-900/40 to-indigo-700/40 text-indigo-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-indigo-600/30 flex items-center gap-1.5">
-          <FaServer className="h-3 w-3" />
-          3 resources
-        </span>
-        <span className="bg-gradient-to-r from-purple-900/40 to-purple-700/40 text-purple-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-purple-600/30 flex items-center gap-1.5">
-          <FaBoxOpen className="h-3 w-3" />
-          1 member
-        </span>
-      </div>
     </div>
     <div className="flex items-center gap-3 w-full sm:w-auto">
-      <div className="relative flex-1 sm:flex-none">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <FaSearch className="text-gray-500 h-4 w-4" />
-        </div>
-        <input
-          type="text"
-          placeholder="Search resources..."
-          className="pl-10 pr-4 py-2 bg-[#1c2538] border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
-        />
-      </div>
       <button className="p-2.5 rounded-lg bg-[#2c3548] hover:bg-gray-700 transition-all hover:scale-105">
         <FaCog className="text-gray-300 h-5 w-5" />
       </button>
@@ -68,7 +48,6 @@ const DashboardHeader = () => (
       
         <FaPlus />
         Create Resource
-        <FaChevronDown className="h-3 w-3" />
       </button>
     </div>
   </header>
@@ -110,30 +89,9 @@ const DashboardPage = () => {
       <DashboardHeader />
       
       <main className="flex flex-col lg:flex-row gap-6">
-        {/* Column 1: Map (Takes up ~50% width) */}
-        <div className="w-full lg:w-6/12">
-          <div className="bg-gradient-to-br from-[#1c2538] to-[#121a2a] rounded-xl border border-gray-800 p-4 h-full">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <FaMap className="text-indigo-400" />
-                  Server Locations
-                </h2>
-                <p className="text-gray-400 text-sm">Global server distribution map</p>
-              </div>
-              <button className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                View Details
-                <FaChevronDown className="h-3 w-3" />
-              </button>
-            </div>
-            <div className="rounded-lg overflow-hidden border border-gray-700 h-[300px]">
-              <LocationMap img={img} />
-            </div>
-          </div>
-        </div>
-
+      
         {/* Column 2: Resources (Takes up ~25% width) */}
-        <div className="w-full lg:w-3/12">
+        <div className="w-full lg:w-6/12">
           <div className="bg-gradient-to-br from-[#1c2538] to-[#121a2a] rounded-xl border border-gray-800 p-4 h-full">
             <div className="flex justify-between items-center mb-4">
               <div>
@@ -154,7 +112,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Column 3: Activities (Takes up ~25% width) */}
-        <div className="w-full lg:w-3/12">
+        <div className="w-full lg:w-6/12">
           <div className="bg-gradient-to-br from-[#1c2538] to-[#121a2a] rounded-xl border border-gray-800 p-4 h-full">
             <div className="flex justify-between items-center mb-4">
               <div>

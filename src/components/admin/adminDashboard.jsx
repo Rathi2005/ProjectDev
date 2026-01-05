@@ -596,16 +596,6 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-6 lg:p-8 mt-4">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">
-            Welcome back, Admin
-          </h1>
-          <p className="text-gray-400">
-            Here's what's happening with your platform today.
-          </p>
-        </div>
-
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           {/* Total Users */}

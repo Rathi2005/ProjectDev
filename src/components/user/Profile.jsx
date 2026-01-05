@@ -455,7 +455,7 @@ const Profile = () => {
         </div>
 
         {/* Danger Zone */}
-        <div className="mt-8 bg-red-900/10 border border-red-700/50 rounded-xl p-6">
+        {/* <div className="mt-8 bg-red-900/10 border border-red-700/50 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-red-400 mb-4">
             Danger Zone
           </h2>
@@ -498,7 +498,7 @@ const Profile = () => {
               Clear Session Data
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

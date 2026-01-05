@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
+import Pagination from "../../components/Pagination";
 import { FileText, CheckCircle, Clock, XCircle, Download } from "lucide-react";
 
 export default function InvoicesPage() {
@@ -10,6 +11,45 @@ export default function InvoicesPage() {
   const [error, setError] = useState(null);
   const BASE_URL = import.meta.env.VITE_BASE_URL;
   const token = localStorage.getItem("adminToken");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+
+  const currentInvoices = invoices.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [invoices]);
+
+  const fetchPaymentsOverview = async () => {
+    const res = await fetch(`${BASE_URL}/admin/payments/overview`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch payments overview");
+    }
+
+    return res.json();
+  };
+
+  const fetchMasterLedger = async () => {
+    const res = await fetch(`${BASE_URL}/admin/payments/master-ledger`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch master ledger");
+    }
+
+    return res.json();
+  };
 
   const fetchInvoices = useCallback(async () => {
     if (!token) {
@@ -22,25 +62,11 @@ export default function InvoicesPage() {
       setLoading(true);
       setError(null);
 
-      const [overviewRes, ledgerRes] = await Promise.all([
-        fetch(`${BASE_URL}/admin/payments/overview`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${BASE_URL}/admin/payments/master-ledger`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+      // 🔹 Fetch APIs separately
+      const overviewData = await fetchPaymentsOverview();
+      const ledgerData = await fetchMasterLedger();
 
-      if (!overviewRes.ok || !ledgerRes.ok) {
-        throw new Error("Failed to fetch invoice data");
-      }
-
-      const [overviewData, ledgerData] = await Promise.all([
-        overviewRes.json(),
-        ledgerRes.json(),
-      ]);
-
-      // Create a map for faster lookup
+      // 🔹 Build lookup map
       const ledgerMap = new Map(
         ledgerData.map((item) => [item.transactionId, item])
       );
@@ -48,7 +74,6 @@ export default function InvoicesPage() {
       const normalized = overviewData.map((payment) => {
         const ledgerMatch = ledgerMap.get(payment.transactionId);
 
-        // Format date with timezone consideration
         const issueDate = new Date(payment.paymentTime);
         const formattedDate = issueDate.toLocaleDateString("en-IN", {
           year: "numeric",
@@ -61,14 +86,18 @@ export default function InvoicesPage() {
           invoiceId: `INV-${payment.paymentId.toString().padStart(6, "0")}`,
           customerName: payment.customerName || "N/A",
           server: payment.vmName || "N/A",
+
+          issueDateRaw: payment.paymentTime,
           issueDate: formattedDate,
           dueDate: calculateDueDate(issueDate),
+
           amount: new Intl.NumberFormat("en-IN", {
             style: "currency",
             currency: "INR",
             minimumFractionDigits: 2,
           }).format(payment.amount),
-          rawAmount: payment.amount, // Store for calculations
+
+          rawAmount: payment.amount,
           paymentMethod: payment.gatewayId || "N/A",
           status: payment.paymentStatus?.toUpperCase() || "UNKNOWN",
           transactionId: payment.transactionId,
@@ -76,8 +105,9 @@ export default function InvoicesPage() {
         };
       });
 
-      // Sort by date (newest first)
-      normalized.sort((a, b) => new Date(b.issueDate) - new Date(a.issueDate));
+      normalized.sort(
+        (a, b) => new Date(b.issueDateRaw) - new Date(a.issueDateRaw)
+      );
 
       setInvoices(normalized);
     } catch (err) {
@@ -102,21 +132,73 @@ export default function InvoicesPage() {
     });
   };
 
-  const showJsonModal = (title, data) => {
+  const showKeyValueModal = (title, data) => {
+    const renderObject = (obj, level = 0) => {
+      return Object.entries(obj || {})
+        .map(([key, value]) => {
+          const padding = level * 18;
+
+          if (value === null || value === undefined) {
+            return `
+            <div style="margin-left:${padding}px">
+              <span class="text-gray-400">${key}:</span>
+              <span class="text-gray-300 ml-2">—</span>
+            </div>
+          `;
+          }
+
+          if (Array.isArray(value)) {
+            return `
+            <div style="margin-left:${padding}px; margin-top:8px">
+              <div class="text-indigo-400 font-semibold">${key}</div>
+              ${value
+                .map(
+                  (item, idx) => `
+                    <div style="margin-left:${padding + 18}px">
+                      <span class="text-gray-400">[${idx}]</span>
+                      ${
+                        typeof item === "object"
+                          ? renderObject(item, level + 2)
+                          : `<span class="text-gray-200 ml-2">${item}</span>`
+                      }
+                    </div>
+                  `
+                )
+                .join("")}
+            </div>
+          `;
+          }
+
+          if (typeof value === "object") {
+            return `
+            <div style="margin-left:${padding}px; margin-top:8px">
+              <div class="text-indigo-400 font-semibold">${key}</div>
+              ${renderObject(value, level + 1)}
+            </div>
+          `;
+          }
+
+          return `
+          <div style="margin-left:${padding}px">
+            <span class="text-gray-400">${key}:</span>
+            <span class="text-gray-200 ml-2">${value}</span>
+          </div>
+        `;
+        })
+        .join("");
+    };
+
     Swal.fire({
       title,
-      html: `
-      <div class="text-left">
-        <pre class="text-xs bg-[#0b1220] p-4 rounded-lg overflow-auto max-h-[500px] text-gray-200">
-${JSON.stringify(data, null, 2)}
-        </pre>
-      </div>
-    `,
       width: "900px",
-      confirmButtonText: "Close",
       background: "#1e2640",
       color: "#ffffff",
       confirmButtonColor: "#6366f1",
+      html: `
+      <div class="text-left text-sm max-h-[550px] overflow-auto space-y-1">
+        ${renderObject(data)}
+      </div>
+    `,
     });
   };
 
@@ -289,7 +371,7 @@ ${JSON.stringify(data, null, 2)}
                 <th className="py-3 px-6 font-medium">Server</th>
                 <th className="py-3 px-6 font-medium">Issue Date</th>
                 <th className="py-3 px-6 font-medium">Amount</th>
-                <th className="py-3 px-6 font-medium">Payment Method</th>
+                <th className="py-3 px-6 font-medium">Order Id</th>
                 <th className="py-3 px-6 font-medium">Status</th>
                 <th className="py-3 px-6 font-medium">Actions</th>
               </tr>
@@ -324,7 +406,7 @@ ${JSON.stringify(data, null, 2)}
                   </td>
                 </tr>
               ) : (
-                invoices.map((invoice) => (
+                currentInvoices.map((invoice) => (
                   <tr
                     key={invoice.invoiceId}
                     className="border-t border-indigo-900/30 hover:bg-indigo-900/10 transition-colors"
@@ -393,42 +475,21 @@ ${JSON.stringify(data, null, 2)}
                               Invoice
                             </button>
                           )}
-
-                          <button
-                            onClick={() =>
-                              showJsonModal("Payment Overview", {
-                                invoiceId: invoice.invoiceId,
-                                paymentId: invoice.paymentId,
-                                customerName: invoice.customerName,
-                                server: invoice.server,
-                                amount: invoice.amount,
-                                status: invoice.status,
-                                paymentMethod: invoice.paymentMethod,
-                                transactionId: invoice.transactionId,
-                                issueDate: invoice.issueDate,
-                                dueDate: invoice.dueDate,
-                              })
-                            }
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-indigo-500/40 hover:bg-indigo-500/10 text-indigo-300 text-xs"
-                          >
-                            <FileText className="w-4 h-4" />
-                            Overview
-                          </button>
                         </div>
 
                         {/* Bottom row */}
                         {invoice.ledgerData && (
                           <button
                             onClick={() =>
-                              showJsonModal(
-                                "Ledger Details",
+                              showKeyValueModal(
+                                "Order Details",
                                 invoice.ledgerData
                               )
                             }
                             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-300 text-xs"
                           >
                             <FileText className="w-4 h-4" />
-                            Ledger
+                            Order Details
                           </button>
                         )}
                       </div>
@@ -441,28 +502,14 @@ ${JSON.stringify(data, null, 2)}
         </div>
 
         {invoices.length > 0 && (
-          <div className="flex items-center justify-between text-sm text-gray-400">
-            <div>
-              Showing{" "}
-              <span className="text-white font-medium">{invoices.length}</span>{" "}
-              invoices
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                disabled
-                className="px-3 py-1 rounded border border-indigo-900/30 text-indigo-300 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <span className="text-white">Page 1 of 1</span>
-              <button
-                disabled
-                className="px-3 py-1 rounded border border-indigo-900/30 text-indigo-300 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            showingFrom={startIndex + 1}
+            showingTo={Math.min(endIndex, invoices.length)}
+            totalItems={invoices.length}
+          />
         )}
       </main>
 

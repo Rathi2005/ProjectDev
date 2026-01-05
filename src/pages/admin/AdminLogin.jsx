@@ -4,12 +4,13 @@ import { jwtDecode } from "jwt-decode";
 import LoginForm from "../../components/admin/LoginForm";
 import AdminHeader from "../../components/admin/adminHeader";
 import AdminOtpVerification from "../../components/admin/adminOtpVerification";
-import { toast } from "react-hot-toast";  
+import { toast } from "react-hot-toast";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const ADMIN_LOGIN_API = import.meta.env.VITE_ADMIN_LOGIN;
 const ADMIN_OTP_VERIFY = import.meta.env.VITE_ADMIN_OTP_VERIFY;
-const ADMIN_RESEND_OTP = import.meta.env.VITE_ADMIN_RESEND_OTP || `${BASE_URL}/admin/login/resend-otp`;
+const ADMIN_RESEND_OTP =
+  import.meta.env.VITE_ADMIN_RESEND_OTP || `${BASE_URL}/admin/login/resend-otp`;
 
 export default function AdminLoginPage() {
   const [formData, setFormData] = useState({ email: "", otp: "" });
@@ -20,7 +21,7 @@ export default function AdminLoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
   const countdownRef = useRef(null);
-  
+
   const navigate = useNavigate();
   const adminToken = localStorage.getItem("adminToken");
 
@@ -69,11 +70,10 @@ export default function AdminLoginPage() {
       setOtpSent(true);
       setSuccess("OTP has been sent!");
       setResendCountdown(60); // Set 60 seconds countdown
-      toast.success("OTP sent to your email!");  
-
+      toast.success("OTP sent to your email!");
     } catch (err) {
       setError(err.message || "Something went wrong!");
-      toast.error(err.message || "Failed to send OTP"); 
+      toast.error(err.message || "Failed to send OTP");
     } finally {
       setLoading(false);
     }
@@ -95,10 +95,10 @@ export default function AdminLoginPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Invalid OTP");
-
       const data = await res.json();
-
+      if (!res.ok) {
+        throw new Error(data.message || "Invalid OTP");
+      }
       if (data?.token) {
         localStorage.setItem("adminToken", data.token);
         toast.success("LoggedIn Successfully!");
@@ -106,7 +106,6 @@ export default function AdminLoginPage() {
       } else {
         throw new Error("Token missing in response");
       }
-
     } catch (err) {
       setError(err.message || "Something went wrong!");
       toast.error(err.message || "OTP verification failed");
@@ -118,7 +117,7 @@ export default function AdminLoginPage() {
   // Resend OTP function
   const handleResendOtp = async () => {
     if (resendCountdown > 0 || resendLoading) return;
-    
+
     setResendLoading(true);
     setError("");
     setSuccess("");
@@ -135,7 +134,6 @@ export default function AdminLoginPage() {
       setResendCountdown(60); // Reset countdown
       setSuccess("New OTP has been sent!");
       toast.success("New OTP sent to your email!");
-
     } catch (err) {
       setError(err.message || "Failed to resend OTP");
       toast.error(err.message || "Failed to resend OTP");

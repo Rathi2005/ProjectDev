@@ -3,6 +3,8 @@ import { Link } from "react-router-dom"; // Add this import
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
+import Pagination from "../../components/Pagination";
+import VMPerformanceModal from "../../components/admin/liveGraphs/VMPerformanceModal";
 import {
   Package,
   CheckCircle,
@@ -42,6 +44,9 @@ export default function OrdersPage() {
   const [expandedRow, setExpandedRow] = useState(null);
   const [userCount, setUserCount] = useState(0);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
+  const [showPerformanceModal, setShowPerformanceModal] = useState(false);
+  const [selectedVm, setSelectedVm] = useState(null);
+
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
   const DarkSwal = Swal.mixin({
@@ -69,6 +74,20 @@ export default function OrdersPage() {
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
+  };
+
+  const openPerformanceModal = (order) => {
+    setSelectedVm({
+      vmid: order.vmid, // Make sure this is the proxmox VMID
+      serverId: order.serverId,
+      vmName: order.vmName,
+    });
+    setShowPerformanceModal(true);
+  };
+
+  const closePerformanceModal = () => {
+    setShowPerformanceModal(false);
+    setSelectedVm(null);
   };
 
   const refreshOrdersWithDelay = async () => {
@@ -926,20 +945,52 @@ export default function OrdersPage() {
   ]);
 
   const showOrderDetailsModal = (order) => {
+    const data = order.originalData ?? order;
+
+    const renderObject = (obj, level = 0) => {
+      return Object.entries(obj)
+        .map(([key, value]) => {
+          const padding = level * 16;
+
+          if (value === null || value === undefined) {
+            return `
+            <div style="margin-left:${padding}px">
+              <span class="text-gray-400">${key}:</span>
+              <span class="text-gray-300 ml-2">—</span>
+            </div>
+          `;
+          }
+
+          if (typeof value === "object" && !Array.isArray(value)) {
+            return `
+            <div style="margin-left:${padding}px; margin-top:8px">
+              <div class="text-indigo-400 font-semibold">${key}</div>
+              ${renderObject(value, level + 1)}
+            </div>
+          `;
+          }
+
+          return `
+          <div style="margin-left:${padding}px">
+            <span class="text-gray-400">${key}:</span>
+            <span class="text-gray-200 ml-2">${value}</span>
+          </div>
+        `;
+        })
+        .join("");
+    };
+
     Swal.fire({
-      title: "Order Full Details",
-      html: `
-      <div class="text-left">
-        <pre class="text-xs bg-[#0b1220] p-4 rounded-lg overflow-auto max-h-[500px] text-gray-200">
-${JSON.stringify(order.originalData ?? order, null, 2)}
-        </pre>
-      </div>
-    `,
+      title: "Order Details",
       width: "900px",
-      confirmButtonText: "Close",
       background: "#1e2640",
       color: "#ffffff",
       confirmButtonColor: "#6366f1",
+      html: `
+      <div class="text-left text-sm max-h-[500px] overflow-auto space-y-2">
+        ${renderObject(data)}
+      </div>
+    `,
     });
   };
 
@@ -1192,6 +1243,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                         <th className="py-3 px-4 sm:px-6">Price</th>
                         <th className="py-3 px-4 sm:px-6">Status</th>
                         <th className="py-3 px-4 sm:px-6">Live Status</th>
+                        <th className="py-3 px-4 sm:px-6">Actions</th>
                       </tr>
                     </thead>
 
@@ -1201,9 +1253,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                           {/* CLICKABLE MAIN ROW */}
                           <tr
                             className={`border-t border-indigo-900/20 hover:bg-indigo-900/10 transition-all ${
-                              expandedRow === order.id
-                                ? "bg-indigo-900/10"
-                                : ""
+                              expandedRow === order.id ? "bg-indigo-900/10" : ""
                             }`}
                           >
                             <td className="py-3 px-4 sm:px-6">
@@ -1211,7 +1261,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                 onClick={() => toggleRow(order.id)}
                                 className="text-left w-full flex items-center gap-2 text-indigo-300 font-medium hover:text-indigo-200 transition-colors"
                               >
-                                {expandedRow === order.id  ? (
+                                {expandedRow === order.id ? (
                                   <ChevronUp className="w-4 h-4" />
                                 ) : (
                                   <ChevronDown className="w-4 h-4" />
@@ -1280,6 +1330,18 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                               >
                                 {normalizeLiveStatus(order.liveState)}
                               </span>
+                            </td>
+                            <td className="py-3 px-4 sm:px-6">
+                              <button
+                                onClick={() => openPerformanceModal(order)}
+                                className="inline-flex items-center gap-2 px-3 py-1.5
+               rounded-md bg-indigo-600/20 hover:bg-indigo-600/40
+               text-indigo-300 hover:text-white text-xs
+               border border-indigo-500/30 transition"
+                              >
+                                <Activity className="w-4 h-4" />
+                                Performance
+                              </button>
                             </td>
                           </tr>
                           {console.log(order)}
@@ -1750,75 +1812,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
               </div>
 
               {/* Pagination - Responsive */}
-              <div className="p-4 sm:p-6 border-t border-indigo-900/30">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <p className="text-xs sm:text-sm text-gray-400">
-                    Showing {startIndex + 1} to{" "}
-                    {Math.min(startIndex + itemsPerPage, orders.length)} of{" "}
-                    {orders.length} entries
-                  </p>
-
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 sm:px-4 py-1.5 sm:py-2 border border-indigo-900/50 rounded-lg text-indigo-300 hover:bg-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                    >
-                      Previous
-                    </button>
-
-                    <div className="flex items-center gap-1">
-                      {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                        let pageNum;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`px-2 sm:px-3 py-1 rounded-md border text-xs sm:text-sm ${
-                              currentPage === pageNum
-                                ? "bg-indigo-600 border-indigo-600 text-white"
-                                : "border-indigo-900/50 text-gray-400 hover:bg-indigo-900/20"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                      {totalPages > 5 && currentPage < totalPages - 2 && (
-                        <>
-                          <span className="text-gray-500 px-1">...</span>
-                          <button
-                            onClick={() => setCurrentPage(totalPages)}
-                            className="px-2 sm:px-3 py-1 rounded-md border border-indigo-900/50 text-gray-400 hover:bg-indigo-900/20 text-xs sm:text-sm"
-                          >
-                            {totalPages}
-                          </button>
-                        </>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        setCurrentPage((p) => Math.min(totalPages, p + 1))
-                      }
-                      disabled={currentPage === totalPages}
-                      className="px-3 sm:px-4 py-1.5 sm:py-2 border border-indigo-900/50 rounded-lg text-indigo-300 hover:bg-indigo-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                showingFrom={startIndex + 1}
+                showingTo={Math.min(startIndex + itemsPerPage, orders.length)}
+                totalItems={orders.length}
+              />
             </div>
             {/* Empty State */}
             {orders.length === 0 && !loading && (
@@ -1836,6 +1837,16 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
               </div>
             )}
           </>
+        )}
+
+        {showPerformanceModal && selectedVm && (
+          <VMPerformanceModal
+            isOpen={showPerformanceModal}
+            onClose={closePerformanceModal}
+            vmid={selectedVm.vmid}
+            serverId={selectedVm.serverId}
+            vmName={selectedVm.vmName}
+          />
         )}
       </main>
 

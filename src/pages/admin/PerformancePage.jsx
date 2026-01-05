@@ -317,12 +317,12 @@ export default function PerformancePage() {
     useEffect(() => {
     if (!metrics?.current || !metrics?.history?.length) return;
 
-    console.log(
-      "current cpu:",
-      Math.round(metrics.current.cpu * 100),
-      "last history cpu:",
-      Math.round(metrics.history.at(-1)?.cpu * 100)
-    );
+    // console.log(
+    //   "current cpu:",
+    //   Math.round(metrics.current.cpu * 100),
+    //   "last history cpu:",
+    //   Math.round(metrics.history.at(-1)?.cpu * 100)
+    // );
   }, [metrics]);
 
   if (isLoading || !metrics?.current) {

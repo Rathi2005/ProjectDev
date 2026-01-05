@@ -5,7 +5,7 @@ import { useNavigate, Link } from "react-router-dom";
 import OtpVerification from "../components/user/OtpVerification";
 import ResetPassword from "../components/user/ResetPassword";
 import { toast } from "react-hot-toast";
-
+import { jwtDecode } from "jwt-decode";
 
 const LOGIN_API = import.meta.env.VITE_LOGIN;
 const OTP_INITIATE_API = import.meta.env.VITE_LOGIN_OTP;
@@ -47,12 +47,22 @@ export default function LoginPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      toast.success("Already logged in");
-      navigate("/dashboard");
+    if (!token) return;
+
+    try {
+      const decoded = jwtDecode(token);
+      const isExpired = decoded.exp * 1000 < Date.now();
+
+      if (!isExpired) {
+        navigate("/dashboard");
+      } else {
+        localStorage.removeItem("token");
+      }
+    } catch {
+      localStorage.removeItem("token");
     }
   }, []);
-
+  
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
@@ -62,7 +72,7 @@ export default function LoginPage() {
     setError("");
     setSuccess("");
     setLoading(true);
-    
+
     try {
       if (loginWithOtp) {
         const otpRes = await fetch(OTP_INITIATE_API, {
@@ -118,7 +128,7 @@ export default function LoginPage() {
   const handleForgotPassword = async () => {
     if (!formData.email) {
       setError("Please enter your email first.");
-      toast.error("Please enter your email first.");  
+      toast.error("Please enter your email first.");
       return;
     }
 
@@ -269,7 +279,6 @@ export default function LoginPage() {
             toggle={1}
           />
         )}
-      
       </div>
       <Footer />
     </div>
