@@ -8,6 +8,7 @@ import ImageSelector from "../components/user/server/ImageSelector";
 import TypeSelector from "../components/user/server/TypeSelector";
 import ResourcesSelector from "../components/user/server/ResourcesSelector";
 import SummarySidebar from "../components/user/server/SummarySidebar";
+import Footer from "../components/user/Footer";
 import { Menu, X, ListChecks, User, Settings } from "lucide-react";
 
 export default function Dashboard() {
@@ -26,7 +27,7 @@ export default function Dashboard() {
   const [shouldRedirect, setShouldRedirect] = useState(false);
 
   const mainContentRef = useRef(null);
-  // Add this useEffect right after your other useEffect hooks
+
   useEffect(() => {
     if (selectedResources && Object.keys(selectedResources).length > 0) {
       // Check for important keys
@@ -48,7 +49,8 @@ export default function Dashboard() {
       //   }
       // });
     }
-  }, [selectedResources]); // This will run whenever selectedResources changes
+  }, [selectedResources]);
+
   // Track when we're in server sections
   useEffect(() => {
     const handleScroll = () => {
@@ -70,12 +72,12 @@ export default function Dashboard() {
           const rect = subsection.getBoundingClientRect();
           const containerRect = content.getBoundingClientRect();
 
-          const visibleHeight =
-            Math.min(rect.bottom, containerRect.bottom) -
-            Math.max(rect.top, containerRect.top);
-          const sectionHeight = rect.height;
+          // Check if ANY part of the element is visible (not 50%)
+          const isVisible =
+            rect.top <= containerRect.bottom &&
+            rect.bottom >= containerRect.top;
 
-          if (visibleHeight > sectionHeight * 0.5) {
+          if (isVisible) {
             isCurrentlyInServerSection = true;
             break;
           }
@@ -151,7 +153,6 @@ export default function Dashboard() {
   const token = localStorage.getItem("token");
 
   const handlePayment = async (sessionId) => {
-
     if (!cashfreeRef.current) {
       alert("Payment system not ready");
       return;
@@ -372,7 +373,7 @@ export default function Dashboard() {
         )}
 
         {/* 📄 Main Content Area */}
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <div className="flex-1 flex">
           {/* 🧱 Scrollable Main Content */}
           <div
             id="main-content"
@@ -387,7 +388,7 @@ export default function Dashboard() {
             </div>
 
             {/* Server Creation Sections */}
-            <div id="servers">
+            <div id=" servers">
               {/* Create Server */}
               <div
                 id="create-server"
@@ -454,35 +455,40 @@ export default function Dashboard() {
             >
               <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
             </div>
+
+            {/* Footer - Placed inside the scrollable content at the bottom */}
+            <Footer />
           </div>
 
           {/* 📊 Summary Sidebar - Responsive Implementation */}
 
-          {/* Desktop Version (LG and above) */}
-          <aside
-            className={`hidden lg:block w-[320px] shrink-0 border-l border-gray-800 bg-[#121a2a]
-            fixed right-0 h-[calc(100vh-72px)] overflow-y-auto
-            transition-all duration-500 ease-in-out z-40
-            ${
-              showSidebar
-                ? "translate-x-0 opacity-100"
-                : "translate-x-full opacity-0 pointer-events-none"
-            }`}
-            style={{ top: "72px" }}
-          >
-            <SummarySidebar
-              selectedLocation={selectedLocation}
-              selectedOS={selectedOS}
-              selectedType={selectedType}
-              selectedResources={selectedResources}
-              serverId={serverId}
-              onMobileCreate={() => {
-                alert("Server creation would proceed here!");
-              }}
-              onPaymentStart={handlePayment}
-              isMobile={false}
-            />
-          </aside>
+          {/* Desktop Version (LG and above) - Only shows when showSidebar is true */}
+          {showSidebar && (
+            <aside
+              className={`hidden lg:block w-[320px] shrink-0 border-l border-gray-800 bg-[#121a2a]
+              fixed right-0 h-[calc(100vh-72px)] overflow-y-auto
+              transition-all duration-500 ease-in-out z-40
+              ${
+                showSidebar
+                  ? "translate-x-0 opacity-100"
+                  : "translate-x-full opacity-0 pointer-events-none"
+              }`}
+              style={{ top: "72px" }}
+            >
+              <SummarySidebar
+                selectedLocation={selectedLocation}
+                selectedOS={selectedOS}
+                selectedType={selectedType}
+                selectedResources={selectedResources}
+                serverId={serverId}
+                onMobileCreate={() => {
+                  alert("Server creation would proceed here!");
+                }}
+                onPaymentStart={handlePayment}
+                isMobile={false}
+              />
+            </aside>
+          )}
 
           {/* Mobile Version (Below LG) - FULL WIDTH SIDEBAR */}
           <div

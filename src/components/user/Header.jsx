@@ -74,7 +74,7 @@ const Header = () => {
             </svg>
           </div>
           <h1 className="text-lg font-semibold text-white tracking-wide">
-            CLOUD
+            SERVERLINK
           </h1>
         </div>
 
@@ -95,7 +95,7 @@ const Header = () => {
             <span>Pricing</span>
           </a>
           <a
-            href="#"
+            href="https://www.getwebup.in/aboutus.php"
             className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
           >
             <Ticket className="w-4 h-4" />
