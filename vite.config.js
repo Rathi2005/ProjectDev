@@ -14,28 +14,24 @@
 //   },
 // })
 
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     // Add these headers to allow Payment and Sensors on localhost
+    allowedHosts: ["console.getwebup.in"],
     headers: {
-      "Permissions-Policy": "payment=(self), accelerometer=(self), gyroscope=(self), magnetometer=(self), device-orientation=(self)"
+      "Permissions-Policy":
+        "payment=(self), accelerometer=(self), gyroscope=(self), magnetometer=(self), device-orientation=(self)",
     },
     proxy: {
-      '/api': {
-        target: 'https://vps.devai.in',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/auth': {
-        target: 'https://console.getwebup.in',
+      "/api": {
+        target: "https://api.getwebup.com",
         changeOrigin: true,
         secure: false,
       },
     },
   },
-})
+});
