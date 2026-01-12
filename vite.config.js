@@ -31,6 +31,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/auth': {
+        target: 'https://console.getwebup.in',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })
