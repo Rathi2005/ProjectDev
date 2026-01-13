@@ -30,8 +30,8 @@ const LogoIcon = () => (
     <path d="M2 12l10 5 10-5"></path>
   </svg>
 );
-
 export default function LoginPage() {
+  console.log(LOGIN_API);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
@@ -16,25 +16,60 @@ export default function ManageResourcesPage({
   const { id } = useParams();
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-  const [rows, setRows] = useState([
-    Object.fromEntries(
-      fields.map((f) => [f.name, f.type === "checkbox" ? false : ""])
-    ),
-  ]);
+  // 🌐 IP-RELATED CONSTANTS
+  const ipSingleFields = [
+    { name: "ip", label: "IP Address", type: "text" },
+    { name: "cidr", label: "CIDR (e.g. /23)", type: "text" },
+    { name: "subnetMask", label: "Subnet Mask", type: "text" },
+    { name: "gateway", label: "Gateway", type: "text" },
+    { name: "mac", label: "MAC Address", type: "text" },
+    { name: "inUse", label: "In Use", type: "checkbox" },
+  ];
 
+  const ipRangeFields = [
+    { name: "startIp", label: "Start IP", type: "text" },
+    { name: "endIp", label: "End IP", type: "text" },
+    { name: "gateway", label: "Gateway", type: "text" },
+  ];
+
+  const [rows, setRows] = useState([]);
   const [existing, setExisting] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [ipMode, setIpMode] = useState("single");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const addRow = () =>
-    setRows([
-      ...rows,
-      Object.fromEntries(
-        fields.map((f) => [f.name, f.type === "checkbox" ? false : ""])
-      ),
-    ]);
+  // 🔄 RESOLVE FIELDS BASED ON ENDPOINT AND MODE
+  const resolvedFields = useMemo(() => {
+    if (endpoint === "/ips") {
+      return ipMode === "single" ? ipSingleFields : ipRangeFields;
+    } else {
+      return fields;
+    }
+  }, [endpoint, ipMode, fields]);
+
+  // 🆕 DEFINE getEmptyRow BEFORE USING IT
+  const getEmptyRow = useCallback(() => {
+    const fieldsToUse = resolvedFields;
+    return Object.fromEntries(
+      fieldsToUse.map((f) => [f.name, f.type === "checkbox" ? false : ""])
+    );
+  }, [resolvedFields]);
+
+  // 🔄 INITIALIZE ROWS WITH EMPTY ROW
+  useEffect(() => {
+    setRows([getEmptyRow()]);
+  }, [getEmptyRow]);
+
+  // 🔄 UPDATE ROWS WHEN IP MODE CHANGES
+  useEffect(() => {
+    if (endpoint === "/ips") {
+      setRows([getEmptyRow()]);
+    }
+  }, [ipMode, endpoint, getEmptyRow]);
+
+  const addRow = () => setRows([...rows, getEmptyRow()]);
 
   const handleChange = (i, field, value) => {
     const newRows = [...rows];
@@ -42,42 +77,54 @@ export default function ManageResourcesPage({
     setRows(newRows);
   };
 
+  // 🔄 FETCH EXISTING DATA FOR ALL RESOURCE TYPES
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem("adminToken");
       try {
-        const apiUrl =
-          endpoint === "/ips"
-            ? `${BASE_URL}/api/admin/zones/${id}/ips`
-            : `${BASE_URL}/api/admin/servers/${id}${endpoint}`;
+        let apiUrl;
+
+        if (endpoint === "/ips") {
+          apiUrl = `${BASE_URL}/api/admin/zones/${id}/ips`;
+        } else if (extraForm === "disks") {
+          apiUrl = `${BASE_URL}/api/admin/servers/${id}/disk-details`;
+        } else {
+          // ISOs or other server resources
+          apiUrl = `${BASE_URL}/api/admin/servers/${id}${endpoint}`;
+        }
 
         const res = await fetch(apiUrl, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!res.ok) throw new Error("Failed to fetch data");
+        if (!res.ok) throw new Error(`Failed to fetch ${title}`);
 
         const data = await res.json();
         setExisting(data);
       } catch (err) {
-        console.error("Error fetching:", err);
+        console.error(`Error fetching ${title}:`, err);
+        toast.error(`Failed to load ${title}`);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [BASE_URL, endpoint, id]);
 
+    fetchData();
+  }, [BASE_URL, id, endpoint, title, extraForm]);
+
+  // 🔄 RELOAD DATA FOR ALL TYPES
   const reloadData = async () => {
     const token = localStorage.getItem("adminToken");
-
     try {
-      const url =
-        endpoint === "/ips"
-          ? `${BASE_URL}/api/admin/zones/${id}/ips`
-          : extraForm === "disks"
-          ? `${BASE_URL}/api/admin/servers/${id}/disk-details`
-          : `${BASE_URL}/api/admin/servers/${id}${endpoint}`;
+      let url;
+
+      if (endpoint === "/ips") {
+        url = `${BASE_URL}/api/admin/zones/${id}/ips`;
+      } else if (extraForm === "disks") {
+        url = `${BASE_URL}/api/admin/servers/${id}/disk-details`;
+      } else {
+        url = `${BASE_URL}/api/admin/servers/${id}${endpoint}`;
+      }
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -88,65 +135,261 @@ export default function ManageResourcesPage({
       const json = await res.json();
       setExisting(json);
     } catch (err) {
-      console.error("Error in reloadData:", err);
+      console.error("Error reloading data:", err);
     }
   };
 
+  // 🔢 IP HELPER FUNCTIONS (ONLY FOR /ips ENDPOINT)
+  const ipToNumber = (ip) => {
+    if (!ip) return 0;
+    const octets = ip.split(".").map(Number);
+    if (octets.length !== 4 || octets.some(isNaN)) return 0;
+    return (
+      ((octets[0] << 24) >>> 0) +
+      ((octets[1] << 16) >>> 0) +
+      ((octets[2] << 8) >>> 0) +
+      (octets[3] >>> 0)
+    );
+  };
+
+  const numberToIp = (num) => {
+    return [
+      (num >>> 24) & 255,
+      (num >>> 16) & 255,
+      (num >>> 8) & 255,
+      num & 255,
+    ].join(".");
+  };
+
+  const validateIp = (ip) => {
+    const regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!regex.test(ip)) return false;
+
+    const parts = ip.split(".").map(Number);
+    return parts.every((part) => part >= 0 && part <= 255);
+  };
+
+  const calculateCidrFromRange = (startIp, endIp) => {
+    const start = ipToNumber(startIp);
+    const end = ipToNumber(endIp);
+    const diff = end - start + 1;
+
+    // Find the smallest power of 2 that can contain diff IPs
+    const requiredSize = Math.pow(2, Math.ceil(Math.log2(diff)));
+
+    // CIDR = 32 - log2(requiredSize)
+    const cidr = 32 - Math.log2(requiredSize);
+
+    return Math.floor(cidr);
+  };
+
+  const cidrToSubnet = (cidr) => {
+    const cidrNum = parseInt(cidr.toString().replace("/", ""));
+    if (isNaN(cidrNum) || cidrNum < 0 || cidrNum > 32) return "255.255.255.0";
+
+    const mask = (0xffffffff << (32 - cidrNum)) >>> 0;
+    return numberToIp(mask);
+  };
+
+  // 🚀 SUBMIT HANDLER FOR ALL RESOURCE TYPES
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const token = localStorage.getItem("adminToken");
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
     setSaving(true);
 
     try {
-      for (const row of rows) {
-        let postUrl;
-        let payload;
+      // ==================== IP HANDLING ====================
+      if (endpoint === "/ips") {
+        if (ipMode === "single") {
+          for (const row of rows) {
+            if (!row.ip || !row.cidr || !row.gateway) {
+              toast.error(
+                `Please fill all required fields for IP: ${row.ip || "row"}`
+              );
+              continue;
+            }
 
-        if (endpoint === "/ips") {
-          postUrl = `${BASE_URL}/api/admin/zones/${id}/ips`;
-          payload = {
-            ip: row.ip,
-            mac: row.mac,
-            inUse: row.inUse,
-          };
-        } else if (extraForm === "disks") {
-          postUrl = `${BASE_URL}/api/admin/servers/${id}/storage`;
-          payload = {
-            diskName: row.diskName,
-            maxVms: Number(row.maxVms),
-            usableDiskPercentage: Number(row.usableDiskPercentage),
-          };
-        } else {
-          postUrl = `${BASE_URL}/api/admin/servers/${id}${endpoint}`;
-          payload = row;
+            if (!validateIp(row.ip)) {
+              toast.error(`Invalid IP address: ${row.ip}`);
+              continue;
+            }
+
+            if (!validateIp(row.gateway)) {
+              toast.error(`Invalid Gateway: ${row.gateway}`);
+              continue;
+            }
+
+            const cidr = row.cidr.startsWith("/") ? row.cidr : `/${row.cidr}`;
+            const subnetMask = row.subnetMask || cidrToSubnet(cidr);
+
+            const payload = {
+              ip: row.ip.trim(),
+              cidr: cidr,
+              subnetMask: subnetMask.trim(),
+              gateway: row.gateway.trim(),
+              mac: row.mac?.trim() || null,
+              inUse: Boolean(row.inUse),
+            };
+
+            const res = await fetch(`${BASE_URL}/api/admin/zones/${id}/ips`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+              const error = await res.text();
+              throw new Error(`Failed to add IP ${row.ip}: ${error}`);
+            }
+          }
+        } else if (ipMode === "range") {
+          for (const row of rows) {
+            if (!row.startIp || !row.endIp || !row.gateway) {
+              toast.error("Please fill start IP, end IP, and gateway");
+              continue;
+            }
+
+            if (!validateIp(row.startIp) || !validateIp(row.endIp)) {
+              toast.error("Invalid IP address in range");
+              continue;
+            }
+
+            if (!validateIp(row.gateway)) {
+              toast.error("Invalid Gateway address");
+              continue;
+            }
+
+            const start = ipToNumber(row.startIp);
+            const end = ipToNumber(row.endIp);
+
+            if (end < start) {
+              toast.error("End IP must be greater than or equal to Start IP");
+              continue;
+            }
+
+            const cidr = calculateCidrFromRange(row.startIp, row.endIp);
+            const subnetMask = cidrToSubnet(cidr);
+            const totalIps = end - start + 1;
+
+            if (totalIps > 256) {
+              const confirm = await Swal.fire({
+                title: "Large IP Range",
+                text: `You are about to create ${totalIps} IPs. This may take a while. Continue?`,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Continue",
+                cancelButtonText: "Cancel",
+                background: "#1e2640",
+                color: "#fff",
+              });
+
+              if (!confirm.isConfirmed) continue;
+            }
+
+            // Create IPs in batches
+            const batchSize = 50;
+            for (let i = start; i <= end; i += batchSize) {
+              const batchEnd = Math.min(i + batchSize - 1, end);
+              const batchPromises = [];
+
+              for (let j = i; j <= batchEnd; j++) {
+                const ip = numberToIp(j);
+                const payload = {
+                  ip: ip,
+                  cidr: `/${cidr}`,
+                  subnetMask: subnetMask,
+                  gateway: row.gateway.trim(),
+                  mac: null,
+                  inUse: false,
+                };
+
+                batchPromises.push(
+                  fetch(`${BASE_URL}/api/admin/zones/${id}/ips`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(payload),
+                  })
+                );
+              }
+
+              await Promise.all(batchPromises);
+            }
+          }
         }
+      }
+      // ==================== DISK HANDLING ====================
+      else if (extraForm === "disks") {
+        for (const row of rows) {
+          const payload = {
+            diskName: row.diskName,
+            maxVms: Number(row.maxVms) || 0,
+            usableDiskPercentage: Number(row.usableDiskPercentage) || 100,
+          };
 
-        const res = await fetch(postUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
+          const res = await fetch(
+            `${BASE_URL}/api/admin/servers/${id}/storage`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(payload),
+            }
+          );
 
-        if (!res.ok) throw new Error("Failed to add item");
+          if (!res.ok) {
+            const error = await res.text();
+            throw new Error(`Failed to add disk: ${error}`);
+          }
+        }
+      }
+      // ==================== OTHER RESOURCES (ISOs, etc.) ====================
+      else {
+        for (const row of rows) {
+          const res = await fetch(
+            `${BASE_URL}/api/admin/servers/${id}${endpoint}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(row),
+            }
+          );
 
-        await res.json();
+          if (!res.ok) {
+            const error = await res.text();
+            throw new Error(`Failed to add ${title}: ${error}`);
+          }
+        }
       }
 
       await reloadData();
+      setRows([getEmptyRow()]);
       toast.success(`${title} added successfully!`);
     } catch (err) {
-      toast.error("Failed to add item");
+      console.error("Error adding item:", err);
+      toast.error(err.message || `Failed to add ${title}`);
     } finally {
       setSaving(false);
     }
   };
 
-  // =========================================================
-  // 🚀 FINAL SWEETALERT VERSION FOR ALL EDIT PROMPTS
-  // =========================================================
+  // ✏️ EDIT HANDLER FOR ALL RESOURCE TYPES
   const handleEdit = async (item) => {
     const token = localStorage.getItem("adminToken");
     if (!token) {
@@ -155,13 +398,17 @@ export default function ManageResourcesPage({
     }
 
     try {
-      // --------------------- IP EDIT ---------------------
+      // ==================== IP EDIT ====================
       if (endpoint === "/ips") {
-        // IP
         const { value: newIp } = await Swal.fire({
           title: "Edit IP Address",
           input: "text",
           inputValue: item.ip,
+          inputValidator: (value) => {
+            if (!value) return "IP address is required!";
+            if (!validateIp(value)) return "Please enter a valid IP address!";
+            return null;
+          },
           confirmButtonText: "Next",
           showCancelButton: true,
           background: "#1e2640",
@@ -169,27 +416,32 @@ export default function ManageResourcesPage({
         });
         if (!newIp) return;
 
-        // MAC
         const { value: newMac } = await Swal.fire({
           title: "Edit MAC Address",
           input: "text",
-          inputValue: item.mac,
+          inputValue: item.mac || "",
+          inputPlaceholder: "Enter MAC address (optional)",
           confirmButtonText: "Next",
           showCancelButton: true,
           background: "#1e2640",
           color: "#fff",
         });
-        if (!newMac) return;
+        if (newMac === undefined) return;
 
-        // InUse
-        const { isConfirmed: inUse } = await Swal.fire({
+        const { value: inUse } = await Swal.fire({
           title: "Mark as In Use?",
+          input: "select",
+          inputOptions: {
+            true: "Yes - In Use",
+            false: "No - Available",
+          },
+          inputValue: item.inUse ? "true" : "false",
+          confirmButtonText: "Save",
           showCancelButton: true,
-          confirmButtonText: "Yes",
-          cancelButtonText: "No",
           background: "#1e2640",
           color: "#fff",
         });
+        if (inUse === null) return;
 
         await fetch(`${BASE_URL}/api/admin/zones/${id}/ips/${item.id}`, {
           method: "PUT",
@@ -198,9 +450,9 @@ export default function ManageResourcesPage({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            ip: newIp,
-            mac: newMac,
-            inUse,
+            ip: newIp.trim(),
+            mac: newMac?.trim() || null,
+            inUse: inUse === "true",
           }),
         });
 
@@ -209,7 +461,7 @@ export default function ManageResourcesPage({
         return;
       }
 
-      // --------------------- ISO EDIT ---------------------
+      // ==================== ISO EDIT ====================
       if (endpoint === "/isos") {
         const { value: newIso } = await Swal.fire({
           title: "Edit ISO Name",
@@ -250,7 +502,7 @@ export default function ManageResourcesPage({
         return;
       }
 
-      // --------------------- DISK EDIT ---------------------
+      // ==================== DISK EDIT ====================
       if (extraForm === "disks") {
         const diskId = item.id || item.ID || item.Id || item.storage_id;
         if (!diskId) {
@@ -315,15 +567,16 @@ export default function ManageResourcesPage({
     }
   };
 
-  // ------------------ DELETE (UNCHANGED) ------------------
+  // 🗑️ DELETE HANDLER FOR ALL RESOURCE TYPES
   const handleDelete = async (item) => {
     const token = localStorage.getItem("adminToken");
     if (!token) return toast.error("No admin token");
 
-    // 🔥 SweetAlert delete confirmation
     const result = await Swal.fire({
       title: "Are you sure?",
-      text: "This action cannot be undone!",
+      html: `Delete <b>${
+        item.ip || item.iso || item.diskName || "this item"
+      }</b>?<br>This action cannot be undone!`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Delete",
@@ -339,12 +592,14 @@ export default function ManageResourcesPage({
     try {
       let deleteUrl = "";
 
-      if (endpoint === "/ips")
+      if (endpoint === "/ips") {
         deleteUrl = `${BASE_URL}/api/admin/zones/${id}/ips/${item.id}`;
-      else if (endpoint === "/isos")
-        deleteUrl = `${BASE_URL}/api/admin/servers/${id}/isos/${item.id}`; // fixed typo
-      else if (extraForm === "disks")
-        deleteUrl = `${BASE_URL}/api/admin/servers/${id}/storage/${item.id}`;
+      } else if (endpoint === "/isos") {
+        deleteUrl = `${BASE_URL}/api/admin/servers/${id}/isos/${item.id}`;
+      } else if (extraForm === "disks") {
+        const diskId = item.id || item.ID || item.Id || item.storage_id;
+        deleteUrl = `${BASE_URL}/api/admin/servers/${id}/storage/${diskId}`;
+      }
 
       await fetch(deleteUrl, {
         method: "DELETE",
@@ -352,39 +607,37 @@ export default function ManageResourcesPage({
       });
 
       await reloadData();
-      toast.success("Item deleted");
+      toast.success("Item deleted successfully");
     } catch {
       toast.error("Delete failed");
     }
   };
 
-  // UI Rendering (UNCHANGED)
+  // UI RENDERING
   const totalPages = Math.ceil(existing.length / itemsPerPage);
   const displayed = existing.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
+  // Get fields for display
+  const currentFields = resolvedFields;
+
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen flex flex-col">
-      {/* Inject SweetAlert neon CSS (Option B: injected) */}
       <style>{`
         .swal2-confirm.swal2-confirm-glow {
           box-shadow: 0 0 12px rgba(76,139,255,0.8) !important;
         }
-        /* Better input look for the swal2-input/select in premium theme */
         .swal2-input, .swal2-select {
           background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.06);
           color: #e6e6e6;
           box-shadow: none;
         }
-        .swal2-container {
-          z-index: 9999;
-        }
-          .swal2-select {
-          color: #000 !important;          /* text inside dropdown */
-          background: #ffffff !important;  /* dropdown background */
+        .swal2-select {
+          color: #000 !important;
+          background: #ffffff !important;
         }
       `}</style>
 
@@ -392,23 +645,52 @@ export default function ManageResourcesPage({
         <Header />
       </div>
 
-      <main className="flex-1 mt-[72px] p-10 space-y-8">
-        <h1 className="text-3xl font-bold tracking-wide mb-6">
+      <main className="flex-1 mt-[72px] p-4 md:p-6 lg:p-10 space-y-8">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-wide mb-6">
           {title} for {endpoint === "/ips" ? "Zone" : "Server"} #{id}
         </h1>
 
-        {/* ➕ Resource Add Form */}
-        <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-6 shadow-2xl border border-indigo-900/40">
+        {/* ADD FORM SECTION */}
+        <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-4 md:p-6 shadow-2xl border border-indigo-900/40">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* 🌐 Desktop Table View */}
+            {/* IP MODE SELECTOR (ONLY FOR IPS) */}
+            {endpoint === "/ips" && (
+              <div className="flex flex-wrap gap-2 md:gap-4 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setIpMode("single")}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
+                    ipMode === "single"
+                      ? "bg-indigo-600 shadow-lg shadow-indigo-500/25"
+                      : "bg-gray-700 hover:bg-gray-600"
+                  }`}
+                >
+                  Add Single IP
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIpMode("range")}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
+                    ipMode === "range"
+                      ? "bg-green-600 shadow-lg shadow-green-500/25"
+                      : "bg-gray-700 hover:bg-gray-600"
+                  }`}
+                >
+                  Add IP Range
+                </button>
+              </div>
+            )}
+
+            {/* FORM TABLE - DESKTOP */}
             <div className="hidden sm:block overflow-x-auto rounded-xl border border-indigo-900/40">
               <table className="min-w-[600px] w-full text-left border-collapse">
                 <thead className="bg-[#151c2f] text-gray-300 uppercase text-sm tracking-wider">
                   <tr>
-                    {fields.map((f) => (
+                    {currentFields.map((f) => (
                       <th
                         key={f.name}
-                        className="px-6 py-3 border-b border-indigo-900/40"
+                        className="px-4 md:px-6 py-3 border-b border-indigo-900/40"
                       >
                         {f.label}
                       </th>
@@ -420,12 +702,14 @@ export default function ManageResourcesPage({
                   {rows.map((row, i) => (
                     <tr
                       key={i}
-                      className={i % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"}
+                      className={`${
+                        i % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"
+                      } relative group`} // Add relative and group classes
                     >
-                      {fields.map((f, j) => (
+                      {currentFields.map((f) => (
                         <td
                           key={f.name}
-                          className="px-6 py-3 border-b border-indigo-900/30 relative"
+                          className="px-4 md:px-6 py-3 border-b border-indigo-900/30"
                         >
                           {f.type === "checkbox" ? (
                             <input
@@ -444,67 +728,56 @@ export default function ManageResourcesPage({
                                 handleChange(i, f.name, e.target.value)
                               }
                               placeholder={`Enter ${f.label}`}
-                              required
-                              className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                              required={
+                                endpoint === "/ips" && !f.name.includes("mac")
+                              }
+                              className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm md:text-base"
                             />
-                          )}
-
-                          {/* 🗑 Small Delete Icon Button */}
-                          {j === fields.length - 1 && i > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newRows = rows.filter(
-                                  (_, idx) => idx !== i
-                                );
-                                setRows(
-                                  newRows.length
-                                    ? newRows
-                                    : [
-                                        Object.fromEntries(
-                                          fields.map((f) => [
-                                            f.name,
-                                            f.type === "checkbox" ? false : "",
-                                          ])
-                                        ),
-                                      ]
-                                );
-                              }}
-                              title="Remove Row"
-                              className="absolute right-1 top-6 text-red-500 hover:text-red-600 transition-all"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"
-                                />
-                              </svg>
-                            </button>
                           )}
                         </td>
                       ))}
+
+                      {/* Delete button positioned absolutely on the right */}
+                      {i > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newRows = rows.filter((_, idx) => idx !== i);
+                            setRows(newRows.length ? newRows : [getEmptyRow()]);
+                          }}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100"
+                          title="Remove Row"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* 📱 Mobile View (Stacked Form) */}
+            {/* FORM MOBILE VIEW */}
             <div className="block sm:hidden space-y-4">
               {rows.map((row, i) => (
                 <div
                   key={i}
                   className="bg-[#141b2e] border border-indigo-900/40 rounded-xl p-4 space-y-3 relative"
                 >
-                  {fields.map((f) => (
+                  {currentFields.map((f) => (
                     <div key={f.name} className="flex flex-col">
                       <label className="text-gray-300 text-sm mb-1">
                         {f.label}
@@ -526,33 +799,23 @@ export default function ManageResourcesPage({
                             handleChange(i, f.name, e.target.value)
                           }
                           placeholder={`Enter ${f.label}`}
-                          required
+                          required={
+                            endpoint === "/ips" && !f.name.includes("mac")
+                          }
                           className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                         />
                       )}
                     </div>
                   ))}
 
-                  {/* Delete Button for extra rows */}
                   {i > 0 && (
                     <button
                       type="button"
                       onClick={() => {
                         const newRows = rows.filter((_, idx) => idx !== i);
-                        setRows(
-                          newRows.length
-                            ? newRows
-                            : [
-                                Object.fromEntries(
-                                  fields.map((f) => [
-                                    f.name,
-                                    f.type === "checkbox" ? false : "",
-                                  ])
-                                ),
-                              ]
-                        );
+                        setRows(newRows.length ? newRows : [getEmptyRow()]);
                       }}
-                      className="absolute top-3 right-3 text-red-500 hover:text-red-600 transition-all"
+                      className="absolute top-3 right-3 text-red-500 hover:text-red-600 transition-all p-1"
                       title="Remove Row"
                     >
                       <svg
@@ -566,7 +829,7 @@ export default function ManageResourcesPage({
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                         />
                       </svg>
                     </button>
@@ -575,12 +838,12 @@ export default function ManageResourcesPage({
               ))}
             </div>
 
-            {/* Buttons */}
+            {/* FORM BUTTONS */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-6">
               <button
                 type="button"
                 onClick={addRow}
-                className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl shadow-md transition-all duration-300 w-full sm:w-auto"
+                className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 md:px-5 md:py-3 rounded-xl shadow-md transition-all duration-300 w-full sm:w-auto"
               >
                 <PlusCircle className="w-5 h-5" />
                 Add Row
@@ -589,7 +852,7 @@ export default function ManageResourcesPage({
               <button
                 type="submit"
                 disabled={saving}
-                className={`flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-white shadow-md transition-all duration-300 w-full sm:w-auto ${
+                className={`flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-xl text-white shadow-md transition-all duration-300 w-full sm:w-auto ${
                   saving
                     ? "bg-indigo-700 cursor-not-allowed"
                     : "bg-indigo-600 hover:bg-indigo-700"
@@ -598,8 +861,12 @@ export default function ManageResourcesPage({
                 {saving ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Saving...
+                    {endpoint === "/ips" && ipMode === "range"
+                      ? "Creating Range..."
+                      : "Saving..."}
                   </>
+                ) : endpoint === "/ips" && ipMode === "range" ? (
+                  "Create Range"
                 ) : (
                   "Save"
                 )}
@@ -608,40 +875,44 @@ export default function ManageResourcesPage({
           </form>
         </div>
 
-        {/* Existing or Available Entries */}
+        {/* EXISTING ENTRIES SECTION */}
         {(showExisting || extraForm === "disks") && (
-          <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-6 shadow-2xl border border-indigo-900/40">
+          <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-4 md:p-6 shadow-2xl border border-indigo-900/40">
             <h2
-              className={`text-2xl font-semibold ${
+              className={`text-xl md:text-2xl font-semibold mb-4 ${
                 extraForm === "disks" ? "text-green-400" : "text-indigo-400"
-              } mb-4`}
+              }`}
             >
               {extraForm === "disks" ? "Available Disks" : "Existing Entries"}
+              <span className="text-sm text-gray-400 ml-3">
+                ({existing.length} total)
+              </span>
             </h2>
 
             {loading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+                <span className="ml-3 text-gray-300">Loading...</span>
               </div>
             ) : existing.length === 0 ? (
-              <div className="text-center text-gray-400 py-10">
+              <div className="text-center text-gray-400 py-10 border-2 border-dashed border-gray-700 rounded-xl">
                 No records found.
               </div>
             ) : (
               <>
                 <div className="overflow-x-auto rounded-xl border border-indigo-900/40">
                   <table className="min-w-[600px] w-full text-left border-collapse">
-                    <thead className="bg-[#151c2f] text-gray-300 uppercase text-xs sm:text-sm tracking-wider">
+                    <thead className="bg-[#151c2f] text-gray-300 uppercase text-xs md:text-sm tracking-wider">
                       <tr>
                         {Object.keys(displayed[0]).map((key) => (
                           <th
                             key={key}
-                            className="px-3 sm:px-6 py-3 border-b border-indigo-900/40"
+                            className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/40"
                           >
                             {key}
                           </th>
                         ))}
-                        <th className="px-3 sm:px-6 py-3 border-b border-indigo-900/40 text-center">
+                        <th className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/40 text-center">
                           Actions
                         </th>
                       </tr>
@@ -658,11 +929,10 @@ export default function ManageResourcesPage({
                           {Object.entries(item).map(([key, val], j) => {
                             let displayValue = val;
 
-                            // ✅ Only handle 'inUse' now
                             if (key === "inUse") {
                               displayValue = val ? "Yes" : "No";
                             }
-                            // ✅ Convert GB → TB only for disks
+
                             if (
                               extraForm === "disks" &&
                               [
@@ -680,25 +950,24 @@ export default function ManageResourcesPage({
                             return (
                               <td
                                 key={j}
-                                className="px-3 sm:px-6 py-2 sm:py-3 border-b border-indigo-900/30 text-sm sm:text-base"
+                                className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 text-sm md:text-base"
                               >
                                 {displayValue}
                               </td>
                             );
                           })}
 
-                          {/* 🎛️ Action Buttons */}
-                          <td className="px-3 sm:px-6 py-2 sm:py-3 border-b border-indigo-900/30 text-center">
-                            <div className="flex justify-center gap-3 sm:gap-5 flex-wrap sm:flex-nowrap">
-                              {/* ✏️ Edit Icon */}
+                          {/* ACTION BUTTONS */}
+                          <td className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 text-center">
+                            <div className="flex justify-center gap-2 md:gap-4">
                               <button
                                 onClick={() => handleEdit(item)}
-                                className="transition-transform duration-300 hover:scale-110 group"
+                                className="p-1 md:p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-all"
                                 title="Edit"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
-                                  className="w-5 h-5 text-indigo-400 group-hover:text-indigo-300 group-hover:drop-shadow-[0_0_6px_rgba(99,102,241,0.7)] transition-all duration-300"
+                                  className="h-4 w-4 md:h-5 md:w-5"
                                   fill="none"
                                   viewBox="0 0 24 24"
                                   stroke="currentColor"
@@ -712,15 +981,14 @@ export default function ManageResourcesPage({
                                 </svg>
                               </button>
 
-                              {/* 🗑 Delete Icon */}
                               <button
                                 onClick={() => handleDelete(item)}
-                                className="transition-transform duration-300 hover:scale-110 group"
+                                className="p-1 md:p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                                 title="Delete"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
-                                  className="w-5 h-5 text-red-500 group-hover:text-red-400 group-hover:drop-shadow-[0_0_6px_rgba(239,68,68,0.7)] transition-all duration-300"
+                                  className="h-4 w-4 md:h-5 md:w-5"
                                   fill="none"
                                   viewBox="0 0 24 24"
                                   stroke="currentColor"
@@ -729,7 +997,7 @@ export default function ManageResourcesPage({
                                   <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                   />
                                 </svg>
                               </button>
@@ -741,21 +1009,39 @@ export default function ManageResourcesPage({
                   </table>
                 </div>
 
-                {showExisting && (
-                  <div className="flex justify-end mt-6 space-x-2">
+                {existing.length > itemsPerPage && (
+                  <div className="flex justify-center mt-6 space-x-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 md:px-4 md:py-2 rounded-md border border-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
+                    >
+                      Previous
+                    </button>
+
                     {Array.from({ length: totalPages }, (_, i) => (
                       <button
                         key={i}
                         onClick={() => setCurrentPage(i + 1)}
-                        className={`px-3 py-1 rounded-md border border-indigo-800 text-sm ${
+                        className={`px-2 py-1 md:px-3 md:py-1 rounded-md border text-xs md:text-sm ${
                           currentPage === i + 1
-                            ? "bg-indigo-600 text-white"
-                            : "bg-[#1a2035] text-gray-300 hover:bg-indigo-700/40"
+                            ? "bg-indigo-600 border-indigo-500 text-white"
+                            : "bg-[#1a2035] border-indigo-800 text-gray-300 hover:bg-indigo-700/40"
                         }`}
                       >
                         {i + 1}
                       </button>
                     ))}
+
+                    <button
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 md:px-4 md:py-2 rounded-md border border-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
+                    >
+                      Next
+                    </button>
                   </div>
                 )}
               </>
