@@ -697,12 +697,15 @@ export default function OrdersPage() {
     try {
       setAdminActionLoading((p) => ({ ...p, [orderId]: "destroy" }));
 
-      const res = await fetch(`${BASE_URL}/api/admin/vms/order/${orderId}/remove`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-        },
-      });
+      const res = await fetch(
+        `${BASE_URL}/api/admin/vms/order/${orderId}/remove`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+          },
+        }
+      );
 
       if (!res.ok) throw new Error(await res.text());
 
@@ -1073,6 +1076,79 @@ export default function OrdersPage() {
     if (order.paymentMethod) return order.paymentMethod;
     if (order.user?.paymentMethod) return order.user.paymentMethod;
     return "N/A";
+  };
+
+  // ---------- TERMINATION OVERRIDE HANDLER ----------
+  const handleTerminationOverride = async (vmId, enable) => {
+    const adminToken = localStorage.getItem("adminToken");
+    if (!adminToken) {
+      DarkSwal.fire({
+        icon: "error",
+        title: "Authentication Required",
+        text: "Admin not authenticated",
+      });
+      return;
+    }
+
+    const actionText = enable
+      ? "ENABLE termination protection (Prevent Destruction)"
+      : "DISABLE termination protection (Allow Normal Expiry)";
+
+    const confirm = await DarkSwal.fire({
+      title: "Confirm Action",
+      html: `<strong>${actionText}</strong><br/><br/>Are you sure?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: enable ? "Enable Protection" : "Disable Protection",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      DarkSwal.fire({
+        title: "Updating",
+        text: "Updating termination override...",
+        allowOutsideClick: false,
+        didOpen: () => DarkSwal.showLoading(),
+      });
+
+      const res = await fetch(
+        `${BASE_URL}/api/admin/vms/${vmId}/termination-override?enabled=${enable}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to update termination override");
+      }
+
+      const data = await res.json();
+
+      DarkSwal.close();
+      DarkSwal.fire({
+        icon: "success",
+        title: "Updated Successfully",
+        text: data.statusDesc,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+
+      // refresh orders so UI reflects new state
+      await refreshOrdersWithDelay();
+    } catch (err) {
+      console.error(err);
+      DarkSwal.fire({
+        icon: "error",
+        title: "Failed",
+        text: err.message || "Termination override update failed",
+      });
+    }
   };
 
   return (
@@ -1693,6 +1769,32 @@ export default function OrdersPage() {
              text-yellow-300 rounded-lg font-medium text-sm"
                                     >
                                       Easy Reboot
+                                    </button>
+
+                                    <button
+                                      onClick={() =>
+                                        handleTerminationOverride(
+                                          order.internalVmid,
+                                          true
+                                        )
+                                      }
+                                      className="flex-1 sm:flex-none px-3 py-2 border border-emerald-500/40
+  hover:bg-emerald-500/10 text-emerald-300 rounded-lg font-medium text-sm"
+                                    >
+                                      Enable Protection
+                                    </button>
+
+                                    <button
+                                      onClick={() =>
+                                        handleTerminationOverride(
+                                          order.internalVmid,
+                                          false
+                                        )
+                                      }
+                                      className="flex-1 sm:flex-none px-3 py-2 border border-orange-500/40
+  hover:bg-orange-500/10 text-orange-300 rounded-lg font-medium text-sm"
+                                    >
+                                      Disable Protection
                                     </button>
 
                                     <button

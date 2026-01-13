@@ -32,6 +32,15 @@ export default function ManageResourcesPage({
     { name: "gateway", label: "Gateway", type: "text" },
   ];
 
+  const ISO_OS_TYPES = [
+    "WINDOWS",
+    "UBUNTU",
+    "UBUNTU_LEGACY",
+    "DEBIAN",
+    "RHEL_NM",
+    "OPENSUSE",
+  ];
+
   const [rows, setRows] = useState([]);
   const [existing, setExisting] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +53,20 @@ export default function ManageResourcesPage({
   const resolvedFields = useMemo(() => {
     if (endpoint === "/ips") {
       return ipMode === "single" ? ipSingleFields : ipRangeFields;
-    } else {
-      return fields;
     }
+    if (endpoint === "/isos") {
+      return [
+        { name: "iso", label: "ISO Name", type: "text" },
+        { name: "vmid", label: "VMID", type: "text" },
+        {
+          name: "osType",
+          label: "OS Type",
+          type: "iso-select",
+          // options: ISO_OS_TYPES,
+        },
+      ];
+    }
+    return fields;
   }, [endpoint, ipMode, fields]);
 
   // 🆕 DEFINE getEmptyRow BEFORE USING IT
@@ -357,23 +377,31 @@ export default function ManageResourcesPage({
         }
       }
       // ==================== OTHER RESOURCES (ISOs, etc.) ====================
-      else {
+      else if (endpoint === "/isos") {
         for (const row of rows) {
-          const res = await fetch(
-            `${BASE_URL}/api/admin/servers/${id}${endpoint}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify(row),
-            }
-          );
+          if (!row.iso || !row.vmid || !row.osType) {
+            toast.error("Please fill ISO, VMID and OS Type");
+            continue;
+          }
+
+          const payload = {
+            iso: row.iso.trim(),
+            vmid: row.vmid.trim(),
+            osType: row.osType,
+          };
+
+          const res = await fetch(`${BASE_URL}/api/admin/servers/${id}/isos`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          });
 
           if (!res.ok) {
             const error = await res.text();
-            throw new Error(`Failed to add ${title}: ${error}`);
+            throw new Error(`Failed to add ISO: ${error}`);
           }
         }
       }
@@ -517,8 +545,10 @@ export default function ManageResourcesPage({
       }
 
       // ==================== ISO EDIT ====================
+      // ==================== ISO EDIT ====================
       if (endpoint === "/isos") {
-        const { value: newIso } = await Swal.fire({
+        // 1️⃣ ISO NAME
+        const { value: iso } = await Swal.fire({
           title: "Edit ISO Name",
           input: "text",
           inputValue: item.iso,
@@ -526,20 +556,50 @@ export default function ManageResourcesPage({
           showCancelButton: true,
           background: "#1e2640",
           color: "#fff",
+          inputValidator: (value) => {
+            if (!value) return "ISO name is required";
+            return null;
+          },
         });
-        if (!newIso) return;
+        if (!iso) return;
 
-        const { value: newVmid } = await Swal.fire({
+        // 2️⃣ VMID
+        const { value: vmid } = await Swal.fire({
           title: "Edit VMID",
           input: "text",
           inputValue: item.vmid,
+          confirmButtonText: "Next",
+          showCancelButton: true,
+          background: "#1e2640",
+          color: "#fff",
+          inputValidator: (value) => {
+            if (!value) return "VMID is required";
+            return null;
+          },
+        });
+        if (!vmid) return;
+
+        // 3️⃣ OS TYPE (DROPDOWN)
+        const { value: osType } = await Swal.fire({
+          title: "Select OS Type",
+          input: "select",
+          inputOptions: ISO_OS_TYPES.reduce((acc, os) => {
+            acc[os] = os;
+            return acc;
+          }, {}),
+          inputValue: item.osType || "",
           confirmButtonText: "Save",
           showCancelButton: true,
           background: "#1e2640",
           color: "#fff",
+          inputValidator: (value) => {
+            if (!value) return "OS Type is required";
+            return null;
+          },
         });
-        if (!newVmid) return;
+        if (!osType) return;
 
+        // 🚀 SAVE
         await fetch(`${BASE_URL}/api/admin/servers/${id}/isos/${item.id}`, {
           method: "PUT",
           headers: {
@@ -547,8 +607,9 @@ export default function ManageResourcesPage({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            iso: newIso,
-            vmid: newVmid,
+            iso: iso.trim(),
+            vmid: vmid.trim(),
+            osType,
           }),
         });
 
@@ -775,6 +836,23 @@ export default function ManageResourcesPage({
                               }
                               className="w-5 h-5 accent-indigo-600"
                             />
+                          ) : f.type === "iso-select" ? (
+                            // ✅ ISO ONLY DROPDOWN
+                            <select
+                              value={row[f.name]}
+                              onChange={(e) =>
+                                handleChange(i, f.name, e.target.value)
+                              }
+                              required
+                              className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
+                            >
+                              <option value="">Select OS Type</option>
+                              {ISO_OS_TYPES.map((os) => (
+                                <option key={os} value={os}>
+                                  {os}
+                                </option>
+                              ))}
+                            </select>
                           ) : (
                             <input
                               type={f.type}
@@ -783,10 +861,8 @@ export default function ManageResourcesPage({
                                 handleChange(i, f.name, e.target.value)
                               }
                               placeholder={`Enter ${f.label}`}
-                              required={
-                                endpoint === "/ips" && !f.name.includes("mac")
-                              }
-                              className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm md:text-base"
+                              required
+                              className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
                             />
                           )}
                         </td>
@@ -846,6 +922,23 @@ export default function ManageResourcesPage({
                           }
                           className="w-5 h-5 accent-indigo-600"
                         />
+                      ) : f.type === "iso-select" ? (
+                        // ✅ ISO ONLY (MOBILE)
+                        <select
+                          value={row[f.name]}
+                          onChange={(e) =>
+                            handleChange(i, f.name, e.target.value)
+                          }
+                          required
+                          className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
+                        >
+                          <option value="">Select OS Type</option>
+                          {ISO_OS_TYPES.map((os) => (
+                            <option key={os} value={os}>
+                              {os}
+                            </option>
+                          ))}
+                        </select>
                       ) : (
                         <input
                           type={f.type}
@@ -854,10 +947,8 @@ export default function ManageResourcesPage({
                             handleChange(i, f.name, e.target.value)
                           }
                           placeholder={`Enter ${f.label}`}
-                          required={
-                            endpoint === "/ips" && !f.name.includes("mac")
-                          }
-                          className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                          required
+                          className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
                         />
                       )}
                     </div>

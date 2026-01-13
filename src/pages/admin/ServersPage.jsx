@@ -13,7 +13,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Swal from "sweetalert2";
 
-
 // const MySwal = withReactContent(Swal);
 
 export default function ServersPage() {
@@ -22,9 +21,19 @@ export default function ServersPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [zones, setZones] = useState([]);
-  const [renameModal, setRenameModal] = useState(false);
-  const [renamingServer, setRenamingServer] = useState(null);
-  const [renameName, setRenameName] = useState("");
+  const [editModal, setEditModal] = useState(false);
+  const [editingServer, setEditingServer] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    ip: "",
+    location: "",
+    node: "",
+    port: 8006,
+    networkBridge: "vmbr0",
+    tokenId: "",
+    tokenSecret: "",
+    zoneId: "",
+  });
 
   const [formData, setFormData] = useState({
     name: "",
@@ -127,13 +136,16 @@ export default function ServersPage() {
       setLoading(true);
 
       try {
-        const res = await fetch(`${BASE_URL}/api/admin/servers?zoneId=${zoneId}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await fetch(
+          `${BASE_URL}/api/admin/servers?zoneId=${zoneId}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!res.ok) {
           console.error("Failed to fetch servers:", res.status, res.statusText);
@@ -374,57 +386,95 @@ export default function ServersPage() {
     }
   };
 
-  // ✅ Rename Server
-  const handleRenameServer = async () => {
-    if (!renameName.trim() || !renamingServer) {
-      toast.error("Please enter a valid server name");
+  // Add this function to handle edit form changes
+  const handleEditChange = (e) =>
+    setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
+
+  // ✅ Edit Server Configuration
+  const handleEditServer = async () => {
+    if (!editingServer) {
+      toast.error("No server selected for editing");
       return;
     }
 
     try {
       const token = localStorage.getItem("adminToken");
       const res = await fetch(
-        `${BASE_URL}/api/admin/servers/${
-          renamingServer.id
-        }/rename?name=${encodeURIComponent(renameName)}`,
+        `${BASE_URL}/api/admin/servers/${editingServer.id}`,
         {
-          method: "PATCH",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({
+            name: editFormData.name,
+            location: editFormData.location,
+            ip: editFormData.ip,
+            node: editFormData.node,
+            tokenId: editFormData.tokenId,
+            tokenSecret: editFormData.tokenSecret,
+            port: Number(editFormData.port) || 8006,
+            networkBridge: editFormData.networkBridge,
+            zoneId: Number(editFormData.zoneId),
+          }),
         }
       );
 
       if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+        const errorText = await res.text();
+        toast.error(`Failed to update server: ${errorText}`);
+        return;
       }
+
+      const data = await res.json();
 
       // Update server in state
       setServers(
         servers.map((server) =>
-          server.id === renamingServer.id
-            ? { ...server, name: renameName }
+          server.id === editingServer.id
+            ? { ...server, ...editFormData }
             : server
         )
       );
 
-      setRenameModal(false);
-      setRenamingServer(null);
-      setRenameName("");
+      setEditModal(false);
+      setEditingServer(null);
+      setEditFormData({
+        name: "",
+        ip: "",
+        location: "",
+        node: "",
+        port: 8006,
+        networkBridge: "vmbr0",
+        tokenId: "",
+        tokenSecret: "",
+        zoneId: "",
+      });
 
-      toast.success(`Server renamed to "${renameName}" successfully!`);
+      toast.success(`Server "${editFormData.name}" updated successfully!`);
     } catch (err) {
-      console.error("Error renaming server:", err);
-      toast.error("Failed to rename server");
+      console.error("Error updating server:", err);
+      toast.error("Failed to update server");
     }
   };
 
   // ✅ Open rename modal
-  const openRenameModal = (server) => {
-    setRenamingServer(server);
-    setRenameName(server.name);
-    setRenameModal(true);
+  // ✅ Open edit modal
+  const openEditModal = (server) => {
+    setEditingServer(server);
+    setEditFormData({
+      name: server.name || "",
+      ip: server.ip || "",
+      location: server.location || "",
+      node: server.node || "",
+      port: server.port || 8006,
+      networkBridge: server.networkBridge || "vmbr0",
+      tokenId: server.tokenId || "",
+      tokenSecret: server.tokenSecret || "",
+      zoneId: server.zoneId || "",
+    });
+    setEditModal(true);
   };
 
   // ✅ Handle Status Change
@@ -432,16 +482,19 @@ export default function ServersPage() {
     const token = localStorage.getItem("adminToken");
 
     try {
-      const res = await fetch(`${BASE_URL}/api/admin/servers/${serverId}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
-      });
+      const res = await fetch(
+        `${BASE_URL}/api/admin/servers/${serverId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            status: newStatus,
+          }),
+        }
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
@@ -658,12 +711,12 @@ export default function ServersPage() {
                             <span className="hidden sm:inline">Disk</span>
                           </button>
                           <button
-                            onClick={() => openRenameModal(server)}
+                            onClick={() => openEditModal(server)}
                             className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all duration-300"
-                            title="Rename Server"
+                            title="Edit Server Configuration"
                           >
                             <Edit className="w-3 h-3" />
-                            <span className="hidden sm:inline">Rename</span>
+                            <span className="hidden sm:inline">Edit</span>
                           </button>
                           <button
                             onClick={() =>
@@ -887,21 +940,33 @@ export default function ServersPage() {
         </div>
       )}
 
-      {/* ✅ Rename Server Modal */}
-      {renameModal && renamingServer && (
+      {/* ✅ Edit Server Modal */}
+      {editModal && editingServer && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-fadeIn overflow-y-auto flex justify-center items-start">
-          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-md my-10 p-4 sm:p-8 lg:p-10">
+          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl my-10 p-4 sm:p-8 lg:p-10 max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-indigo-900/40 mb-4">
-              <h2 className="text-xl sm:text-2xl font-semibold text-indigo-300 flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-indigo-300 flex items-center gap-2">
                 <Edit className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
-                <span className="text-sm sm:text-lg">Rename Server</span>
+                <span className="text-sm sm:text-lg lg:text-xl">
+                  Edit Server Configuration
+                </span>
               </h2>
               <button
                 onClick={() => {
-                  setRenameModal(false);
-                  setRenamingServer(null);
-                  setRenameName("");
+                  setEditModal(false);
+                  setEditingServer(null);
+                  setEditFormData({
+                    name: "",
+                    ip: "",
+                    location: "",
+                    node: "",
+                    port: 8006,
+                    networkBridge: "vmbr0",
+                    tokenId: "",
+                    tokenSecret: "",
+                    zoneId: "",
+                  });
                 }}
                 className="text-gray-400 hover:text-red-400 transition-colors text-lg sm:text-xl"
                 title="Close"
@@ -912,31 +977,173 @@ export default function ServersPage() {
 
             {/* Current Server Info */}
             <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-indigo-900/20 rounded-lg border border-indigo-700/30">
-              <p className="text-sm text-gray-400">Server ID:</p>
-              <p className="text-base sm:text-lg font-semibold text-indigo-300">
-                {renamingServer.id}
-              </p>
-              <p className="text-sm text-gray-400 mt-2">Current Name:</p>
-              <p className="text-base sm:text-lg font-medium text-gray-200">
-                {renamingServer.name}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                IP: {renamingServer.ip}
-              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-sm text-gray-400">Server ID:</p>
+                  <p className="text-base sm:text-lg font-semibold text-indigo-300">
+                    {editingServer.id}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Current Status:</p>
+                  <span
+                    className={`
+                px-2 py-1 rounded-full text-xs font-semibold
+                ${getStatusColor(editingServer.status || "INACTIVE")}
+              `}
+                  >
+                    {editingServer.status === "ACTIVE"
+                      ? "Active"
+                      : editingServer.status === "INACTIVE"
+                      ? "Inactive"
+                      : "Maintenance"}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Form */}
-            <div className="space-y-4">
+            {/* Edit Form */}
+            <div className="space-y-4 sm:space-y-5">
+              {/* Zone Dropdown */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Zone</label>
+                <select
+                  name="zoneId"
+                  value={editFormData.zoneId}
+                  onChange={handleEditChange}
+                  required
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                >
+                  <option value="">-- Select a Zone --</option>
+                  {zones.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Server Name */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">
-                  New Server Name
+                  Server Name
                 </label>
                 <input
                   type="text"
-                  value={renameName}
-                  onChange={(e) => setRenameName(e.target.value)}
-                  placeholder="Enter new server name"
+                  name="name"
+                  placeholder="e.g. Production Server"
+                  value={editFormData.name}
+                  onChange={handleEditChange}
                   required
+                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                />
+              </div>
+
+              {/* IP + Location */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    IP Address
+                  </label>
+                  <input
+                    type="text"
+                    name="ip"
+                    placeholder="e.g. 192.168.0.10"
+                    value={editFormData.ip}
+                    onChange={handleEditChange}
+                    required
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    placeholder="e.g. Singapore Data Center"
+                    value={editFormData.location}
+                    onChange={handleEditChange}
+                    required
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                  />
+                </div>
+              </div>
+
+              {/* Node + Port */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Node
+                  </label>
+                  <input
+                    type="text"
+                    name="node"
+                    placeholder="e.g. Node-01"
+                    value={editFormData.node}
+                    onChange={handleEditChange}
+                    required
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Port
+                  </label>
+                  <input
+                    type="number"
+                    name="port"
+                    placeholder="8006"
+                    value={editFormData.port}
+                    onChange={handleEditChange}
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                  />
+                </div>
+              </div>
+
+              {/* Network Bridge + Token Secret */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Network Bridge
+                  </label>
+                  <input
+                    type="text"
+                    name="networkBridge"
+                    placeholder="vmbr0"
+                    value={editFormData.networkBridge}
+                    onChange={handleEditChange}
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">
+                    Token Secret
+                  </label>
+                  <input
+                    type="password"
+                    name="tokenSecret"
+                    placeholder="Enter Token Secret"
+                    value={editFormData.tokenSecret}
+                    onChange={handleEditChange}
+                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
+                  />
+                </div>
+              </div>
+
+              {/* Token ID */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Token ID
+                </label>
+                <input
+                  type="text"
+                  name="tokenId"
+                  placeholder="Enter API Token ID"
+                  value={editFormData.tokenId}
+                  onChange={handleEditChange}
                   className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
                 />
               </div>
@@ -946,9 +1153,19 @@ export default function ServersPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setRenameModal(false);
-                    setRenamingServer(null);
-                    setRenameName("");
+                    setEditModal(false);
+                    setEditingServer(null);
+                    setEditFormData({
+                      name: "",
+                      ip: "",
+                      location: "",
+                      node: "",
+                      port: 8006,
+                      networkBridge: "vmbr0",
+                      tokenId: "",
+                      tokenSecret: "",
+                      zoneId: "",
+                    });
                   }}
                   className="px-3 sm:px-5 py-2 rounded-md border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200 text-sm"
                 >
@@ -956,12 +1173,14 @@ export default function ServersPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={handleRenameServer}
-                  disabled={!renameName.trim()}
+                  onClick={handleEditServer}
+                  disabled={
+                    !editFormData.name.trim() || !editFormData.ip.trim()
+                  }
                   className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all duration-200 disabled:opacity-50 text-sm"
                 >
                   <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span>Rename Server</span>
+                  <span>Update Server</span>
                 </button>
               </div>
             </div>

@@ -34,151 +34,152 @@ import {
   MemoryStick,
   Wifi,
   LineChart,
+  Cpu as CpuIcon,
+  HardDrive as DiskIcon,
+  Zap,
+  Cloud,
+  Power,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    totalUsers: 1254,
-    activeServers: 342,
+    totalVMs: 0,
+    runningVMs: 0,
+    stoppedVMs: 0,
+    totalServers: 0,
+    onlineServers: 0,
+    offlineServers: 0,
     totalRevenue: 45280,
-    pendingIssues: 8,
-    serverUtilization: 78,
     monthlyGrowth: 12.5,
   });
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchCategory, setSearchCategory] = useState("all"); // all, users, servers, orders
+  const [searchCategory, setSearchCategory] = useState("all");
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const token = localStorage.getItem("adminToken");
 
-  // Mock data for search
-  const [allData, setAllData] = useState({
-    users: [
-      {
-        id: 1,
-        name: "John Doe",
-        email: "john@example.com",
-        status: "active",
-        joined: "2024-01-15",
-        plan: "Premium",
-      },
-      {
-        id: 2,
-        name: "Sarah Smith",
-        email: "sarah@example.com",
-        status: "active",
-        joined: "2024-02-20",
-        plan: "Basic",
-      },
-      {
-        id: 3,
-        name: "Mike Johnson",
-        email: "mike@example.com",
-        status: "inactive",
-        joined: "2024-01-05",
-        plan: "Enterprise",
-      },
-      {
-        id: 4,
-        name: "Emma Wilson",
-        email: "emma@example.com",
-        status: "active",
-        joined: "2024-03-10",
-        plan: "Premium",
-      },
-      {
-        id: 5,
-        name: "Alex Chen",
-        email: "alex@example.com",
-        status: "active",
-        joined: "2024-02-28",
-        plan: "Basic",
-      },
-    ],
-    servers: [
-      {
-        id: 101,
-        name: "web-server-01",
-        ip: "192.168.1.101",
-        status: "running",
-        region: "US East",
-        type: "Dedicated vCPU",
-        cpu: 4,
-        ram: 8,
-      },
-      {
-        id: 102,
-        name: "db-server-01",
-        ip: "192.168.1.102",
-        status: "stopped",
-        region: "EU West",
-        type: "Shared vCPU",
-        cpu: 2,
-        ram: 4,
-      },
-      {
-        id: 103,
-        name: "app-server-01",
-        ip: "192.168.1.103",
-        status: "running",
-        region: "Asia Pacific",
-        type: "Dedicated vCPU",
-        cpu: 8,
-        ram: 16,
-      },
-      {
-        id: 104,
-        name: "cache-server-01",
-        ip: "192.168.1.104",
-        status: "maintenance",
-        region: "US West",
-        type: "Shared vCPU",
-        cpu: 2,
-        ram: 4,
-      },
-    ],
-    orders: [
-      {
-        id: 1001,
-        user: "John Doe",
-        amount: 2999,
-        status: "completed",
-        date: "2024-03-15",
-        type: "Server Upgrade",
-      },
-      {
-        id: 1002,
-        user: "Sarah Smith",
-        amount: 1499,
-        status: "pending",
-        date: "2024-03-14",
-        type: "New Server",
-      },
-      {
-        id: 1003,
-        user: "Mike Johnson",
-        amount: 5999,
-        status: "completed",
-        date: "2024-03-13",
-        type: "Enterprise Plan",
-      },
-      {
-        id: 1004,
-        user: "Emma Wilson",
-        amount: 1999,
-        status: "failed",
-        date: "2024-03-12",
-        type: "Server Renewal",
-      },
-    ],
-  });
-
+  // State for VM data
+  const [vmData, setVmData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [serverLocations, setServerLocations] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
 
+  // Fetch VM counts from API
+  useEffect(() => {
+    const fetchVmData = async () => {
+      try {
+        const token = localStorage.getItem("adminToken");
+        if (!token) return;
+
+        const res = await fetch(
+          `${import.meta.env.VITE_BASE_URL}/api/admin/vms/direct-proxmox-count`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error("Failed to fetch VM data");
+
+        const data = await res.json();
+        setVmData(data);
+
+        // Calculate total stats
+        const totalVMs = data.totalVmsAcrossCloud || 0;
+        const runningVMs = data.totalRunning || 0;
+        const stoppedVMs = data.totalStopped || 0;
+
+        // Process server breakdown
+        const serverBreakdown = data.serverBreakdown || {};
+        const servers = Object.keys(serverBreakdown);
+        const totalServers = servers.length;
+        const onlineServers = servers.filter(
+          (server) => serverBreakdown[server]?.status === "ONLINE"
+        ).length;
+        const offlineServers = totalServers - onlineServers;
+
+        // Update stats
+        setStats((prev) => ({
+          ...prev,
+          totalVMs,
+          runningVMs,
+          stoppedVMs,
+          totalServers,
+          onlineServers,
+          offlineServers,
+        }));
+
+        // Format server locations for display
+        const locations = servers.map((server) => {
+          const serverData = serverBreakdown[server];
+          // Extract location from server name (e.g., "node6-noida" -> "Noida")
+          const locationName = server.split("-").pop() || server;
+          return {
+            name: server,
+            region:
+              locationName.charAt(0).toUpperCase() + locationName.slice(1),
+            servers: serverData.total || 0,
+            running: serverData.running || 0,
+            status:
+              serverData.status === "ONLINE"
+                ? "healthy"
+                : serverData.status === "OFFLINE"
+                ? "critical"
+                : "warning",
+            utilization:
+              serverData.total > 0
+                ? Math.round((serverData.running / serverData.total) * 100)
+                : 0,
+          };
+        });
+
+        setServerLocations(locations);
+      } catch (err) {
+        console.error("Error fetching VM data:", err);
+        // Fallback to mock data if API fails
+        setServerLocations([
+          {
+            region: "US East",
+            servers: 45,
+            status: "healthy",
+            utilization: 82,
+          },
+          {
+            region: "EU West",
+            servers: 38,
+            status: "healthy",
+            utilization: 76,
+          },
+          {
+            region: "Asia Pacific",
+            servers: 29,
+            status: "warning",
+            utilization: 91,
+          },
+          {
+            region: "US West",
+            servers: 42,
+            status: "healthy",
+            utilization: 68,
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVmData();
+  }, []);
+
+  // Fetch audit logs
   useEffect(() => {
     const fetchAuditLogs = async () => {
       try {
@@ -199,7 +200,7 @@ export default function AdminDashboard() {
         const data = await res.json();
 
         // Normalize for UI
-        const normalized = data.slice(0, 5).map((log) => ({
+        const normalized = data.map((log) => ({
           id: log.id,
           user: log.userEmail,
           action: `${log.operation} on ${log.vmName}`,
@@ -224,50 +225,12 @@ export default function AdminDashboard() {
     fetchAuditLogs();
   }, []);
 
-  const [serverLocations, setServerLocations] = useState([
-    { region: "US East", servers: 45, status: "healthy", utilization: 82 },
-    { region: "EU West", servers: 38, status: "healthy", utilization: 76 },
-    { region: "Asia Pacific", servers: 29, status: "warning", utilization: 91 },
-    { region: "US West", servers: 42, status: "healthy", utilization: 68 },
-  ]);
-
-  const [servers, setServers] = useState([]);
-
-  useEffect(() => {
-    const fetchServers = async () => {
-      try {
-        const token = localStorage.getItem("adminToken");
-        if (!token) return;
-
-        const res = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/api/admin/servers/overview`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!res.ok) throw new Error("Failed to fetch servers");
-
-        const data = await res.json();
-
-        const normalized = data.map((s) => ({
-          id: s.id,
-          name: s.name,
-          ip: s.ip || "N/A",
-          region: s.location,
-          status: s.status === "ACTIVE" ? "healthy" : "critical",
-        }));
-
-        setServers(normalized);
-      } catch (err) {
-        console.error("Failed to fetch servers:", err);
-      }
-    };
-
-    fetchServers();
-  }, []);
+  // Mock data for search (you can replace with actual API calls)
+  const [allData, setAllData] = useState({
+    users: [],
+    servers: [],
+    orders: [],
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -364,15 +327,27 @@ export default function AdminDashboard() {
       case "active":
       case "running":
       case "completed":
+      case "ONLINE":
+      case "SUCCESS":
         return "text-green-400 bg-green-400/10";
       case "warning":
       case "pending":
         return "text-yellow-400 bg-yellow-400/10";
+      case "success":
+        return "text-green-400 bg-green-400/10";
+      case "error":
+        return "text-red-400 bg-red-400/10";
+      case "warning":
+        return "text-yellow-400 bg-yellow-400/10";
+      case "info":
+        return "text-blue-400 bg-blue-400/10";
       case "critical":
       case "failed":
       case "inactive":
-        return "text-red-400 bg-red-400/10";
+      case "OFFLINE":
+      case "FAILED":
       case "stopped":
+        return "text-red-400 bg-red-400/10";
       case "maintenance":
         return "text-gray-400 bg-gray-400/10";
       default:
@@ -380,35 +355,44 @@ export default function AdminDashboard() {
     }
   };
 
-  const getStatusIcon = (type, status) => {
-    switch (type) {
-      case "user":
-        return <User className="w-4 h-4" />;
-      case "server":
-        return status === "running" ? (
-          <Server className="w-4 h-4 text-green-400" />
-        ) : (
-          <Server className="w-4 h-4 text-gray-400" />
-        );
-      case "order":
-        return <CreditCard className="w-4 h-4" />;
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "healthy":
+      case "ONLINE":
+      case "running":
+        return <CheckCircle className="w-4 h-4 text-green-400" />;
+      case "warning":
+      case "pending":
+        return <AlertTriangle className="w-4 h-4 text-yellow-400" />;
+      case "critical":
+      case "OFFLINE":
+      case "stopped":
+        return <XCircle className="w-4 h-4 text-red-400" />;
       default:
-        return <Package className="w-4 h-4" />;
+        return <Server className="w-4 h-4 text-gray-400" />;
     }
   };
 
   const getActivityIcon = (type) => {
     switch (type) {
       case "success":
-        return <div className="w-2 h-2 rounded-full bg-green-500"></div>;
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case "error":
-        return <div className="w-2 h-2 rounded-full bg-red-500"></div>;
+        return <XCircle className="w-4 h-4 text-red-500" />;
       case "warning":
-        return <div className="w-2 h-2 rounded-full bg-yellow-500"></div>;
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
       case "info":
-        return <div className="w-2 h-2 rounded-full bg-blue-500"></div>;
+        return (
+          <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
+            <span className="text-xs">i</span>
+          </div>
+        );
       default:
-        return <div className="w-2 h-2 rounded-full bg-gray-500"></div>;
+        return (
+          <div className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center">
+            <span className="text-xs">?</span>
+          </div>
+        );
     }
   };
 
@@ -433,6 +417,62 @@ export default function AdminDashboard() {
     { id: "servers", label: "Servers", icon: <Server className="w-4 h-4" /> },
     { id: "orders", label: "Orders", icon: <CreditCard className="w-4 h-4" /> },
   ];
+
+  // Calculate VM health percentage
+  const vmHealthPercentage =
+    stats.totalVMs > 0
+      ? Math.round((stats.runningVMs / stats.totalVMs) * 100)
+      : 0;
+
+  // Calculate server health percentage
+  const serverHealthPercentage =
+    stats.totalServers > 0
+      ? Math.round((stats.onlineServers / stats.totalServers) * 100)
+      : 0;
+
+  // Export audit logs function
+  const exportAuditLogs = async () => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      if (!token) {
+        toast.error("Authentication required");
+        return;
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_BASE_URL}/api/admin/audit-logs/export`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to export audit logs");
+      }
+
+      // Get the blob for CSV/Excel file
+      const blob = await res.blob();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit-logs-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success("Audit logs exported successfully!");
+    } catch (err) {
+      console.error("Export failed:", err);
+      toast.error("Failed to export audit logs");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0e1420] via-[#121a2a] to-[#0e1420] text-white flex flex-col">
@@ -602,7 +642,6 @@ export default function AdminDashboard() {
                     </span>
                     <button
                       onClick={() => {
-                        // Navigate to search results page
                         navigate(
                           `/admin/search?q=${encodeURIComponent(
                             searchQuery
@@ -646,171 +685,274 @@ export default function AdminDashboard() {
       <main className="flex-1 p-4 md:p-6 lg:p-8 mt-4">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-          {/* Total Users */}
+          {/* Total VMs */}
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] p-5 md:p-6 rounded-xl border border-gray-800/50 shadow-lg hover:shadow-indigo-500/10 transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-indigo-500/20 rounded-lg">
-                <Users className="w-5 h-5 text-indigo-400" />
+                <CpuIcon className="w-5 h-5 text-indigo-400" />
               </div>
-              <div className="text-xs px-2 py-1 rounded-full bg-green-900/30 text-green-400">
-                +2.5%
+              <div
+                className={`text-xs px-2 py-1 rounded-full ${
+                  vmHealthPercentage >= 80
+                    ? "bg-green-900/30 text-green-400"
+                    : vmHealthPercentage >= 50
+                    ? "bg-yellow-900/30 text-yellow-400"
+                    : "bg-red-900/30 text-red-400"
+                }`}
+              >
+                {vmHealthPercentage}% healthy
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold mb-1">
-              {stats.totalUsers.toLocaleString()}
+              {loading ? "..." : stats.totalVMs.toLocaleString()}
             </h3>
-            <p className="text-gray-400 text-sm mb-2">Total Users</p>
+            <p className="text-gray-400 text-sm mb-2">Total Virtual Machines</p>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 w-3/4"></div>
+              <div
+                className={`h-full ${
+                  vmHealthPercentage >= 80
+                    ? "bg-gradient-to-r from-green-500 to-emerald-500"
+                    : vmHealthPercentage >= 50
+                    ? "bg-gradient-to-r from-yellow-500 to-orange-500"
+                    : "bg-gradient-to-r from-red-500 to-pink-500"
+                }`}
+                style={{ width: `${vmHealthPercentage}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-xs text-gray-400 mt-2">
+              <span>{stats.runningVMs} running</span>
+              <span>{stats.stoppedVMs} stopped</span>
             </div>
           </div>
 
-          {/* Active Servers */}
+          {/* Running VMs */}
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] p-5 md:p-6 rounded-xl border border-gray-800/50 shadow-lg hover:shadow-green-500/10 transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-green-500/20 rounded-lg">
-                <Server className="w-5 h-5 text-green-400" />
+                <Zap className="w-5 h-5 text-green-400" />
               </div>
               <div className="text-xs px-2 py-1 rounded-full bg-green-900/30 text-green-400">
-                {stats.activeServers} active
+                Active
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold mb-1">
-              {stats.activeServers}
+              {loading ? "..." : stats.runningVMs}
             </h3>
-            <p className="text-gray-400 text-sm mb-2">Active Servers</p>
+            <p className="text-gray-400 text-sm mb-2">Running VMs</p>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-green-500 to-emerald-500 w-[78%]"></div>
+              <div
+                className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
+                style={{
+                  width:
+                    stats.totalVMs > 0
+                      ? `${(stats.runningVMs / stats.totalVMs) * 100}%`
+                      : "0%",
+                }}
+              ></div>
+            </div>
+            <div className="text-xs text-gray-400 mt-2">
+              {stats.totalVMs > 0
+                ? `${Math.round(
+                    (stats.runningVMs / stats.totalVMs) * 100
+                  )}% of total`
+                : "No VMs"}
             </div>
           </div>
 
-          {/* Total Revenue */}
+          {/* Total Servers */}
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] p-5 md:p-6 rounded-xl border border-gray-800/50 shadow-lg hover:shadow-emerald-500/10 transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-emerald-500/20 rounded-lg">
-                <CreditCard className="w-5 h-5 text-emerald-400" />
+                <Server className="w-5 h-5 text-emerald-400" />
               </div>
-              <div className="text-xs px-2 py-1 rounded-full bg-emerald-900/30 text-emerald-400">
-                ₹{stats.monthlyGrowth.toFixed(1)}%
+              <div
+                className={`text-xs px-2 py-1 rounded-full ${
+                  serverHealthPercentage >= 80
+                    ? "bg-green-900/30 text-green-400"
+                    : serverHealthPercentage >= 50
+                    ? "bg-yellow-900/30 text-yellow-400"
+                    : "bg-red-900/30 text-red-400"
+                }`}
+              >
+                {serverHealthPercentage}% online
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold mb-1">
-              ₹{stats.totalRevenue.toLocaleString()}
+              {loading ? "..." : stats.totalServers}
             </h3>
-            <p className="text-gray-400 text-sm mb-2">Monthly Revenue</p>
+            <p className="text-gray-400 text-sm mb-2">Proxmox Servers</p>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 w-[65%]"></div>
+              <div
+                className={`h-full ${
+                  serverHealthPercentage >= 80
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                    : serverHealthPercentage >= 50
+                    ? "bg-gradient-to-r from-yellow-500 to-orange-500"
+                    : "bg-gradient-to-r from-red-500 to-orange-500"
+                }`}
+                style={{ width: `${serverHealthPercentage}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-xs text-gray-400 mt-2">
+              <span>{stats.onlineServers} online</span>
+              <span>{stats.offlineServers} offline</span>
             </div>
           </div>
 
-          {/* Pending Issues */}
+          {/* Issues/Alerts */}
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] p-5 md:p-6 rounded-xl border border-gray-800/50 shadow-lg hover:shadow-red-500/10 transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-red-500/20 rounded-lg">
                 <AlertCircle className="w-5 h-5 text-red-400" />
               </div>
               <div className="text-xs px-2 py-1 rounded-full bg-red-900/30 text-red-400">
-                Needs attention
+                {stats.offlineServers > 0 ? "Critical" : "All clear"}
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold mb-1">
-              {stats.pendingIssues}
+              {loading ? "..." : stats.stoppedVMs + stats.offlineServers}
             </h3>
-            <p className="text-gray-400 text-sm mb-2">Pending Issues</p>
+            <p className="text-gray-400 text-sm mb-2">Issues & Alerts</p>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-red-500 to-orange-500 w-[18%]"></div>
+              <div
+                className="h-full bg-gradient-to-r from-red-500 to-orange-500"
+                style={{
+                  width:
+                    stats.totalServers + stats.totalVMs > 0
+                      ? `${
+                          ((stats.stoppedVMs + stats.offlineServers) /
+                            (stats.totalServers + stats.totalVMs)) *
+                          100
+                        }%`
+                      : "0%",
+                }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-xs text-gray-400 mt-2">
+              <span>{stats.stoppedVMs} stopped VMs</span>
+              <span>{stats.offlineServers} offline servers</span>
             </div>
           </div>
         </div>
 
         {/* Charts & Activity Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Performance Chart */}
+          {/* Server Locations Overview */}
           <div className="lg:col-span-2 bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg md:text-xl font-semibold mb-1">
-                  System Performance
+                  Server Locations
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  Server utilization and response times
+                  Proxmox nodes and their VM distribution
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-sm">
-                  <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                  <span className="text-gray-400">CPU</span>
-                </div>
-                <div className="flex items-center gap-1 text-sm">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  <span className="text-gray-400">Memory</span>
-                </div>
-                {/* Add this button to view detailed metrics */}
-                <button
-                  onClick={() => navigate("/admin/metrics")}
-                  className="ml-2 px-3 py-1.5 text-sm bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300 rounded-lg flex items-center gap-1 transition-colors"
-                >
-                  <LineChart className="w-4 h-4" />
-                  View Metrics
-                </button>
-                <button className="p-2 hover:bg-gray-800/50 rounded-lg">
-                  <MoreVertical className="w-4 h-4 text-gray-400" />
-                </button>
-              </div>
+              <button className="p-2 hover:bg-gray-800/50 rounded-lg">
+                <MoreVertical className="w-4 h-4 text-gray-400" />
+              </button>
             </div>
 
-            {/* Chart Visualization */}
-            {/* Live Performance Chart */}
-            <div className="mb-6">
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">Loading server data...</p>
+              </div>
+            ) : serverLocations.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">No server data available</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {serverLocations.map((location, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`p-3 rounded-lg ${
+                          location.status === "healthy"
+                            ? "bg-green-500/20"
+                            : location.status === "warning"
+                            ? "bg-yellow-500/20"
+                            : "bg-red-500/20"
+                        }`}
+                      >
+                        <Cloud
+                          className={`w-5 h-5 ${
+                            location.status === "healthy"
+                              ? "text-green-400"
+                              : location.status === "warning"
+                              ? "text-yellow-400"
+                              : "text-red-400"
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium">{location.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {location.region}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                      <div className="text-center">
+                        <p className="text-lg font-semibold">
+                          {location.servers}
+                        </p>
+                        <p className="text-xs text-gray-400">Total VMs</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold">
+                          {location.running}
+                        </p>
+                        <p className="text-xs text-gray-400">Running</p>
+                      </div>
+                      <div className="w-32">
+                        <div className="flex justify-between text-xs text-gray-400 mb-1">
+                          <span>Utilization</span>
+                          <span>{location.utilization}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${
+                              location.utilization >= 80
+                                ? "bg-red-500"
+                                : location.utilization >= 60
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                            }`}
+                            style={{ width: `${location.utilization}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          location.status
+                        )}`}
+                      >
+                        {location.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Performance Chart */}
+            <div className="mt-6">
               <MetricChart
-                title="CPU Usage (%)"
+                title="Overall VM Health"
                 serverId="1"
                 token={token}
                 color="#6366f1"
-                extract={(h) => Math.round(h.cpu * 100)}
+                extract={(h) => vmHealthPercentage}
               />
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-gray-800/30 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Activity className="w-5 h-5 text-indigo-400" />
-                  <div>
-                    <p className="text-gray-400 text-sm">Avg Response</p>
-                    <p className="text-lg font-semibold">42ms</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-800/30 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Database className="w-5 h-5 text-green-400" />
-                  <div>
-                    <p className="text-gray-400 text-sm">Uptime</p>
-                    <p className="text-lg font-semibold">99.9%</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-800/30 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Network className="w-5 h-5 text-blue-400" />
-                  <div>
-                    <p className="text-gray-400 text-sm">Bandwidth</p>
-                    <p className="text-lg font-semibold">2.4TB</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-800/30 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="w-5 h-5 text-emerald-400" />
-                  <div>
-                    <p className="text-gray-400 text-sm">Growth</p>
-                    <p className="text-lg font-semibold">+12.5%</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
+          {/* Recent Activity */}
           {/* Recent Activity */}
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
             <div className="flex items-center justify-between mb-6">
@@ -818,18 +960,33 @@ export default function AdminDashboard() {
                 <h3 className="text-lg md:text-xl font-semibold mb-1">
                   Recent Activity
                 </h3>
-                <p className="text-gray-400 text-sm">Latest user actions</p>
+                <p className="text-gray-400 text-sm">Latest VM operations</p>
               </div>
-              <button className="text-sm text-indigo-400 hover:text-indigo-300">
-                View all
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportAuditLogs}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white rounded-lg transition-colors"
+                  title="Export to CSV"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
               {activityLoading ? (
-                <p className="text-gray-400 text-sm">Loading activity...</p>
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-2"></div>
+                  <p className="text-gray-400 text-sm">Loading activity...</p>
+                </div>
               ) : recentActivity.length === 0 ? (
-                <p className="text-gray-400 text-sm">No recent activity</p>
+                <div className="text-center py-8">
+                  <Clock className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-400 text-sm">
+                    No recent activity found
+                  </p>
+                </div>
               ) : (
                 recentActivity.map((activity) => (
                   <div
@@ -839,83 +996,167 @@ export default function AdminDashboard() {
                     <div className="pt-1">{getActivityIcon(activity.type)}</div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {activity.user}
-                      </p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-medium text-gray-200 truncate">
+                          {activity.user || "System"}
+                        </p>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                            activity.type
+                          )}`}
+                        >
+                          {activity.type}
+                        </span>
+                      </div>
                       <p className="text-xs text-gray-400 truncate">
                         {activity.action}
                       </p>
-                    </div>
-
-                    <div className="text-xs text-gray-500 whitespace-nowrap">
-                      {activity.time}
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <Server className="w-3 h-3" />
+                          {activity.node || "Unknown Node"}
+                        </p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {activity.time}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))
               )}
-            </div>
 
-            <div className="mt-6 pt-5 border-t border-gray-800/50">
-              <button className="w-full py-2.5 border border-gray-700 hover:border-indigo-500 text-gray-400 hover:text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
-                <Download className="w-4 h-4" />
-                Export Activity Log
-              </button>
+              {/* Load More indicator (if you want pagination) */}
+              {recentActivity.length >= 5 && (
+                <div className="text-center pt-4 border-t border-gray-800/50">
+                  <p className="text-xs text-gray-500">
+                    Scroll to view more activities
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Server Locations & Quick Actions */}
+        {/* Quick Actions & VM Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Server Locations */}
+          {/* VM Breakdown by Server */}
           <div className="lg:col-span-2 bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg md:text-xl font-semibold mb-1">
-                  Servers Overview
+                  VM Distribution
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  All servers and their current status
+                  Virtual machines across Proxmox nodes
                 </p>
               </div>
             </div>
 
-            <div className="space-y-4">
-              {servers.length === 0 ? (
-                <p className="text-gray-400 text-sm">No servers found</p>
-              ) : (
-                servers.map((server) => (
-                  <div
-                    key={server.id}
-                    className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition"
-                  >
-                    {/* Left */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                        <Server className="w-5 h-5 text-indigo-400" />
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">Loading VM distribution...</p>
+              </div>
+            ) : !vmData?.serverBreakdown ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">
+                  No VM distribution data available
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {Object.entries(vmData.serverBreakdown).map(
+                  ([serverName, serverData]) => (
+                    <div
+                      key={serverName}
+                      className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`p-3 rounded-lg ${
+                            serverData.status === "ONLINE"
+                              ? "bg-green-500/20"
+                              : serverData.status === "OFFLINE"
+                              ? "bg-red-500/20"
+                              : "bg-yellow-500/20"
+                          }`}
+                        >
+                          <Server
+                            className={`w-5 h-5 ${
+                              serverData.status === "ONLINE"
+                                ? "text-green-400"
+                                : serverData.status === "OFFLINE"
+                                ? "text-red-400"
+                                : "text-yellow-400"
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <p className="font-medium">{serverName}</p>
+                          <p className="text-xs text-gray-400 capitalize">
+                            Status:{" "}
+                            {serverData.status?.toLowerCase() || "unknown"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{server.name}</p>
-                        <p className="text-xs text-gray-400">
-                          {server.ip} • {server.region}
-                        </p>
-                      </div>
-                    </div>
 
-                    {/* Right */}
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          server.status
-                        )}`}
-                      >
-                        {server.status.charAt(0).toUpperCase() +
-                          server.status.slice(1)}
+                      <div className="flex items-center gap-8">
+                        <div className="text-center">
+                          <p className="text-lg font-semibold">
+                            {serverData.total || 0}
+                          </p>
+                          <p className="text-xs text-gray-400">Total VMs</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-semibold text-green-400">
+                            {serverData.running || 0}
+                          </p>
+                          <p className="text-xs text-gray-400">Running</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-semibold text-red-400">
+                            {serverData.stopped || 0}
+                          </p>
+                          <p className="text-xs text-gray-400">Stopped</p>
+                        </div>
+                        <div className="w-24">
+                          <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${
+                                serverData.total > 0 &&
+                                serverData.running / serverData.total >= 0.8
+                                  ? "bg-green-500"
+                                  : serverData.total > 0 &&
+                                    serverData.running / serverData.total >= 0.5
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                              }`}
+                              style={{
+                                width:
+                                  serverData.total > 0
+                                    ? `${
+                                        (serverData.running /
+                                          serverData.total) *
+                                        100
+                                      }%`
+                                    : "0%",
+                              }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-400 text-center mt-1">
+                            {serverData.total > 0
+                              ? `${Math.round(
+                                  (serverData.running / serverData.total) * 100
+                                )}% running`
+                              : "No VMs"}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  )
+                )}
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
@@ -930,7 +1171,6 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-3">
-              {/* Add this new Performance Metrics button at the top */}
               <button
                 onClick={() => navigate("/admin/metrics")}
                 className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-blue-500/20 border border-gray-700 hover:border-blue-500 rounded-lg transition-all group"
@@ -942,21 +1182,6 @@ export default function AdminDashboard() {
                   <p className="font-medium">Performance Metrics</p>
                   <p className="text-xs text-gray-400">
                     View detailed server metrics
-                  </p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate("/admin/orders")}
-                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-indigo-500/20 border border-gray-700 hover:border-indigo-500 rounded-lg transition-all group"
-              >
-                <div className="p-2 bg-indigo-500/20 rounded-lg group-hover:bg-indigo-500/30">
-                  <Users className="w-5 h-5 text-indigo-400 group-hover:text-indigo-300" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">Manage Orders</p>
-                  <p className="text-xs text-gray-400">
-                    View and manage orders
                   </p>
                 </div>
               </button>
@@ -975,16 +1200,45 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               </button>
+
+              <button
+                onClick={() => navigate("/admin/orders")}
+                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-purple-500/20 border border-gray-700 hover:border-purple-500 rounded-lg transition-all group"
+              >
+                <div className="p-2 bg-purple-500/20 rounded-lg group-hover:bg-purple-500/30">
+                  <CpuIcon className="w-5 h-5 text-purple-400 group-hover:text-purple-300" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium">Manage VMs</p>
+                  <p className="text-xs text-gray-400">
+                    View and manage all virtual machines
+                  </p>
+                </div>
+              </button>
             </div>
 
             <div className="mt-6 pt-5 border-t border-gray-800/50">
               <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
                 <Shield className="w-5 h-5 text-yellow-400" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Security Status</p>
-                  <p className="text-xs text-gray-400">All systems secure</p>
+                  <p className="text-sm font-medium">System Status</p>
+                  <p className="text-xs text-gray-400">
+                    {stats.onlineServers === stats.totalServers &&
+                    stats.totalServers > 0
+                      ? "All systems operational"
+                      : stats.offlineServers > 0
+                      ? `${stats.offlineServers} server(s) offline`
+                      : "Loading status..."}
+                  </p>
                 </div>
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    stats.onlineServers === stats.totalServers &&
+                    stats.totalServers > 0
+                      ? "bg-green-500 animate-pulse"
+                      : "bg-red-500 animate-pulse"
+                  }`}
+                ></div>
               </div>
             </div>
           </div>
