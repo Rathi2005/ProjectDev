@@ -400,34 +400,85 @@ export default function ManageResourcesPage({
     try {
       // ==================== IP EDIT ====================
       if (endpoint === "/ips") {
-        const { value: newIp } = await Swal.fire({
+        // 1️⃣ IP
+        const { value: ip } = await Swal.fire({
           title: "Edit IP Address",
           input: "text",
           inputValue: item.ip,
-          inputValidator: (value) => {
-            if (!value) return "IP address is required!";
-            if (!validateIp(value)) return "Please enter a valid IP address!";
-            return null;
-          },
           confirmButtonText: "Next",
           showCancelButton: true,
+          inputValidator: (value) => {
+            if (!value) return "IP is required";
+            if (!validateIp(value)) return "Invalid IP address";
+            return null;
+          },
           background: "#1e2640",
           color: "#fff",
         });
-        if (!newIp) return;
+        if (!ip) return;
 
-        const { value: newMac } = await Swal.fire({
+        // 2️⃣ CIDR
+        const { value: cidr } = await Swal.fire({
+          title: "Edit CIDR",
+          input: "text",
+          inputValue: item.cidr || "/24",
+          confirmButtonText: "Next",
+          showCancelButton: true,
+          inputValidator: (value) => {
+            if (!/^\/\d{1,2}$/.test(value)) return "Invalid CIDR format";
+            return null;
+          },
+          background: "#1e2640",
+          color: "#fff",
+        });
+        if (!cidr) return;
+
+        // 3️⃣ Subnet Mask
+        const { value: subnetMask } = await Swal.fire({
+          title: "Edit Subnet Mask",
+          input: "text",
+          inputValue: item.subnetMask || cidrToSubnet(cidr),
+          confirmButtonText: "Next",
+          showCancelButton: true,
+          inputValidator: (value) => {
+            if (!validateIp(value)) return "Invalid subnet mask";
+            return null;
+          },
+          background: "#1e2640",
+          color: "#fff",
+        });
+        if (!subnetMask) return;
+
+        // 4️⃣ Gateway
+        const { value: gateway } = await Swal.fire({
+          title: "Edit Gateway",
+          input: "text",
+          inputValue: item.gateway,
+          confirmButtonText: "Next",
+          showCancelButton: true,
+          inputValidator: (value) => {
+            if (!validateIp(value)) return "Invalid gateway IP";
+            return null;
+          },
+          background: "#1e2640",
+          color: "#fff",
+        });
+        if (!gateway) return;
+
+        // 5️⃣ MAC
+        const { value: mac } = await Swal.fire({
           title: "Edit MAC Address",
           input: "text",
           inputValue: item.mac || "",
-          inputPlaceholder: "Enter MAC address (optional)",
+          inputPlaceholder: "Optional",
           confirmButtonText: "Next",
           showCancelButton: true,
           background: "#1e2640",
           color: "#fff",
         });
-        if (newMac === undefined) return;
+        if (mac === undefined) return;
 
+        // 6️⃣ In Use (FINAL STEP)
         const { value: inUse } = await Swal.fire({
           title: "Mark as In Use?",
           input: "select",
@@ -436,13 +487,14 @@ export default function ManageResourcesPage({
             false: "No - Available",
           },
           inputValue: item.inUse ? "true" : "false",
-          confirmButtonText: "Save",
+          confirmButtonText: "Save", // ✅ FINAL BUTTON
           showCancelButton: true,
           background: "#1e2640",
           color: "#fff",
         });
         if (inUse === null) return;
 
+        // 🚀 SAVE
         await fetch(`${BASE_URL}/api/admin/zones/${id}/ips/${item.id}`, {
           method: "PUT",
           headers: {
@@ -450,8 +502,11 @@ export default function ManageResourcesPage({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            ip: newIp.trim(),
-            mac: newMac?.trim() || null,
+            ip: ip.trim(),
+            cidr,
+            subnetMask,
+            gateway,
+            mac: mac?.trim() || null,
             inUse: inUse === "true",
           }),
         });
