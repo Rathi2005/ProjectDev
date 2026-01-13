@@ -41,7 +41,7 @@ export default function ZonesPage() {
       setLoading(true);
       try {
         const token = localStorage.getItem("adminToken");
-        const res = await fetch(`${BASE_URL}/options/zones`, {
+        const res = await fetch(`${BASE_URL}/api/options/zones`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -74,7 +74,7 @@ export default function ZonesPage() {
 
     try {
       const token = localStorage.getItem("adminToken");
-      const res = await fetch(`${BASE_URL}/admin/zones`, {
+      const res = await fetch(`${BASE_URL}/api/admin/zones`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -138,7 +138,7 @@ export default function ZonesPage() {
     if (result.isConfirmed) {
       try {
         const token = localStorage.getItem("adminToken");
-        const res = await fetch(`${BASE_URL}/admin/zones/${zoneId}`, {
+        const res = await fetch(`${BASE_URL}/api/admin/zones/${zoneId}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
@@ -183,7 +183,7 @@ export default function ZonesPage() {
     try {
       const token = localStorage.getItem("adminToken");
       const res = await fetch(
-        `${BASE_URL}/admin/zones/${
+        `${BASE_URL}/api/admin/zones/${
           editingZone.id
         }/rename?name=${encodeURIComponent(renameName)}`,
         {

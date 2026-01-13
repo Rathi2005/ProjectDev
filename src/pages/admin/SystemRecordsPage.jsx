@@ -77,13 +77,13 @@ export default function SystemRecordsPage() {
       let endpoint = "";
       switch(pageType) {
         case "deleted-vms":
-          endpoint = `${BASE_URL}/admin/records/deleted-vms`;
+          endpoint = `${BASE_URL}/api/admin/records/deleted-vms`;
           break;
         case "garbage-records":
-          endpoint = `${BASE_URL}/admin/garbage/records`;
+          endpoint = `${BASE_URL}/api/admin/garbage/records`;
           break;
         case "users-overview":
-          endpoint = `${BASE_URL}/admin/users/overview`;
+          endpoint = `${BASE_URL}/api/admin/users/overview`;
           break;
         default:
           return;

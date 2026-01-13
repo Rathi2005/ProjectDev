@@ -186,7 +186,7 @@ export default function AdminDashboard() {
         if (!token) return;
 
         const res = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/admin/audit-logs/all`,
+          `${import.meta.env.VITE_BASE_URL}/api/admin/audit-logs/all`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -240,7 +240,7 @@ export default function AdminDashboard() {
         if (!token) return;
 
         const res = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/admin/servers/overview`,
+          `${import.meta.env.VITE_BASE_URL}/api/admin/servers/overview`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

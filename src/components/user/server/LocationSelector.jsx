@@ -4,7 +4,8 @@ import { MapPin, CheckCircle2 } from "lucide-react";
 const LocationSelector = ({ selected, onSelect }) => {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const SERVER_LOCATION = import.meta.env.VITE_FETCH_SERVER_LOCATION;
+  const BASE_URL = import.meta.env.VITE_BASE_URL;
+  const SERVER_LOCATION = `${BASE_URL}/api/options/servers/by-location`;
 
   useEffect(() => {
     const fetchLocations = async () => {

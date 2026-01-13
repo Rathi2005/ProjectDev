@@ -28,7 +28,7 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "https://api.getwebup.com",
+        target: "https://vps.devai.in", 
         changeOrigin: true,
         secure: false,
       },

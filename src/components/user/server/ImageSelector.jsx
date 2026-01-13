@@ -8,7 +8,8 @@ const ImageSelector = ({ serverId, setSelectedOS }) => {
   const [error, setSelectedError] = useState("");
   const [osOptions, setOsOptions] = useState([]);
   
-  const IMAGES = import.meta.env.VITE_FETCH_IMAGES;
+  const BASE_URL = import.meta.env.VITE_BASE_URL;
+  const IMAGES = `${BASE_URL}/api/options/servers`;
 
   useEffect(() => {
     if (!serverId) return;

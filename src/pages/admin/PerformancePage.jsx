@@ -69,7 +69,7 @@ export default function PerformancePage() {
       try {
         setIsRefreshing(true);
         const res = await fetch(
-          `${BASE_URL}/admin/servers/${selectedServer.id}/metrics`,
+          `${BASE_URL}/api/admin/servers/${selectedServer.id}/metrics`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -100,7 +100,7 @@ export default function PerformancePage() {
         const token = localStorage.getItem("adminToken");
         if (!token) return;
 
-        const res = await fetch(`${BASE_URL}/admin/servers/overview`, {
+        const res = await fetch(`${BASE_URL}/api/admin/servers/overview`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -185,7 +185,7 @@ export default function PerformancePage() {
     const fetchMetrics = async () => {
       try {
         const res = await fetch(
-          `${BASE_URL}/admin/servers/${selectedServer.id}/metrics`,
+          `${BASE_URL}/api/admin/servers/${selectedServer.id}/metrics`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

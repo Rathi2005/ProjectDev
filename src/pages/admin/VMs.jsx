@@ -28,7 +28,7 @@ export default function VMsPage() {
       try {
         // Fetch insights
         const insightsRes = await fetch(
-          `${BASE_URL}/admin/servers/${id}/vms/counts`,
+          `${BASE_URL}/api/admin/servers/${id}/vms/counts`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -41,7 +41,7 @@ export default function VMsPage() {
         });
 
         // Fetch VMs list
-        const vmRes = await fetch(`${BASE_URL}/admin/servers/${id}/vms`, {
+        const vmRes = await fetch(`${BASE_URL}/api/admin/servers/${id}/vms`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const vmJson = await vmRes.json();

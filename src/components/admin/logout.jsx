@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";   // ✅ Added toast import
 
-const LOGOUT_API = import.meta.env.VITE_LOGOUT;
+// const LOGOUT_API = import.meta.env.VITE_LOGOUT;
+const LOGOUT_API = `${import.meta.env.VITE_BASE_URL}/api/logout`;
 
 export default function useLogout() {
   const navigate = useNavigate();

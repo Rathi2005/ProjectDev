@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const RESET_PASSWORD_API = import.meta.env.VITE_RESET_PASSWORD; // endpoint /api/password/reset
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const RESET_PASSWORD_API = `${BASE_URL}/api/password/reset`; // endpoint /api/password/reset
 
 const ResetPassword = ({ email }) => {
   const [resetStep, setResetStep] = useState(1); // 1=OTP, 2=Password

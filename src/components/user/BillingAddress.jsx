@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-const BILLING = import.meta.env.VITE_BILLING;
+const BASE_URL = import.meta.env.BASE_URL;
+// const BILLING = import.meta.env.VITE_BILLING;
+const BILLING = `${BASE_URL}/api/register/step2/billing`;
 
 const BillingAddress = ({ email }) => {
   const navigate = useNavigate();

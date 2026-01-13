@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 
-const VERIFY_REGISTER_OTP = import.meta.env.VITE_COMPLETE_REGISTRATION;
-const VERIFY_LOGIN_OTP = import.meta.env.VITE_LOGIN_OTP_VERIFY;
-const RESEND_OTP = import.meta.env.VITE_RESEND_OTP;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+// const VERIFY_REGISTER_OTP = import.meta.env.VITE_COMPLETE_REGISTRATION;
+// const VERIFY_LOGIN_OTP = import.meta.env.VITE_LOGIN_OTP_VERIFY;
+// const RESEND_OTP = import.meta.env.VITE_RESEND_OTP;
+const VERIFY_REGISTER_OTP = `${BASE_URL}/api/register/complete-registration`;
+const VERIFY_LOGIN_OTP = `${BASE_URL}/api/login/otp/verify`;
+const RESEND_OTP = `${BASE_URL}/api/register/resend-otp`;
 
 const OtpVerification = ({ email, onVerified, toggle }) => {
   // toggle -> 1 then verify login otp, else if(0) register otp

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
-const LOGOUT_API = import.meta.env.VITE_LOGOUT;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const LOGOUT_API = `${BASE_URL}/api/logout`;
 
 export default function useLogout() {
   const navigate = useNavigate();

@@ -33,7 +33,7 @@ export default function PricingPage() {
       const token = localStorage.getItem("adminToken");
 
       try {
-        const res = await fetch(`${BASE_URL}/admin/pricing/${type}/${section}`, {
+        const res = await fetch(`${BASE_URL}/api/admin/pricing/${type}/${section}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -85,7 +85,7 @@ export default function PricingPage() {
         }
       });
 
-      const res = await fetch(`${BASE_URL}/admin/pricing/${type}/${section}`, {
+      const res = await fetch(`${BASE_URL}/api/admin/pricing/${type}/${section}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -155,7 +155,7 @@ export default function PricingPage() {
       const token = localStorage.getItem("adminToken");
 
       const res = await fetch(
-        `${BASE_URL}/admin/pricing/${type}/${section}/${item.id}`,
+        `${BASE_URL}/api/admin/pricing/${type}/${section}/${item.id}`,
         {
           method: "PUT",
           headers: {
@@ -200,7 +200,7 @@ export default function PricingPage() {
       const token = localStorage.getItem("adminToken");
 
       const res = await fetch(
-        `${BASE_URL}/admin/pricing/${type}/${section}/${item.id}`,
+        `${BASE_URL}/api/admin/pricing/${type}/${section}/${item.id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

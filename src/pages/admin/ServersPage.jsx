@@ -38,8 +38,9 @@ export default function ServersPage() {
   });
 
   const navigate = useNavigate();
-  const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
+  // const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
   const BASE_URL = import.meta.env.VITE_BASE_URL;
+  const FETCH_SERVERS = `${BASE_URL}/admin/servers`;
   const { id: zoneId } = useParams();
 
   // ✅ Configure SweetAlert2 dark theme
@@ -126,7 +127,7 @@ export default function ServersPage() {
       setLoading(true);
 
       try {
-        const res = await fetch(`${BASE_URL}/admin/servers?zoneId=${zoneId}`, {
+        const res = await fetch(`${BASE_URL}/api/admin/servers?zoneId=${zoneId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -167,7 +168,7 @@ export default function ServersPage() {
     const fetchZones = async () => {
       try {
         const token = localStorage.getItem("adminToken");
-        const res = await fetch(`${BASE_URL}/options/zones`, {
+        const res = await fetch(`${BASE_URL}/api/options/zones`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -195,7 +196,7 @@ export default function ServersPage() {
   const fetchVmCount = async (serverId, token) => {
     try {
       const res = await fetch(
-        `${BASE_URL}/admin/servers/${serverId}/vms/counts`,
+        `${BASE_URL}/api/admin/servers/${serverId}/vms/counts`,
         {
           method: "GET",
           headers: {
@@ -252,7 +253,7 @@ export default function ServersPage() {
     setSubmitting(true);
 
     try {
-      const res = await fetch(`${BASE_URL}/admin/servers`, {
+      const res = await fetch(`${BASE_URL}/api/admin/servers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -338,7 +339,7 @@ export default function ServersPage() {
     if (result.isConfirmed) {
       try {
         const token = localStorage.getItem("adminToken");
-        const res = await fetch(`${BASE_URL}/admin/servers/${serverId}`, {
+        const res = await fetch(`${BASE_URL}/api/admin/servers/${serverId}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
@@ -383,7 +384,7 @@ export default function ServersPage() {
     try {
       const token = localStorage.getItem("adminToken");
       const res = await fetch(
-        `${BASE_URL}/admin/servers/${
+        `${BASE_URL}/api/admin/servers/${
           renamingServer.id
         }/rename?name=${encodeURIComponent(renameName)}`,
         {
@@ -431,7 +432,7 @@ export default function ServersPage() {
     const token = localStorage.getItem("adminToken");
 
     try {
-      const res = await fetch(`${BASE_URL}/admin/servers/${serverId}/status`, {
+      const res = await fetch(`${BASE_URL}/api/admin/servers/${serverId}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

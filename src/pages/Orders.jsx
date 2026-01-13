@@ -74,7 +74,7 @@ export default function UserOrdersPage() {
           return;
         }
 
-        const res = await fetch(`${BASE_URL}/users/orders/my-orders`, {
+        const res = await fetch(`${BASE_URL}/api/users/orders/my-orders`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -172,9 +172,9 @@ export default function UserOrdersPage() {
       let method = "POST";
 
       if (action === "rebuild") {
-        url = `${BASE_URL}/users/${userId}/vms/${vmId}/rebuild?isoId=${isoId}`;
+        url = `${BASE_URL}/api/users/${userId}/vms/${vmId}/rebuild?isoId=${isoId}`;
       } else {
-        url = `${BASE_URL}/users/${userId}/vms/${vmId}/control?action=${action}`;
+        url = `${BASE_URL}/api/users/${userId}/vms/${vmId}/control?action=${action}`;
       }
 
       const res = await fetch(url, {
@@ -268,7 +268,7 @@ export default function UserOrdersPage() {
     const token = localStorage.getItem("token");
 
     const res = await fetch(
-      `${BASE_URL}/users/servers/${serverId}/isos/basic`,
+      `${BASE_URL}/api/users/servers/${serverId}/isos/basic`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -551,7 +551,7 @@ export default function UserOrdersPage() {
       setPasswordLoading((prev) => ({ ...prev, [vmId]: true }));
 
       const res = await fetch(
-        `${BASE_URL}/users/${userId}/vms/${vmId}/password`,
+        `${BASE_URL}/api/users/${userId}/vms/${vmId}/password`,
         {
           method: "PUT",
           headers: {
@@ -606,7 +606,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch(`${BASE_URL}/pricing/upgrades/${order.id}`, {
+      const res = await fetch(`${BASE_URL}/api/pricing/upgrades/${order.id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -643,7 +643,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
     const token = localStorage.getItem("token");
 
     const res = await fetch(
-      `${BASE_URL}/vms/renew/${upgradeVm.id}/upgrade-renew`,
+      `${BASE_URL}/api/vms/renew/${upgradeVm.id}/upgrade-renew`,
       {
         method: "POST",
         headers: {

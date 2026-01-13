@@ -85,7 +85,7 @@ export default function OrdersPage() {
     try {
       const adminToken = localStorage.getItem("adminToken");
 
-      const res = await fetch(`${BASE_URL}/admin/vms`, {
+      const res = await fetch(`${BASE_URL}/api/admin/vms`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +194,7 @@ export default function OrdersPage() {
         const revenuePromises = revenueActions.map(async (action) => {
           try {
             const res = await fetch(
-              `${BASE_URL}/admin/revenue/stats?action=${action}`,
+              `${BASE_URL}/api/admin/revenue/stats?action=${action}`,
               {
                 method: "GET",
                 headers: {
@@ -220,7 +220,7 @@ export default function OrdersPage() {
 
         // Fetch deleted VMs count
         const deletedVmsPromise = fetch(
-          `${BASE_URL}/admin/records/deleted-vms`,
+          `${BASE_URL}/api/admin/records/deleted-vms`,
           {
             method: "GET",
             headers: {
@@ -247,7 +247,7 @@ export default function OrdersPage() {
 
         // Fetch garbage records count
         const garbageRecordsPromise = fetch(
-          `${BASE_URL}/admin/garbage/records`,
+          `${BASE_URL}/api/admin/garbage/records`,
           {
             method: "GET",
             headers: {
@@ -272,7 +272,7 @@ export default function OrdersPage() {
           .catch(() => 0);
 
         // Fetch user count - Updated to handle the new API response format
-        const userCountPromise = fetch(`${BASE_URL}/admin/users/overview`, {
+        const userCountPromise = fetch(`${BASE_URL}/api/admin/users/overview`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -360,7 +360,7 @@ export default function OrdersPage() {
       setPowerLoading((prev) => ({ ...prev, [orderId]: action }));
 
       const res = await fetch(
-        `${BASE_URL}/admin/vms/order/${orderId}/power?action=${action}`,
+        `${BASE_URL}/api/admin/vms/order/${orderId}/power?action=${action}`,
         {
           method: "POST",
           headers: {
@@ -441,7 +441,7 @@ export default function OrdersPage() {
       setAdminActionLoading((p) => ({ ...p, [orderId]: "easy-reboot" }));
 
       const res = await fetch(
-        `${BASE_URL}/admin/vms/order/${orderId}/reboot-easy`,
+        `${BASE_URL}/api/admin/vms/order/${orderId}/reboot-easy`,
         {
           method: "POST",
           headers: {
@@ -482,7 +482,7 @@ export default function OrdersPage() {
     const adminToken = localStorage.getItem("adminToken");
 
     const res = await fetch(
-      `${BASE_URL}/admin/servers/${serverId}/isos/details`,
+      `${BASE_URL}/api/admin/servers/${serverId}/isos/details`,
       {
         headers: {
           Authorization: `Bearer ${adminToken}`,
@@ -594,7 +594,7 @@ export default function OrdersPage() {
         setAdminActionLoading((p) => ({ ...p, [orderId]: "rebuild" }));
 
         const res = await fetch(
-          `${BASE_URL}/admin/vms/order/${orderId}/rebuild?isoId=${isoId}`,
+          `${BASE_URL}/api/admin/vms/order/${orderId}/rebuild?isoId=${isoId}`,
           {
             method: "POST",
             headers: {
@@ -697,7 +697,7 @@ export default function OrdersPage() {
     try {
       setAdminActionLoading((p) => ({ ...p, [orderId]: "destroy" }));
 
-      const res = await fetch(`${BASE_URL}/admin/vms/order/${orderId}/remove`, {
+      const res = await fetch(`${BASE_URL}/api/admin/vms/order/${orderId}/remove`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
@@ -777,7 +777,7 @@ export default function OrdersPage() {
     try {
       const adminToken = localStorage.getItem("adminToken");
       const res = await fetch(
-        `${BASE_URL}/admin/vms/${currentVmid}/manual-vmid-sync?newVmid=${newVmid}`,
+        `${BASE_URL}/api/admin/vms/${currentVmid}/manual-vmid-sync?newVmid=${newVmid}`,
         {
           method: "PATCH",
           headers: {

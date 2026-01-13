@@ -46,7 +46,7 @@ const Profile = () => {
       }
 
       try {
-        const res = await fetch(`${BASE_URL}/users/profile`, {
+        const res = await fetch(`${BASE_URL}/api/users/profile`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -85,7 +85,7 @@ const Profile = () => {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch(`${BASE_URL}/users/profile/details`, {
+      const res = await fetch(`${BASE_URL}/api/users/profile/details`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -121,7 +121,7 @@ const Profile = () => {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch(`${BASE_URL}/users/profile/billing`, {
+      const res = await fetch(`${BASE_URL}/api/users/profile/billing`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

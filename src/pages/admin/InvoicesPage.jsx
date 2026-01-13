@@ -28,7 +28,7 @@ export default function InvoicesPage() {
   }, [invoices]);
 
   const fetchPaymentsOverview = async () => {
-    const res = await fetch(`${BASE_URL}/admin/payments/overview`, {
+    const res = await fetch(`${BASE_URL}/api/admin/payments/overview`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -40,7 +40,7 @@ export default function InvoicesPage() {
   };
 
   const fetchMasterLedger = async () => {
-    const res = await fetch(`${BASE_URL}/admin/payments/master-ledger`, {
+    const res = await fetch(`${BASE_URL}/api/admin/payments/master-ledger`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -210,7 +210,7 @@ export default function InvoicesPage() {
 
     try {
       const response = await fetch(
-        `${BASE_URL}/payments/${paymentId}/invoice`,
+        `${BASE_URL}/api/payments/${paymentId}/invoice`,
         {
           method: "GET",
           headers: {

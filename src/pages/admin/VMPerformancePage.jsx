@@ -31,7 +31,7 @@ export default function VMPerformancePage() {
       try {
         const token = localStorage.getItem("adminToken");
 
-        const res = await fetch(`${BASE_URL}/admin/${vmid}/metrics`, {
+        const res = await fetch(`${BASE_URL}/api/admin/${vmid}/metrics`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

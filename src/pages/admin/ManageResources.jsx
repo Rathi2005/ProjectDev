@@ -48,8 +48,8 @@ export default function ManageResourcesPage({
       try {
         const apiUrl =
           endpoint === "/ips"
-            ? `${BASE_URL}/admin/zones/${id}/ips`
-            : `${BASE_URL}/admin/servers/${id}${endpoint}`;
+            ? `${BASE_URL}/api/admin/zones/${id}/ips`
+            : `${BASE_URL}/api/admin/servers/${id}${endpoint}`;
 
         const res = await fetch(apiUrl, {
           headers: { Authorization: `Bearer ${token}` },
@@ -74,10 +74,10 @@ export default function ManageResourcesPage({
     try {
       const url =
         endpoint === "/ips"
-          ? `${BASE_URL}/admin/zones/${id}/ips`
+          ? `${BASE_URL}/api/admin/zones/${id}/ips`
           : extraForm === "disks"
-          ? `${BASE_URL}/admin/servers/${id}/disk-details`
-          : `${BASE_URL}/admin/servers/${id}${endpoint}`;
+          ? `${BASE_URL}/api/admin/servers/${id}/disk-details`
+          : `${BASE_URL}/api/admin/servers/${id}${endpoint}`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -103,21 +103,21 @@ export default function ManageResourcesPage({
         let payload;
 
         if (endpoint === "/ips") {
-          postUrl = `${BASE_URL}/admin/zones/${id}/ips`;
+          postUrl = `${BASE_URL}/api/admin/zones/${id}/ips`;
           payload = {
             ip: row.ip,
             mac: row.mac,
             inUse: row.inUse,
           };
         } else if (extraForm === "disks") {
-          postUrl = `${BASE_URL}/admin/servers/${id}/storage`;
+          postUrl = `${BASE_URL}/api/admin/servers/${id}/storage`;
           payload = {
             diskName: row.diskName,
             maxVms: Number(row.maxVms),
             usableDiskPercentage: Number(row.usableDiskPercentage),
           };
         } else {
-          postUrl = `${BASE_URL}/admin/servers/${id}${endpoint}`;
+          postUrl = `${BASE_URL}/api/admin/servers/${id}${endpoint}`;
           payload = row;
         }
 
@@ -191,7 +191,7 @@ export default function ManageResourcesPage({
           color: "#fff",
         });
 
-        await fetch(`${BASE_URL}/admin/zones/${id}/ips/${item.id}`, {
+        await fetch(`${BASE_URL}/api/admin/zones/${id}/ips/${item.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -233,7 +233,7 @@ export default function ManageResourcesPage({
         });
         if (!newVmid) return;
 
-        await fetch(`${BASE_URL}/admin/servers/${id}/isos/${item.id}`, {
+        await fetch(`${BASE_URL}/api/admin/servers/${id}/isos/${item.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -289,10 +289,10 @@ export default function ManageResourcesPage({
         let body = {};
 
         if (type === "vms") {
-          url = `${BASE_URL}/admin/servers/${id}/storage/${diskId}/max-vms`;
+          url = `${BASE_URL}/api/admin/servers/${id}/storage/${diskId}/max-vms`;
           body = { maxVms: Number(newVal) };
         } else {
-          url = `${BASE_URL}/admin/servers/${id}/storage/${diskId}/percentage`;
+          url = `${BASE_URL}/api/admin/servers/${id}/storage/${diskId}/percentage`;
           body = { usableDiskPercentage: Number(newVal) };
         }
 
@@ -340,11 +340,11 @@ export default function ManageResourcesPage({
       let deleteUrl = "";
 
       if (endpoint === "/ips")
-        deleteUrl = `${BASE_URL}/admin/zones/${id}/ips/${item.id}`;
+        deleteUrl = `${BASE_URL}/api/admin/zones/${id}/ips/${item.id}`;
       else if (endpoint === "/isos")
-        deleteUrl = `${BASE_URL}/admin/servers/${id}/isos/${item.id}`; // fixed typo
+        deleteUrl = `${BASE_URL}/api/admin/servers/${id}/isos/${item.id}`; // fixed typo
       else if (extraForm === "disks")
-        deleteUrl = `${BASE_URL}/admin/servers/${id}/storage/${item.id}`;
+        deleteUrl = `${BASE_URL}/api/admin/servers/${id}/storage/${item.id}`;
 
       await fetch(deleteUrl, {
         method: "DELETE",

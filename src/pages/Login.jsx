@@ -7,9 +7,10 @@ import ResetPassword from "../components/user/ResetPassword";
 import { toast } from "react-hot-toast";
 import { jwtDecode } from "jwt-decode";
 
-const LOGIN_API = import.meta.env.VITE_LOGIN;
-const OTP_INITIATE_API = import.meta.env.VITE_LOGIN_OTP;
-const FORGET_PASSWORD_API = import.meta.env.VITE_FORGOT_PASSWORD;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const LOGIN_API = `${BASE_URL}/api/login`;
+const OTP_INITIATE_API = `${BASE_URL}/api/login/otp/initiate`;
+const FORGET_PASSWORD_API = `${BASE_URL}/api/password/forgot`;
 
 const LogoIcon = () => (
   <svg

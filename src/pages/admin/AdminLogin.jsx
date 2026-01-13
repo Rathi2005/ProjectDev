@@ -7,10 +7,11 @@ import AdminOtpVerification from "../../components/admin/adminOtpVerification";
 import { toast } from "react-hot-toast";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-const ADMIN_LOGIN_API = import.meta.env.VITE_ADMIN_LOGIN;
-const ADMIN_OTP_VERIFY = import.meta.env.VITE_ADMIN_OTP_VERIFY;
-const ADMIN_RESEND_OTP =
-  import.meta.env.VITE_ADMIN_RESEND_OTP || `${BASE_URL}/admin/login/resend-otp`;
+// const ADMIN_LOGIN_API = import.meta.env.VITE_ADMIN_LOGIN;
+const ADMIN_LOGIN_API = `${BASE_URL}/api/admin/login/initiate`;
+// const ADMIN_OTP_VERIFY = import.meta.env.VITE_ADMIN_OTP_VERIFY;
+const ADMIN_OTP_VERIFY = `${BASE_URL}/api/admin/login/verify`;
+const ADMIN_RESEND_OTP = `${BASE_URL}/api/admin/login/resend-otp`;
 
 export default function AdminLoginPage() {
   const [formData, setFormData] = useState({ email: "", otp: "" });
