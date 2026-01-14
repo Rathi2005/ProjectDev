@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 // const VALIDATE_EMAIL = import.meta.env.VITE_VALIDATE;
-const BASE_URL = import.meta.env.BASE_URL;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 const VALIDATE_EMAIL = `${BASE_URL}/api/register/validate`;
 const INITIATE_VERIFICATION = `${BASE_URL}/api/register/initiate-verification`;
 
@@ -31,6 +31,7 @@ const LogoIcon = () => (
 );
 
 export default function CreateAccount() {
+  console.log("BASE_URL:", BASE_URL);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
