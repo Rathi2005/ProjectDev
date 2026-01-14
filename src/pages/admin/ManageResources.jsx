@@ -328,7 +328,7 @@ export default function ManageResourcesPage({
                   cidr: `/${cidr}`,
                   subnetMask: subnetMask,
                   gateway: row.gateway.trim(),
-                  mac: null,
+                  mac: "00:00:00:00:00:00",
                   inUse: false,
                 };
 
@@ -544,7 +544,6 @@ export default function ManageResourcesPage({
         return;
       }
 
-      // ==================== ISO EDIT ====================
       // ==================== ISO EDIT ====================
       if (endpoint === "/isos") {
         // 1️⃣ ISO NAME
