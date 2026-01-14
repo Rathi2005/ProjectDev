@@ -472,7 +472,7 @@ const ResourcesSelector = ({
             >
               {vcpuOptions.map((opt) => (
                 <option key={opt.id} value={opt.label}>
-                  {opt.label} - ₹{opt.price?.toFixed(4) || "0.0000"}/hr
+                  {opt.label}
                 </option>
               ))}
             </select>
@@ -488,7 +488,7 @@ const ResourcesSelector = ({
             >
               {ramOptions.map((opt) => (
                 <option key={opt.id} value={opt.label}>
-                  {opt.label} {opt.multiplier && `(${opt.multiplier}x)`}
+                   {opt.label} {/* {opt.multiplier && `(${opt.multiplier}x)`} */}
                 </option>
               ))}
             </select>
