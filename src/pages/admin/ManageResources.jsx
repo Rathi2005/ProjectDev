@@ -29,6 +29,7 @@ export default function ManageResourcesPage({
   const ipRangeFields = [
     { name: "startIp", label: "Start IP", type: "text" },
     { name: "endIp", label: "End IP", type: "text" },
+    { name: "cidr", label: "CIDR (e.g. /24)", type: "text" },
     { name: "gateway", label: "Gateway", type: "text" },
   ];
 
@@ -189,20 +190,6 @@ export default function ManageResourcesPage({
     return parts.every((part) => part >= 0 && part <= 255);
   };
 
-  const calculateCidrFromRange = (startIp, endIp) => {
-    const start = ipToNumber(startIp);
-    const end = ipToNumber(endIp);
-    const diff = end - start + 1;
-
-    // Find the smallest power of 2 that can contain diff IPs
-    const requiredSize = Math.pow(2, Math.ceil(Math.log2(diff)));
-
-    // CIDR = 32 - log2(requiredSize)
-    const cidr = 32 - Math.log2(requiredSize);
-
-    return Math.floor(cidr);
-  };
-
   const cidrToSubnet = (cidr) => {
     const cidrNum = parseInt(cidr.toString().replace("/", ""));
     if (isNaN(cidrNum) || cidrNum < 0 || cidrNum > 32) return "255.255.255.0";
@@ -273,8 +260,13 @@ export default function ManageResourcesPage({
           }
         } else if (ipMode === "range") {
           for (const row of rows) {
-            if (!row.startIp || !row.endIp || !row.gateway) {
-              toast.error("Please fill start IP, end IP, and gateway");
+            if (!row.startIp || !row.endIp || !row.cidr || !row.gateway) {
+              toast.error("Please fill start IP, end IP, CIDR and gateway");
+              continue;
+            }
+
+            if (!/^\/\d{1,2}$/.test(row.cidr)) {
+              toast.error("Invalid CIDR format (example: /24)");
               continue;
             }
 
@@ -296,7 +288,7 @@ export default function ManageResourcesPage({
               continue;
             }
 
-            const cidr = calculateCidrFromRange(row.startIp, row.endIp);
+            const cidr = row.cidr.startsWith("/") ? row.cidr : `/${row.cidr}`;
             const subnetMask = cidrToSubnet(cidr);
             const totalIps = end - start + 1;
 
@@ -325,7 +317,7 @@ export default function ManageResourcesPage({
                 const ip = numberToIp(j);
                 const payload = {
                   ip: ip,
-                  cidr: `/${cidr}`,
+                  cidr: cidr,
                   subnetMask: subnetMask,
                   gateway: row.gateway.trim(),
                   mac: "00:00:00:00:00:00",
