@@ -563,7 +563,6 @@ export default function UserOrdersPage() {
     { value: "ACTIVE", label: "Active" },
     { value: "STOPPED", label: "Stopped" },
     { value: "PENDING", label: "Pending" },
-    { value: "CREATING", label: "Creating" },
     { value: "FAILED", label: "Failed" },
   ];
 
