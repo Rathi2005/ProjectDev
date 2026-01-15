@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   FaServer,
-  FaMapMarkerAlt,
   FaPlay,
   FaStop,
   FaRedo,
@@ -9,98 +8,166 @@ import {
   FaClock,
   FaExclamationCircle,
   FaCheckCircle,
-  FaSpinner,
   FaUser,
   FaNetworkWired,
+  FaPlus,
+  FaEdit,
+  FaKey,
+  FaSync,
+  FaPowerOff,
+  FaPause,
+  FaPlug,
+  FaCog,
+  FaBolt,
+  FaExclamationTriangle,
+  FaQuestionCircle,
 } from "react-icons/fa";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle, Zap, Power, Wifi, Terminal } from "lucide-react";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-/* 🔁 Map action → icon and color */
-const getIcon = (action) => {
-  if (!action) return <FaServer className="text-gray-400" />;
-
-  const a = action.toLowerCase();
-
-  if (a.includes("start") || a.includes("power on"))
-    return <FaPlay className="text-green-400" />;
-  if (a.includes("stop") || a.includes("shutdown"))
-    return <FaStop className="text-red-400" />;
-  if (a.includes("reboot") || a.includes("restart"))
-    return <FaRedo className="text-purple-400" />;
-  if (a.includes("create") || a.includes("provision"))
-    return <FaServer className="text-blue-400" />;
-  if (a.includes("delete") || a.includes("destroy"))
+/* 🔁 Map operation → icon */
+const getOperationIcon = (operation) => {
+  if (!operation) return <FaQuestionCircle className="text-gray-400" />;
+  
+  const op = operation.toLowerCase();
+  
+  if (op.includes("power")) {
+    if (op.includes("start") || op.includes("on")) 
+      return <FaPlay className="text-green-400" />;
+    if (op.includes("stop") || op.includes("off")) 
+      return <FaStop className="text-red-400" />;
+    if (op.includes("reboot") || op.includes("restart")) 
+      return <FaRedo className="text-purple-400" />;
+    if (op.includes("reset"))
+      return <Zap className="w-4 h-4 text-yellow-400" />;
+    return <Power className="w-4 h-4 text-blue-400" />;
+  }
+  
+  if (op.includes("create") || op.includes("provision") || op.includes("deploy")) 
+    return <FaPlus className="text-blue-400" />;
+  if (op.includes("delete") || op.includes("destroy") || op.includes("terminate"))
     return <FaTrash className="text-red-500" />;
-  if (a.includes("network") || a.includes("ip"))
-    return <FaNetworkWired className="text-cyan-400" />;
-  if (a.includes("update") || a.includes("modify"))
-    return <FaUser className="text-yellow-400" />;
+  if (op.includes("network") || op.includes("ip") || op.includes("address"))
+    return <Wifi className="w-4 h-4 text-cyan-400" />;
+  if (op.includes("update") || op.includes("modify") || op.includes("edit"))
+    return <FaEdit className="text-yellow-400" />;
+  if (op.includes("password") || op.includes("credentials") || op.includes("auth"))
+    return <FaKey className="text-orange-400" />;
+  if (op.includes("rebuild") || op.includes("reinstall") || op.includes("reimage"))
+    return <FaSync className="text-pink-400" />;
+  if (op.includes("resize") || op.includes("scale") || op.includes("upgrade"))
+    return <FaPlus className="text-indigo-400" />;
+  if (op.includes("config") || op.includes("settings"))
+    return <FaCog className="text-gray-400" />;
+  if (op.includes("monitor") || op.includes("status"))
+    return <Terminal className="w-4 h-4 text-emerald-400" />;
+  if (op.includes("migrate") || op.includes("move"))
+    return <FaNetworkWired className="text-teal-400" />;
 
   return <FaServer className="text-gray-400" />;
 };
 
-/* Get status color based on action result */
-const getStatusColor = (status) => {
-  if (
-    status?.toLowerCase() === "success" ||
-    status?.toLowerCase() === "completed"
-  )
-    return "text-green-400 bg-green-400/10 border border-green-400/20";
-  if (status?.toLowerCase() === "failed" || status?.toLowerCase() === "error")
-    return "text-red-400 bg-red-400/10 border border-red-400/20";
-  if (
-    status?.toLowerCase() === "pending" ||
-    status?.toLowerCase() === "in_progress"
-  )
-    return "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20";
-  return "text-gray-400 bg-gray-400/10 border border-gray-400/20";
+/* Get operation text for display */
+const getOperationText = (operation) => {
+  if (!operation) return "Unknown Operation";
+  
+  // Convert from snake_case/UPPER_CASE to readable text
+  return operation
+    .toLowerCase()
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
-/* ⏱ time formatter with precise time */
-const formatTimeAgo = (date) => {
-  if (!date) return "Just now";
-
-  const now = new Date();
-  const past = new Date(date);
-  const diffMs = now - past;
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffSec < 60) return `${diffSec} sec ago`;
-  if (diffMin < 60) return `${diffMin} min ago`;
-  if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? "s" : ""} ago`;
-  if (diffDay < 7) return `${diffDay} day${diffDay !== 1 ? "s" : ""} ago`;
-
-  // For older dates, show actual date
-  return past.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+/* Get source badge */
+const getSourceBadge = (source) => {
+  if (!source) return null;
+  
+  const s = source.toLowerCase();
+  if (s.includes("user")) 
+    return <span className="px-2 py-0.5 text-xs bg-blue-900/30 text-blue-400 rounded-full border border-blue-800/50">User</span>;
+  if (s.includes("system") || s.includes("auto")) 
+    return <span className="px-2 py-0.5 text-xs bg-gray-900/30 text-gray-400 rounded-full border border-gray-700/50">System</span>;
+  if (s.includes("api")) 
+    return <span className="px-2 py-0.5 text-xs bg-green-900/30 text-green-400 rounded-full border border-green-800/50">API</span>;
+  if (s.includes("cron") || s.includes("scheduled")) 
+    return <span className="px-2 py-0.5 text-xs bg-purple-900/30 text-purple-400 rounded-full border border-purple-800/50">Scheduled</span>;
+  
+  return <span className="px-2 py-0.5 text-xs bg-gray-900/30 text-gray-400 rounded-full border border-gray-700/50">{source}</span>;
 };
 
-/* Format action text for better readability */
-/* Format action text for better readability */
-const formatActionText = (action) => {
-  if (!action) return "Unknown Action";
-
-  // Capitalize first letter of each word
-  return action
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
+/* Get status styling */
+const getStatusStyle = (status) => {
+  if (!status) return "bg-gray-900/20 text-gray-400";
+  
+  const s = status.toLowerCase();
+  if (s === "success") 
+    return "bg-green-900/20 text-green-400 border border-green-800/30";
+  if (s === "failed" || s === "error") 
+    return "bg-red-900/20 text-red-400 border border-red-800/30";
+  if (s === "pending" || s === "in_progress" || s === "processing") 
+    return "bg-yellow-900/20 text-yellow-400 border border-yellow-800/30";
+  if (s === "cancelled" || s === "aborted") 
+    return "bg-orange-900/20 text-orange-400 border border-orange-800/30";
+  
+  return "bg-gray-900/20 text-gray-400 border border-gray-700/30";
 };
 
-export default function ActivityList({
-  vmId = null,
-  onRefresh,
-  autoRefresh = true,
-}) {
+/* Get status icon */
+const getStatusIcon = (status) => {
+  if (!status) return null;
+  
+  const s = status.toLowerCase();
+  if (s === "success") 
+    return <FaCheckCircle className="w-3 h-3" />;
+  if (s === "failed" || s === "error") 
+    return <FaExclamationCircle className="w-3 h-3" />;
+  if (s === "pending" || s === "in_progress") 
+    return <Loader2 className="w-3 h-3 animate-spin" />;
+  
+  return null;
+};
+
+/* Format timestamp */
+const formatTimestamp = (timestamp) => {
+  if (!timestamp) return "Just now";
+  
+  try {
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return "Invalid date";
+    
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffMin < 1) return "Just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHour < 24) return `${diffHour}h ago`;
+    if (diffDay < 7) return `${diffDay}d ago`;
+    
+    // Show full date for older entries
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (err) {
+    return "Invalid date";
+  }
+};
+
+/* Format email (shorten for display) */
+const formatEmail = (email) => {
+  if (!email) return "Unknown user";
+  if (email.length > 20) return `${email.substring(0, 18)}...`;
+  return email;
+};
+
+export default function ActivityList({ vmId = null, maxItems = 6 }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -117,10 +184,10 @@ export default function ActivityList({
     try {
       setRefreshing(true);
       setError(null);
-
+      
       const url = vmId
-        ? `${BASE_URL}/api/users/audit-logs/vm/${vmId}?limit=10`
-        : `${BASE_URL}/api/users/audit-logs?limit=10`;
+        ? `${BASE_URL}/api/users/audit-logs/vm/${vmId}?limit=${maxItems + 2}`
+        : `${BASE_URL}/api/users/audit-logs?limit=${maxItems + 2}`;
 
       const res = await fetch(url, {
         headers: {
@@ -134,15 +201,14 @@ export default function ActivityList({
           window.location.href = "/login";
           return;
         }
-        throw new Error(`Failed to load logs: ${res.status}`);
+        throw new Error(`Failed to load activity logs`);
       }
 
       const data = await res.json();
-      // Ensure data is an array
       setLogs(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching activity logs:", err);
-      setError(err.message || "Failed to load activities");
+      setError("Failed to load activities");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -151,190 +217,134 @@ export default function ActivityList({
 
   useEffect(() => {
     fetchLogs();
-
-    // Auto-refresh every 30 seconds if enabled
-    let intervalId;
-    if (autoRefresh) {
-      intervalId = setInterval(fetchLogs, 30000);
-    }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [vmId, autoRefresh]);
-
-  const handleRefresh = () => {
-    fetchLogs();
-    if (onRefresh) onRefresh();
-  };
-
-  const handleViewAll = () => {
-    if (vmId) {
-      window.location.href = `/activities?vm=${vmId}`;
-    } else {
-      window.location.href = "/activities";
-    }
-  };
+    const intervalId = setInterval(fetchLogs, 30000);
+    return () => clearInterval(intervalId);
+  }, [vmId, maxItems]);
 
   return (
-    <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/30 p-4 sm:p-6 h-full">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-900/30 rounded-lg">
-            <FaClock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-lg">
+            <FaClock className="w-4 h-4 text-indigo-400" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-semibold text-white">
-              Recent Activities
-            </h2>
-            <p className="text-xs sm:text-sm text-gray-400">
-              {vmId ? "VM-specific actions" : "All server activities"}
-            </p>
+            <h3 className="text-sm font-semibold text-white">Recent Activities</h3>
+            <p className="text-xs text-gray-400">System & user actions</p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-2 hover:bg-indigo-900/30 rounded-lg transition-colors disabled:opacity-50"
-            title="Refresh activities"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
-            />
-          </button>
-          <button
-            onClick={handleViewAll}
-            className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
-          >
-            View All
-          </button>
-        </div>
+        
+        <button
+          onClick={fetchLogs}
+          disabled={refreshing}
+          className="p-1.5 hover:bg-gray-800/50 rounded-lg transition-colors disabled:opacity-50"
+          title="Refresh activities"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Content */}
-      {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">Loading activities...</p>
+      <div className="flex-1 overflow-y-auto pr-1 space-y-2">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
           </div>
-        </div>
-      ) : error ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <FaExclamationCircle className="w-10 h-10 text-red-400 mb-3" />
-          <p className="text-red-400 text-sm mb-2">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      ) : logs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <FaClock className="w-10 h-10 text-gray-500 mb-3" />
-          <p className="text-gray-500 text-sm">No activities found</p>
-          <p className="text-gray-400 text-xs mt-1">
-            Actions will appear here when performed
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-          {logs.slice(0, 8).map((log, index) => {
-            // Ensure log object has required properties
-            const safeLog = {
-              id: log?.id || index,
-              action: log?.action || "Unknown Action",
-              status: log?.status || "unknown",
-              resourceName:
-                log?.resourceName ||
-                log?.vmName ||
-                `VM-${log?.vmId || "Unknown"}`,
-              userName: log?.userName,
-              createdAt: log?.createdAt,
-              ipAddress: log?.ipAddress,
-              message: log?.message,
-            };
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-32 text-center p-2">
+            <AlertCircle className="w-5 h-5 text-red-400 mb-1" />
+            <p className="text-red-400 text-xs">{error}</p>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-center p-2">
+            <FaClock className="w-5 h-5 text-gray-500 mb-1" />
+            <p className="text-gray-500 text-xs">No activities yet</p>
+          </div>
+        ) : (
+          logs.slice(0, maxItems).map((log) => (
+            <div 
+              key={log.id}
+              className="bg-gray-900/30 hover:bg-gray-800/40 rounded-lg p-3 border border-gray-800/30 transition-all"
+            >
+              <div className="flex items-start gap-3">
+                {/* Icon */}
+                <div className="p-1.5 bg-gray-800/50 rounded-lg flex-shrink-0">
+                  {getOperationIcon(log.operation)}
+                </div>
 
-            return (
-              <div
-                key={safeLog.id}
-                className="group bg-[#0e1525]/50 hover:bg-[#0e1525]/80 rounded-lg p-3 border border-gray-800/50 hover:border-indigo-900/50 transition-all duration-200"
-              >
-                <div className="flex items-start gap-3">
-                  {/* Icon */}
-                  <div className="p-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg group-hover:scale-105 transition-transform">
-                    {getIcon(safeLog.action)}
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  {/* First row: Operation & Status */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-semibold text-white truncate">
+                        {getOperationText(log.operation)}
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">
+                        {log.vmName || `VM-${log.vmId || 'Unknown'}`}
+                      </p>
+                    </div>
+                    
+                    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${getStatusStyle(log.status)}`}>
+                      {getStatusIcon(log.status)}
+                      <span className="capitalize">{log.status?.toLowerCase() || "unknown"}</span>
+                    </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
-                      <h3 className="text-sm font-medium text-white truncate">
-                        {formatActionText(safeLog.action)}
-                      </h3>
-                      {safeLog.status && safeLog.status !== "unknown" && (
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            safeLog.status
-                          )}`}
-                        >
-                          {safeLog.status}
+                  {/* Second row: Source & User */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {getSourceBadge(log.actionSource)}
+                      {log.userEmail && (
+                        <span className="text-[10px] text-gray-400" title={log.userEmail}>
+                          by {formatEmail(log.userEmail)}
                         </span>
                       )}
                     </div>
+                    
+                    <span className="text-[10px] text-indigo-300 font-medium">
+                      {formatTimestamp(log.timestamp)}
+                    </span>
+                  </div>
 
-                    <p className="text-xs text-gray-400 mb-2 truncate">
-                      {safeLog.resourceName}
-                      {safeLog.userName && ` • by ${safeLog.userName}`}
-                    </p>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-indigo-300 font-medium">
-                        {formatTimeAgo(safeLog.createdAt)}
-                      </span>
-                      {safeLog.ipAddress && (
-                        <span className="text-xs text-gray-500 font-mono bg-gray-900/30 px-2 py-1 rounded">
-                          {safeLog.ipAddress}
-                        </span>
-                      )}
-                    </div>
-
-                    {safeLog.message && (
-                      <p className="text-xs text-gray-500 mt-2 line-clamp-2">
-                        {safeLog.message}
+                  {/* Error message (if any) */}
+                  {log.errorMessage && (
+                    <div className="mt-2 pt-2 border-t border-gray-800/30">
+                      <p className="text-[10px] text-red-400 flex items-center gap-1">
+                        <FaExclamationTriangle className="w-2.5 h-2.5" />
+                        {log.errorMessage}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Additional info */}
+                  <div className="mt-2 pt-2 border-t border-gray-800/30 flex items-center justify-between text-[10px] text-gray-500">
+                    <span>VM ID: {log.vmId || "N/A"}</span>
+                    {log.parentNodeName && log.parentNodeName !== "N/A" && (
+                      <span>Node: {log.parentNodeName}</span>
                     )}
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          ))
+        )}
+      </div>
 
-      {/* Footer Stats */}
+      {/* Footer */}
       {!loading && !error && logs.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-gray-800/50">
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <div className="text-center p-2 bg-green-900/20 rounded-lg">
-              <div className="text-green-400 font-semibold">
-                <div className="text-green-400 font-semibold">
-                  {
-                    logs.filter((l) => l?.status?.toLowerCase() === "success")
-                      .length
-                  }
-                </div>
-              </div>
-              <div className="text-gray-400">Successful</div>
+        <div className="mt-3 pt-3 border-t border-gray-800/50">
+          <div className="flex items-center justify-between text-xs">
+            <div className="text-gray-400">
+              {logs.filter(l => l.status === "SUCCESS").length} of {logs.length} successful
             </div>
-            <div className="text-center p-2 bg-gray-800/20 rounded-lg">
-              <div className="text-gray-300 font-semibold">{logs.length}</div>
-              <div className="text-gray-400">Total Actions</div>
-            </div>
+            <a 
+              href="/activities" 
+              className="text-indigo-400 hover:text-indigo-300 text-xs hover:underline"
+            >
+              View all activities →
+            </a>
           </div>
         </div>
       )}

@@ -114,26 +114,8 @@ const DashboardPage = () => {
         {/* Column 3: Activities (Takes up ~25% width) */}
         <div className="w-full lg:w-6/12">
           <div className="bg-gradient-to-br from-[#1c2538] to-[#121a2a] rounded-xl border border-gray-800 p-4 h-full">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <FaGlobe className="text-green-400" />
-                  Recent Activity
-                </h2>
-                <p className="text-gray-400 text-sm">Latest system events</p>
-              </div>
-              <button className="text-sm text-gray-400 hover:text-white">
-                See All
-              </button>
-            </div>
-            <div className="h-[300px] overflow-y-auto">
+            <div className="h-[400px] overflow-y-auto">
               <ActivityList />
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-800">
-              <button className="w-full py-2.5 bg-[#2c3548] hover:bg-gray-700 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2">
-                <FaPlus className="h-3 w-3" />
-                Load More Activity
-              </button>
             </div>
           </div>
         </div>
