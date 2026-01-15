@@ -9,6 +9,7 @@ import {
   HardDrive,
   File,
   MemoryStick,
+  AlertCircle,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -34,6 +35,7 @@ export default function ServersPage() {
     tokenId: "",
     tokenSecret: "",
     zoneId: "",
+    ramAllocatedPercentage: 90,
   });
 
   const [formData, setFormData] = useState({
@@ -45,6 +47,7 @@ export default function ServersPage() {
     networkBridge: "vmbr0",
     tokenId: "",
     tokenSecret: "",
+    ramAllocatedPercentage: 90,
   });
 
   const [ramModal, setRamModal] = useState(false);
@@ -268,6 +271,14 @@ export default function ServersPage() {
     const token = localStorage.getItem("adminToken");
     setSubmitting(true);
 
+    if (
+      formData.ramAllocatedPercentage < 1 ||
+      formData.ramAllocatedPercentage > 100
+    ) {
+      toast.error("RAM allocation must be between 1 and 100%");
+      return;
+    }
+
     try {
       const res = await fetch(`${BASE_URL}/api/admin/servers`, {
         method: "POST",
@@ -285,6 +296,7 @@ export default function ServersPage() {
           networkBridge: formData.networkBridge,
           tokenId: formData.tokenId,
           tokenSecret: formData.tokenSecret,
+          ramAllocatedPercentage: Number(formData.ramAllocatedPercentage) || 90,
         }),
       });
 
@@ -310,6 +322,7 @@ export default function ServersPage() {
         networkBridge: "vmbr0",
         tokenId: "",
         tokenSecret: "",
+        ramAllocatedPercentage: 90,
       });
     } catch (err) {
       toast.error("Error adding server");
@@ -398,6 +411,14 @@ export default function ServersPage() {
       return;
     }
 
+    if (
+      editFormData.ramAllocatedPercentage < 1 ||
+      editFormData.ramAllocatedPercentage > 100
+    ) {
+      toast.error("RAM allocation must be between 1 and 100%");
+      return;
+    }
+
     try {
       const token = localStorage.getItem("adminToken");
       const res = await fetch(
@@ -418,6 +439,8 @@ export default function ServersPage() {
             port: Number(editFormData.port) || 8006,
             networkBridge: editFormData.networkBridge,
             zoneId: Number(editFormData.zoneId),
+            ramAllocatedPercentage:
+              Number(editFormData.ramAllocatedPercentage) || 90,
           }),
         }
       );
@@ -451,6 +474,7 @@ export default function ServersPage() {
         tokenId: "",
         tokenSecret: "",
         zoneId: "",
+        ramAllocatedPercentage: 90,
       });
 
       toast.success(`Server "${editFormData.name}" updated successfully!`);
@@ -472,6 +496,7 @@ export default function ServersPage() {
       tokenId: server.tokenId || "",
       tokenSecret: server.tokenSecret || "",
       zoneId: server.zoneId || "",
+      ramAllocatedPercentage: server.ramAllocatedPercentage ?? 90,
     });
     setEditModal(true);
   };
@@ -749,219 +774,302 @@ export default function ServersPage() {
         </div>
       </main>
 
-      {/* ✅ Add Server Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-fadeIn overflow-y-auto flex justify-center items-start">
-          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl my-10 p-4 sm:p-8 lg:p-10 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="relative bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-indigo-800/50 rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-indigo-900/40 mb-4">
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-indigo-300 flex items-center gap-2">
-                <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" />
-                <span className="text-sm sm:text-lg lg:text-xl">
-                  Add New Server
-                </span>
-              </h2>
+            <div className="flex items-center justify-between p-6 border-b border-indigo-900/50 bg-gradient-to-r from-indigo-900/20 to-purple-900/20">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                  <PlusCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
+                    Add New Server
+                  </h2>
+                  <p className="text-sm text-indigo-300 mt-1">
+                    Configure your server settings
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-red-400 transition-colors text-lg sm:text-xl"
+                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
                 title="Close"
               >
-                ×
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <div className="w-4 h-0.5 bg-gray-400 group-hover:bg-red-400 rotate-45 absolute rounded-full"></div>
+                  <div className="w-4 h-0.5 bg-gray-400 group-hover:bg-red-400 -rotate-45 absolute rounded-full"></div>
+                </div>
               </button>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-              {/* ✅ Zone Dropdown */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Select Zone
-                </label>
-                <select
-                  name="zoneId"
-                  value={formData.zoneId}
-                  onChange={handleChange}
-                  required
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                >
-                  <option value="">-- Select a Zone --</option>
-                  {zones.map((zone) => (
-                    <option key={zone.id} value={zone.id}>
-                      {zone.name}
+            {/* Form Content - Compact 3-column layout */}
+            <div className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Zone Dropdown - Full Width */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
+                    Select Zone *
+                  </label>
+                  <select
+                    name="zoneId"
+                    value={formData.zoneId}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 outline-none transition-all duration-200 hover:border-indigo-700"
+                  >
+                    <option value="" className="bg-gray-900">
+                      -- Select a Zone --
                     </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Server Name */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Server Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="e.g. Production Server"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                />
-              </div>
-
-              {/* IP + Location */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    IP Address
-                  </label>
-                  <input
-                    type="text"
-                    name="ip"
-                    placeholder="e.g. 192.168.0.10"
-                    value={formData.ip}
-                    onChange={handleChange}
-                    required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    name="location"
-                    placeholder="e.g. Singapore Data Center"
-                    value={formData.location}
-                    onChange={handleChange}
-                    required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
-                </div>
-              </div>
-
-              {/* Node + Port */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Node
-                  </label>
-                  <input
-                    type="text"
-                    name="node"
-                    placeholder="e.g. Node-01"
-                    value={formData.node}
-                    onChange={handleChange}
-                    required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Port
-                  </label>
-                  <input
-                    type="number"
-                    name="port"
-                    placeholder="8006"
-                    value={formData.port}
-                    onChange={handleChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
-                </div>
-              </div>
-
-              {/* Network Bridge + Token Secret */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Network Bridge
-                  </label>
-                  <input
-                    type="text"
-                    name="networkBridge"
-                    placeholder="vmbr0"
-                    value={formData.networkBridge}
-                    onChange={handleChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
+                    {zones.map((zone) => (
+                      <option
+                        key={zone.id}
+                        value={zone.id}
+                        className="bg-gray-900"
+                      >
+                        {zone.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Token Secret
-                  </label>
-                  <input
-                    type="password"
-                    name="tokenSecret"
-                    placeholder="Enter Token Secret"
-                    value={formData.tokenSecret}
-                    onChange={handleChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
+                {/* 3-Column Grid for All Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Column 1 */}
+                  <div className="space-y-4">
+                    {/* Server Name */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Server Name *
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        placeholder="Production Server"
+                        value={formData.name}
+                        onChange={handleChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* IP Address */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        IP Address *
+                      </label>
+                      <input
+                        type="text"
+                        name="ip"
+                        placeholder="192.168.0.10"
+                        value={formData.ip}
+                        onChange={handleChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200 font-mono"
+                      />
+                    </div>
+
+                    {/* Port */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Port
+                      </label>
+                      <input
+                        type="number"
+                        name="port"
+                        placeholder="8006"
+                        value={formData.port}
+                        onChange={handleChange}
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column 2 */}
+                  <div className="space-y-4">
+                    {/* Location */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Location *
+                      </label>
+                      <input
+                        type="text"
+                        name="location"
+                        placeholder="Singapore DC"
+                        value={formData.location}
+                        onChange={handleChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Node */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Node *
+                      </label>
+                      <input
+                        type="text"
+                        name="node"
+                        placeholder="Node-01"
+                        value={formData.node}
+                        onChange={handleChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Network Bridge */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Network Bridge
+                      </label>
+                      <input
+                        type="text"
+                        name="networkBridge"
+                        placeholder="vmbr0"
+                        value={formData.networkBridge}
+                        onChange={handleChange}
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column 3 */}
+                  <div className="space-y-4">
+                    {/* RAM Allocation */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        RAM Allocation (%) *
+                        <span className="text-xs text-gray-500 ml-1">
+                          Default: 90
+                        </span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          name="ramAllocatedPercentage"
+                          min="1"
+                          max="100"
+                          value={formData.ramAllocatedPercentage}
+                          onChange={handleChange}
+                          required
+                          className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                          placeholder="90"
+                        />
+                        <span className="absolute right-3 top-2.5 text-xs text-gray-400">
+                          %
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Token ID */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Token ID
+                      </label>
+                      <input
+                        type="text"
+                        name="tokenId"
+                        placeholder="API Token ID"
+                        value={formData.tokenId}
+                        onChange={handleChange}
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Token Secret */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Token Secret
+                      </label>
+                      <input
+                        type="password"
+                        name="tokenSecret"
+                        placeholder="Enter Token Secret"
+                        value={formData.tokenSecret}
+                        onChange={handleChange}
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Token ID */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Token ID
-                </label>
-                <input
-                  type="text"
-                  name="tokenId"
-                  placeholder="Enter API Token ID"
-                  value={formData.tokenId}
-                  onChange={handleChange}
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                />
-              </div>
+                {/* RAM Allocation Info */}
+                <div className="mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-medium text-indigo-300">
+                      RAM Allocation Preview
+                    </span>
+                  </div>
+                  <div className="bg-gray-900/30 rounded-lg p-3 border border-gray-800">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Allocated RAM:</span>
+                      <span className="text-white font-medium">
+                        {formData.ramAllocatedPercentage || 90}% of system total
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Recommended: 70-90% to leave room for system processes
+                    </div>
+                  </div>
+                </div>
 
-              {/* Buttons */}
-              <div className="flex justify-end gap-2 sm:gap-3 pt-4 border-t border-indigo-900/40 mt-4 sm:mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-3 sm:px-5 py-2 rounded-md border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200 text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-all duration-200 disabled:opacity-50 text-sm"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>Add Server</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="px-5 py-2.5 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Adding Server...</span>
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle className="w-4 h-4" />
+                        <span>Add Server</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* ✅ Edit Server Modal */}
       {editModal && editingServer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-fadeIn overflow-y-auto flex justify-center items-start">
-          <div className="relative bg-[#111827] border border-indigo-800/40 rounded-2xl shadow-2xl w-[92%] max-w-2xl my-10 p-4 sm:p-8 lg:p-10 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="relative bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-blue-800/50 rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-indigo-900/40 mb-4">
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-indigo-300 flex items-center gap-2">
-                <Edit className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
-                <span className="text-sm sm:text-lg lg:text-xl">
-                  Edit Server Configuration
-                </span>
-              </h2>
+            <div className="flex items-center justify-between p-6 border-b border-blue-900/50 bg-gradient-to-r from-blue-900/20 to-indigo-900/20">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
+                  <Edit className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
+                    Edit Server Configuration
+                  </h2>
+                  <p className="text-sm text-blue-300 mt-1">
+                    Update settings for server: {editingServer.name}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => {
                   setEditModal(false);
@@ -972,232 +1080,295 @@ export default function ServersPage() {
                     location: "",
                     node: "",
                     port: 8006,
+                    ramAllocatedPercentage: 90,
                     networkBridge: "vmbr0",
                     tokenId: "",
                     tokenSecret: "",
                     zoneId: "",
                   });
                 }}
-                className="text-gray-400 hover:text-red-400 transition-colors text-lg sm:text-xl"
+                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
                 title="Close"
               >
-                ×
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <div className="w-4 h-0.5 bg-gray-400 group-hover:bg-red-400 rotate-45 absolute rounded-full"></div>
+                  <div className="w-4 h-0.5 bg-gray-400 group-hover:bg-red-400 -rotate-45 absolute rounded-full"></div>
+                </div>
               </button>
             </div>
 
-            {/* Current Server Info */}
-            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-indigo-900/20 rounded-lg border border-indigo-700/30">
-              <div className="grid grid-cols-2 gap-2">
+            {/* Edit Form Content */}
+            <div className="p-6">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleEditServer();
+                }}
+                className="space-y-6"
+              >
+                {/* Zone Dropdown - Full Width */}
                 <div>
-                  <p className="text-sm text-gray-400">Server ID:</p>
-                  <p className="text-base sm:text-lg font-semibold text-indigo-300">
-                    {editingServer.id}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Current Status:</p>
-                  <span
-                    className={`
-                px-2 py-1 rounded-full text-xs font-semibold
-                ${getStatusColor(editingServer.status || "INACTIVE")}
-              `}
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                    Zone *
+                  </label>
+                  <select
+                    name="zoneId"
+                    value={editFormData.zoneId}
+                    onChange={handleEditChange}
+                    required
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 outline-none transition-all duration-200 hover:border-blue-700"
                   >
-                    {editingServer.status === "ACTIVE"
-                      ? "Active"
-                      : editingServer.status === "INACTIVE"
-                      ? "Inactive"
-                      : "Maintenance"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Edit Form */}
-            <div className="space-y-4 sm:space-y-5">
-              {/* Zone Dropdown */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Zone</label>
-                <select
-                  name="zoneId"
-                  value={editFormData.zoneId}
-                  onChange={handleEditChange}
-                  required
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                >
-                  <option value="">-- Select a Zone --</option>
-                  {zones.map((zone) => (
-                    <option key={zone.id} value={zone.id}>
-                      {zone.name}
+                    <option value="" className="bg-gray-900">
+                      -- Select a Zone --
                     </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Server Name */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Server Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="e.g. Production Server"
-                  value={editFormData.name}
-                  onChange={handleEditChange}
-                  required
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                />
-              </div>
-
-              {/* IP + Location */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    IP Address
-                  </label>
-                  <input
-                    type="text"
-                    name="ip"
-                    placeholder="e.g. 192.168.0.10"
-                    value={editFormData.ip}
-                    onChange={handleEditChange}
-                    required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    name="location"
-                    placeholder="e.g. Singapore Data Center"
-                    value={editFormData.location}
-                    onChange={handleEditChange}
-                    required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
-                </div>
-              </div>
-
-              {/* Node + Port */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Node
-                  </label>
-                  <input
-                    type="text"
-                    name="node"
-                    placeholder="e.g. Node-01"
-                    value={editFormData.node}
-                    onChange={handleEditChange}
-                    required
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Port
-                  </label>
-                  <input
-                    type="number"
-                    name="port"
-                    placeholder="8006"
-                    value={editFormData.port}
-                    onChange={handleEditChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
-                </div>
-              </div>
-
-              {/* Network Bridge + Token Secret */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Network Bridge
-                  </label>
-                  <input
-                    type="text"
-                    name="networkBridge"
-                    placeholder="vmbr0"
-                    value={editFormData.networkBridge}
-                    onChange={handleEditChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
+                    {zones.map((zone) => (
+                      <option
+                        key={zone.id}
+                        value={zone.id}
+                        className="bg-gray-900"
+                      >
+                        {zone.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">
-                    Token Secret
-                  </label>
-                  <input
-                    type="password"
-                    name="tokenSecret"
-                    placeholder="Enter Token Secret"
-                    value={editFormData.tokenSecret}
-                    onChange={handleEditChange}
-                    className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                  />
+                {/* 3-Column Grid for All Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Column 1 */}
+                  <div className="space-y-4">
+                    {/* Server Name */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Server Name *
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        placeholder="Production Server"
+                        value={editFormData.name}
+                        onChange={handleEditChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* IP Address */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        IP Address *
+                      </label>
+                      <input
+                        type="text"
+                        name="ip"
+                        placeholder="192.168.0.10"
+                        value={editFormData.ip}
+                        onChange={handleEditChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200 font-mono"
+                      />
+                    </div>
+
+                    {/* Port */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Port
+                      </label>
+                      <input
+                        type="number"
+                        name="port"
+                        placeholder="8006"
+                        value={editFormData.port}
+                        onChange={handleEditChange}
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column 2 */}
+                  <div className="space-y-4">
+                    {/* Location */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Location *
+                      </label>
+                      <input
+                        type="text"
+                        name="location"
+                        placeholder="Singapore DC"
+                        value={editFormData.location}
+                        onChange={handleEditChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Node */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Node *
+                      </label>
+                      <input
+                        type="text"
+                        name="node"
+                        placeholder="Node-01"
+                        value={editFormData.node}
+                        onChange={handleEditChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Network Bridge */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Network Bridge
+                      </label>
+                      <input
+                        type="text"
+                        name="networkBridge"
+                        placeholder="vmbr0"
+                        value={editFormData.networkBridge}
+                        onChange={handleEditChange}
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column 3 */}
+                  <div className="space-y-4">
+                    {/* RAM Allocation */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        RAM Allocation (%) *
+                        <span className="text-xs text-gray-500 ml-1">
+                          Default: 90
+                        </span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          name="ramAllocatedPercentage"
+                          min="1"
+                          max="100"
+                          value={editFormData.ramAllocatedPercentage}
+                          onChange={handleEditChange}
+                          required
+                          className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200"
+                          placeholder="90"
+                        />
+                        <span className="absolute right-3 top-2.5 text-xs text-gray-400">
+                          %
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Token ID */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Token ID
+                      </label>
+                      <input
+                        type="text"
+                        name="tokenId"
+                        placeholder="API Token ID"
+                        value={editFormData.tokenId}
+                        onChange={handleEditChange}
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* Token Secret */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        Token Secret
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="password"
+                          name="tokenSecret"
+                          placeholder="Leave blank to keep current"
+                          value={editFormData.tokenSecret}
+                          onChange={handleEditChange}
+                          className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 outline-none transition-all duration-200 pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const input = document.querySelector(
+                              'input[name="tokenSecret"]'
+                            );
+                            if (input.type === "password") {
+                              input.type = "text";
+                            } else {
+                              input.type = "password";
+                            }
+                          }}
+                          className="absolute right-3 top-2.5 text-xs text-gray-400 hover:text-gray-300"
+                          title="Toggle visibility"
+                        >
+                          👁️
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Leave blank to keep existing token secret
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Token ID */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Token ID
-                </label>
-                <input
-                  type="text"
-                  name="tokenId"
-                  placeholder="Enter API Token ID"
-                  value={editFormData.tokenId}
-                  onChange={handleEditChange}
-                  className="w-full bg-[#0d1220] border border-indigo-700/50 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm sm:text-base"
-                />
-              </div>
-
-              {/* Buttons */}
-              <div className="flex justify-end gap-2 sm:gap-3 pt-4 border-t border-indigo-900/40 mt-4 sm:mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditModal(false);
-                    setEditingServer(null);
-                    setEditFormData({
-                      name: "",
-                      ip: "",
-                      location: "",
-                      node: "",
-                      port: 8006,
-                      networkBridge: "vmbr0",
-                      tokenId: "",
-                      tokenSecret: "",
-                      zoneId: "",
-                    });
-                  }}
-                  className="px-3 sm:px-5 py-2 rounded-md border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200 text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleEditServer}
-                  disabled={
-                    !editFormData.name.trim() || !editFormData.ip.trim()
-                  }
-                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all duration-200 disabled:opacity-50 text-sm"
-                >
-                  <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span>Update Server</span>
-                </button>
-              </div>
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditModal(false);
+                      setEditingServer(null);
+                      setEditFormData({
+                        name: "",
+                        ip: "",
+                        location: "",
+                        node: "",
+                        port: 8006,
+                        ramAllocatedPercentage: 90,
+                        networkBridge: "vmbr0",
+                        tokenId: "",
+                        tokenSecret: "",
+                        zoneId: "",
+                      });
+                    }}
+                    className="px-5 py-2.5 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={
+                      !editFormData.name.trim() ||
+                      !editFormData.ip.trim() ||
+                      submitting
+                    }
+                    className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="w-4 h-4" />
+                        <span>Update Server</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
       )}
-
       <Footer />
     </div>
   );

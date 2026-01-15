@@ -29,6 +29,8 @@ import {
   Shield,
   AlertCircle,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 export default function UserOrdersPage() {
@@ -53,6 +55,10 @@ export default function UserOrdersPage() {
   const [selectedBandwidth, setSelectedBandwidth] = useState(null);
   const [addMonths, setAddMonths] = useState(0);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
+
+  const [vmPasswords, setVmPasswords] = useState({});
+  const [passwordVisible, setPasswordVisible] = useState({});
+  const [passwordFetching, setPasswordFetching] = useState({});
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -249,6 +255,20 @@ export default function UserOrdersPage() {
     startIndex + itemsPerPage
   );
 
+  useEffect(() => {
+    if (!expandedRow) return;
+
+    const order = orders.find((o) => o.id === expandedRow);
+    if (!order) return;
+
+    const vmId = order.originalData?.vmId || order.id;
+
+    // fetch only if not already loaded
+    if (!vmPasswords.hasOwnProperty(vmId)) {
+      fetchVmPassword(order);
+    }
+  }, [expandedRow, orders]);
+
   const preparePayment = () => {
     if (!selectedCpu || !selectedRam || !selectedDisk || !selectedBandwidth) {
       DarkSwal.fire({
@@ -354,6 +374,61 @@ export default function UserOrdersPage() {
         background: "#0e1525",
         color: "#e5e7eb",
       });
+    }
+  };
+
+  const fetchVmPassword = async (order) => {
+    const token = localStorage.getItem("token");
+    const userId = order.originalData?.userId;
+    const vmId = order.originalData?.vmId || order.id; // Add fallback
+
+    if (!userId || !vmId) {
+      toast.error("Cannot fetch password: missing server information");
+      return;
+    }
+
+    try {
+      setPasswordFetching((p) => ({ ...p, [vmId]: true }));
+
+      const res = await fetch(
+        `${BASE_URL}/api/users/${userId}/vms/${vmId}/password`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Password not set");
+      }
+
+      const data = await res.json();
+
+      setVmPasswords((p) => ({
+        ...p,
+        [vmId]: data.password || null,
+      }));
+
+      setPasswordVisible((p) => ({ ...p, [vmId]: false }));
+    } catch (err) {
+      setVmPasswords((p) => ({ ...p, [vmId]: null }));
+      toast.error("Password not set");
+    } finally {
+      setPasswordFetching((p) => ({ ...p, [vmId]: false }));
+    }
+  };
+
+  const togglePasswordView = (order) => {
+    const vmId = order.originalData?.vmId || order.id; // Add fallback
+
+    if (!vmPasswords.hasOwnProperty(vmId)) {
+      fetchVmPassword(order);
+    } else {
+      setPasswordVisible((p) => ({
+        ...p,
+        [vmId]: !p[vmId],
+      }));
     }
   };
 
@@ -535,6 +610,7 @@ export default function UserOrdersPage() {
   const handleSavePassword = async (order) => {
     const token = localStorage.getItem("token");
     const password = passwordInputs[order.id];
+    const vmId = order.originalData?.vmId || order.id;
 
     if (!password || password.length < 6 || !/^[a-zA-Z0-9]+$/.test(password)) {
       toast.error(
@@ -544,7 +620,6 @@ export default function UserOrdersPage() {
     }
 
     const userId = order.originalData.userId;
-    const vmId = order.originalData.vmId;
 
     try {
       setPasswordLoading((prev) => ({ ...prev, [vmId]: true }));
@@ -568,7 +643,27 @@ export default function UserOrdersPage() {
 
       toast.success("Password saved successfully");
 
-      // Optional: clear input after save
+      // ✅ 1. Update UI immediately (NO reload)
+      setVmPasswords((prev) => ({
+        ...prev,
+        [vmId]: password,
+      }));
+
+      // ✅ 2. Show password immediately
+      setPasswordVisible((prev) => ({
+        ...prev,
+        [vmId]: true,
+      }));
+
+      // ✅ 3. AUTO-HIDE after 10 seconds ⏱️
+      setTimeout(() => {
+        setPasswordVisible((prev) => ({
+          ...prev,
+          [vmId]: false,
+        }));
+      }, 10000);
+
+      // ✅ 4. Clear input
       setPasswordInputs((prev) => ({ ...prev, [order.id]: "" }));
     } catch (err) {
       toast.error(`❌ ${err.message}`);
@@ -1189,7 +1284,66 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                             </div>
                                           </div>
 
-                                          <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                                          {/* VM Password Viewer */}
+                                          <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-4">
+                                            <h4 className="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
+                                              🔑 VM Password
+                                            </h4>
+
+                                            <div className="flex items-center justify-between gap-3">
+                                              <div className="flex-1">
+                                                {(() => {
+                                                  const vmId =
+                                                    order.originalData?.vmId ||
+                                                    order.id;
+                                                  return passwordFetching[
+                                                    vmId
+                                                  ] ? (
+                                                    <span className="text-gray-400 text-sm">
+                                                      Loading...
+                                                    </span>
+                                                  ) : vmPasswords[vmId] ? (
+                                                    <code className="text-sm bg-[#151c2f] px-3 py-1.5 rounded font-mono text-white">
+                                                      {passwordVisible[vmId]
+                                                        ? vmPasswords[vmId]
+                                                        : "••••••••"}
+                                                    </code>
+                                                  ) : (
+                                                    <span className="text-sm text-red-400">
+                                                      Password not set
+                                                    </span>
+                                                  );
+                                                })()}
+                                              </div>
+
+                                              {(() => {
+                                                const vmId =
+                                                  order.originalData?.vmId ||
+                                                  order.id;
+                                                return (
+                                                  <button
+                                                    onClick={() =>
+                                                      togglePasswordView(order)
+                                                    }
+                                                    className="p-2 rounded-lg hover:bg-indigo-900/30 transition"
+                                                    title={
+                                                      passwordVisible[vmId]
+                                                        ? "Hide Password"
+                                                        : "View Password"
+                                                    }
+                                                  >
+                                                    {passwordVisible[vmId] ? (
+                                                      <EyeOff className="w-4 h-4 text-indigo-400" />
+                                                    ) : (
+                                                      <Eye className="w-4 h-4 text-indigo-400" />
+                                                    )}
+                                                  </button>
+                                                );
+                                              })()}
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center gap-3 mt-4 sm:mb-6">
                                             <div className="p-2 bg-indigo-900/30 rounded-lg">
                                               <Zap className="w-5 h-5 text-indigo-400" />
                                             </div>
