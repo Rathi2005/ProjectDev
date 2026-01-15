@@ -123,7 +123,6 @@ export default function ManageResourcesPage({
         const data = await res.json();
         setExisting(data);
       } catch (err) {
-        console.error(`Error fetching ${title}:`, err);
         toast.error(`Failed to load ${title}`);
       } finally {
         setLoading(false);
@@ -156,7 +155,7 @@ export default function ManageResourcesPage({
       const json = await res.json();
       setExisting(json);
     } catch (err) {
-      console.error("Error reloading data:", err);
+      toast.error("Error reloading data");
     }
   };
 
@@ -402,7 +401,7 @@ export default function ManageResourcesPage({
       setRows([getEmptyRow()]);
       toast.success(`${title} added successfully!`);
     } catch (err) {
-      console.error("Error adding item:", err);
+      toast.error("Error adding item:", err);
       toast.error(err.message || `Failed to add ${title}`);
     } finally {
       setSaving(false);
@@ -669,7 +668,6 @@ export default function ManageResourcesPage({
         return;
       }
     } catch (err) {
-      console.error(err);
       toast.error("Update failed");
     }
   };

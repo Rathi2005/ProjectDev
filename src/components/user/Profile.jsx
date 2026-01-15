@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import toast from "react-hot-toast";
 import {
   User,
   Mail,
@@ -59,7 +60,7 @@ const Profile = () => {
         setEditedUser(data);
         setBilling(data.billingAddress || {});
       } catch (err) {
-        console.error(err);
+        toast.error(err);
         localStorage.removeItem("token");
         navigate("/login");
       } finally {
@@ -110,9 +111,9 @@ const Profile = () => {
       setIsEditing(false);
       
       // Optional: Show success message
-      console.log("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
     } catch (error) {
-      console.error("Failed to save details:", error);
+      toast.error("Failed to save details:", error);
       // Optional: Show error message to user
     }
   };
@@ -145,9 +146,9 @@ const Profile = () => {
       setEditBilling(false);
       
       // Optional: Show success message
-      console.log("Billing address updated successfully!");
+      toast.success("Billing address updated successfully!");
     } catch (error) {
-      console.error("Failed to save billing:", error);
+      toast.error("Failed to save billing:", error);
       // Optional: Show error message to user
     }
   };
@@ -186,7 +187,7 @@ const Profile = () => {
       
       return new Date(dateString).toLocaleDateString();
     } catch (error) {
-      console.error("Error formatting date:", error);
+      toast.error("Error formatting date:", error);
       return "Invalid date";
     }
   };
@@ -199,7 +200,7 @@ const Profile = () => {
       decodedToken = jwtDecode(token);
     }
   } catch (error) {
-    console.error("Error decoding token:", error);
+    toast.error("Error decoding token:", error);
   }
 
   return (
@@ -453,52 +454,6 @@ const Profile = () => {
             ))}
           </div>
         </div>
-
-        {/* Danger Zone */}
-        {/* <div className="mt-8 bg-red-900/10 border border-red-700/50 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-red-400 mb-4">
-            Danger Zone
-          </h2>
-          <p className="text-gray-400 mb-4">
-            These actions are irreversible. Please proceed with caution.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={async () => {
-                try {
-                  const token = localStorage.getItem("token");
-                  const res = await fetch(`${BASE_URL}/users/profile`, {
-                    method: "DELETE",
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                    },
-                  });
-                  
-                  if (res.ok) {
-                    localStorage.removeItem("token");
-                    navigate("/login");
-                  } else {
-                    console.error("Failed to delete account");
-                  }
-                } catch (error) {
-                  console.error("Error deleting account:", error);
-                }
-              }}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-            >
-              Delete Account
-            </button>
-            <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                navigate("/login");
-              }}
-              className="px-4 py-2 border border-red-600 text-red-400 rounded-lg hover:bg-red-900/30 transition"
-            >
-              Clear Session Data
-            </button>
-          </div>
-        </div> */}
       </div>
     </div>
   );

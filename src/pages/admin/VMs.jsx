@@ -47,7 +47,7 @@ export default function VMsPage() {
         const vmJson = await vmRes.json();
         setVmData(vmJson || []);
       } catch (error) {
-        console.error("Error fetching VMs:", error);
+        toast.error("Error fetching VMs");
       } finally {
         setLoading(false);
       }

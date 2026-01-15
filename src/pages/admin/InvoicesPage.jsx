@@ -3,6 +3,7 @@ import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
 import Pagination from "../../components/Pagination";
+import toast from "react-hot-toast";
 import { FileText, CheckCircle, Clock, XCircle, Download } from "lucide-react";
 
 export default function InvoicesPage() {
@@ -111,7 +112,7 @@ export default function InvoicesPage() {
 
       setInvoices(normalized);
     } catch (err) {
-      console.error("Failed to fetch invoices", err);
+      toast.error("Failed to fetch invoices");
       setError(err.message || "Unable to load invoices. Please try again.");
     } finally {
       setLoading(false);
@@ -235,7 +236,7 @@ export default function InvoicesPage() {
         window.URL.revokeObjectURL(url);
       }, 10000);
     } catch (err) {
-      console.error("Invoice download failed:", err);
+      toast.error("Invoice download failed:", err);
       alert("Could not generate invoice. Please try again.");
     }
   };

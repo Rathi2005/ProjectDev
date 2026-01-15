@@ -30,6 +30,7 @@ import {
   ActivitySquare,
   Cpu as CpuIcon,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function PerformancePage() {
   const navigate = useNavigate();
@@ -79,7 +80,7 @@ export default function PerformancePage() {
         const data = await res.json();
         setMetrics(data);
       } catch (err) {
-        console.error("Metrics fetch failed:", err);
+        toast.error("Metrics fetch failed");
       } finally {
         setIsRefreshing(false);
       }
@@ -130,7 +131,7 @@ export default function PerformancePage() {
           setSelectedServer(activeServer || normalized[0]);
         }
       } catch (err) {
-        console.error("Server fetch failed:", err);
+        toast.error("Server fetch failed");
       }
     };
 
@@ -195,7 +196,7 @@ export default function PerformancePage() {
         const data = await res.json();
         setMetrics(data);
       } catch (err) {
-        console.error("Metrics fetch failed:", err);
+        toast.error("Metrics fetch failed");
       }
     };
 
@@ -297,13 +298,6 @@ export default function PerformancePage() {
 
   useEffect(() => {
     if (!metrics?.current || !metrics?.history?.length) return;
-
-    // console.log(
-    //   "current cpu:",
-    //   Math.round(metrics.current.cpu * 100),
-    //   "last history cpu:",
-    //   Math.round(metrics.history.at(-1)?.cpu * 100)
-    // );
   }, [metrics]);
 
   if (isLoading || !metrics?.current) {

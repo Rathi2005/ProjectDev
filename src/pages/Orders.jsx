@@ -69,7 +69,7 @@ export default function UserOrdersPage() {
         const token = localStorage.getItem("token");
 
         if (!token) {
-          console.error("No authentication token found");
+          toast.error("No authentication token found");
           setLoading(false);
           return;
         }
@@ -83,7 +83,6 @@ export default function UserOrdersPage() {
         });
 
         if (res.status === 401) {
-          console.error("Unauthorized — invalid or expired token");
           localStorage.removeItem("token");
           window.location.href = "/login";
           return;
@@ -113,7 +112,7 @@ export default function UserOrdersPage() {
 
         setOrders(transformedOrders);
       } catch (err) {
-        console.error("Error fetching user orders:", err);
+        toast.error("Error fetching user orders");
       } finally {
         setLoading(false);
       }
@@ -615,7 +614,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       if (!res.ok) throw new Error("Failed to load pricing");
 
       const data = await res.json();
-      console.log(data);
 
       setUpgradeVm(order);
       setPricingOptions(data);

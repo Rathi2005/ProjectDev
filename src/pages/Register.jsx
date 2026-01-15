@@ -31,7 +31,6 @@ const LogoIcon = () => (
 );
 
 export default function CreateAccount() {
-  console.log("BASE_URL:", BASE_URL);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -153,7 +152,6 @@ export default function CreateAccount() {
         toast.error("Could not initiate verification. Please try again.");
       }
     } catch (err) {
-      console.error("Registration flow error:", err);
       setError("Network error. Please try again.");
       toast.error("Network error. Please try again.");
     } finally {

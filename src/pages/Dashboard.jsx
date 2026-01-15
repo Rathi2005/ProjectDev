@@ -42,12 +42,6 @@ export default function Dashboard() {
         "bandwidth",
         "bandwidthPriceId",
       ];
-
-      // importantKeys.forEach((key) => {
-      //   if (selectedResources[key]) {
-      //     console.log(`📊 ${key}:`, selectedResources[key]);
-      //   }
-      // });
     }
   }, [selectedResources]);
 

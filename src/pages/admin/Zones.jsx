@@ -57,7 +57,6 @@ export default function ZonesPage() {
         const data = await res.json();
         setZones(data || []);
       } catch (err) {
-        console.error("Error fetching zones:", err);
         toast.error("Error fetching zones");
       } finally {
         setLoading(false);
@@ -96,7 +95,6 @@ export default function ZonesPage() {
       setShowModal(false);
       setFormData({ name: "" });
     } catch (err) {
-      console.error("Error adding zone:", err);
       toast.error("Error adding zone");
     } finally {
       setSubmitting(false);
@@ -162,7 +160,6 @@ export default function ZonesPage() {
           showConfirmButton: false,
         });
       } catch (err) {
-        console.error("Error deleting zone:", err);
         Swal.fire({
           ...swalDarkTheme,
           icon: "error",
@@ -212,7 +209,6 @@ export default function ZonesPage() {
 
       toast.success(`Zone renamed to "${renameName}" successfully!`);
     } catch (err) {
-      console.error("Error renaming zone:", err);
       toast.error("Failed to rename zone");
     }
   };

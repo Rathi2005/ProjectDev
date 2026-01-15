@@ -39,10 +39,10 @@ export default function PricingPage() {
 
         if (res.ok) return (await res.json()) || [];
 
-        console.error(`Failed to fetch ${section}`, await res.text());
+        toast.error(`Failed to fetch ${section}`, await res.text());
         return [];
       } catch (err) {
-        console.error(err);
+        toast.error(err);
         return [];
       }
     };

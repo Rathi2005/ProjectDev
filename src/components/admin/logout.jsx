@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-hot-toast";   // ✅ Added toast import
+import { toast } from "react-hot-toast";  
 
 // const LOGOUT_API = import.meta.env.VITE_LOGOUT;
 const LOGOUT_API = `${import.meta.env.VITE_BASE_URL}/api/logout`;
@@ -26,16 +26,16 @@ export default function useLogout() {
       localStorage.removeItem("adminToken");
 
       if (response.ok) {
-        toast.success("Logged out successfully!");   // ✅ SUCCESS TOAST
+        toast.success("Logged out successfully!");  
       } else {
-        toast.error("Server logout failed — logged out locally."); // ❌ fallback
+        toast.error("Server logout failed — logged out locally."); 
       }
 
       navigate("/admin", { replace: true });
     } catch (error) {
-      console.error("Logout error:", error);
+      toast.error("Logout error:", error);
 
-      toast.error("Logout error — logged out locally.");  // ❌ fallback toast
+      toast.error("Logout error — logged out locally."); 
 
       localStorage.removeItem("adminToken");
       navigate("/admin", { replace: true });

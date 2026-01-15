@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -112,7 +113,7 @@ const ResetPassword = ({ email }) => {
         }
       }
     } catch (err) {
-      console.error(err);
+      toast.error(err);
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);

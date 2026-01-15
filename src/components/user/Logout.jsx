@@ -1,3 +1,4 @@
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -25,15 +26,15 @@ export default function useLogout() {
       localStorage.removeItem("token");
 
       if (response.ok) {
-        console.log("Logged out successfully from server");
+        toast.success("Logged out successfully");
       } else {
-        console.warn("Server logout failed, but clearing local data anyway.");
+        toast.error("Server logout failed, but clearing local data anyway.");
       }
 
       // ✅ Redirect to login page using React Router
       navigate("/login", { replace: true });
     } catch (error) {
-      console.error("Logout error:", error);
+      toast.error("Logout error:", error);
       // Even if there's an error, still redirect user
       localStorage.removeItem("token");
       navigate("/login", { replace: true });

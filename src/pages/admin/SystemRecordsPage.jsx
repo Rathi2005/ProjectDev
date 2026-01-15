@@ -180,7 +180,6 @@ export default function SystemRecordsPage() {
         throw new Error("Failed to fetch records");
       }
     } catch (error) {
-      console.error("Error fetching records:", error);
       DarkSwal.fire({
         icon: "error",
         title: "Error",

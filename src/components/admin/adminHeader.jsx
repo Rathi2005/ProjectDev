@@ -71,12 +71,10 @@ const AdminHeader = () => {
 
   const handleDropdownClick = (e) => {
     e.stopPropagation(); // Prevent event bubbling
-    console.log("📌 Pricing dropdown clicked, current state:", openPricingMenu);
     setOpenPricingMenu((prev) => !prev);
   };
 
   const handleDropdownLinkClick = (href) => {
-    console.log("🔄 Navigation attempted to:", href);
     navigate(href);
     setOpenPricingMenu(false);
     setIsMobileMenuOpen(false);

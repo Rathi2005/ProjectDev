@@ -8,6 +8,7 @@ import {
   Gauge,
 } from "lucide-react";
 import MetricChart from "../../components/admin/liveGraphs/MetricChart";
+import toast from "react-hot-toast";
 
 export default function VMPerformancePage() {
   const { vmid } = useParams();
@@ -48,7 +49,7 @@ export default function VMPerformancePage() {
           firstLoad = false;
         }
       } catch (err) {
-        console.error("Failed to fetch metrics", err);
+        toast.error("Failed to fetch metrics", err);
         if (firstLoad) setLoading(false);
       }
     };

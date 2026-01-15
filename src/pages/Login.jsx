@@ -31,7 +31,6 @@ const LogoIcon = () => (
   </svg>
 );
 export default function LoginPage() {
-  console.log(LOGIN_API);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -118,7 +117,6 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      console.error("Login error:", err);
       setError("Network error. Please try again.");
       toast.error("Network error. Please try again.");
     } finally {
@@ -147,7 +145,6 @@ export default function LoginPage() {
       let data = {};
       const text = await res.text();
       if (text) data = JSON.parse(text);
-      console.log("Forgot password response:", text); // 👈 check this
 
       if (res.ok) {
         setSuccess(data.message || "OTP has been sent if the account exists.");

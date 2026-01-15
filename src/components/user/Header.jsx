@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Globe, Server, Ticket, Settings, User } from "lucide-react";
 import useLogout from "./Logout";
 import { jwtDecode } from "jwt-decode";
+import toast from "react-hot-toast";
 
 const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -22,7 +23,7 @@ const Header = () => {
         setUser(decoded);
         setIsLoggedIn(true);
       } catch (error) {
-        console.error("Invalid token:", error);
+        toast.error("Invalid token:", error);
         localStorage.removeItem("token");
         setIsLoggedIn(false);
         setUser(null);

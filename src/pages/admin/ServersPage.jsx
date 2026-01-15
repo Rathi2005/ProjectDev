@@ -148,7 +148,6 @@ export default function ServersPage() {
         );
 
         if (!res.ok) {
-          console.error("Failed to fetch servers:", res.status, res.statusText);
           toast.error("Failed to load servers");
           return;
         }
@@ -165,7 +164,6 @@ export default function ServersPage() {
           if (srv.id) fetchVmCount(srv.id, token);
         });
       } catch (err) {
-        console.error("Error fetching servers:", err);
         toast.error("Error loading servers");
       } finally {
         setLoading(false);
@@ -196,7 +194,6 @@ export default function ServersPage() {
         const data = await res.json();
         setZones(data || []);
       } catch (err) {
-        console.error("Error fetching zones:", err);
         toast.error("Error loading zones");
       }
     };
@@ -236,7 +233,7 @@ export default function ServersPage() {
         )
       );
     } catch (err) {
-      console.error(`Error fetching VM count for server ${serverId}:`, err);
+      toast.error(`Error fetching VM count for server ${serverId}:`, err);
     }
   };
 
@@ -287,7 +284,6 @@ export default function ServersPage() {
       if (!res.ok) {
         const errorText = await res.text();
         toast.error("Failed to add server");
-        console.error("Failed to add server:", res.status, errorText);
         return;
       }
 
@@ -309,7 +305,6 @@ export default function ServersPage() {
         tokenSecret: "",
       });
     } catch (err) {
-      console.error("Error adding server:", err);
       toast.error("Error adding server");
     } finally {
       setSubmitting(false);
@@ -375,7 +370,6 @@ export default function ServersPage() {
           showConfirmButton: false,
         });
       } catch (err) {
-        console.error("Error deleting server:", err);
         Swal.fire({
           ...swalDarkTheme,
           icon: "error",
@@ -454,7 +448,6 @@ export default function ServersPage() {
 
       toast.success(`Server "${editFormData.name}" updated successfully!`);
     } catch (err) {
-      console.error("Error updating server:", err);
       toast.error("Failed to update server");
     }
   };
@@ -513,7 +506,6 @@ export default function ServersPage() {
 
       toast.success(`Status updated to ${newStatus}`);
     } catch (err) {
-      console.error("Error updating status:", err);
       toast.error("Error updating server status");
     }
   };

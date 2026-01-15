@@ -94,7 +94,6 @@ export default function OrdersPage() {
       });
 
       if (res.status === 401) {
-        console.error("Unauthorized — invalid or expired token");
         DarkSwal.fire({
           icon: "error",
           title: "Unauthorized",
@@ -159,7 +158,6 @@ export default function OrdersPage() {
 
       setOrders(transformedOrders);
     } catch (err) {
-      console.error("Error fetching orders:", err);
       DarkSwal.fire({
         icon: "error",
         title: "Error",
@@ -213,7 +211,7 @@ export default function OrdersPage() {
             }
             return { action, revenue: 0 };
           } catch (error) {
-            console.error(`Error fetching ${action} revenue:`, error);
+            toast.error(`Error fetching ${action} revenue`);
             return { action, revenue: 0 };
           }
         });
@@ -323,7 +321,7 @@ export default function OrdersPage() {
         setGarbageRecordsCount(garbageCount);
         setUserCount(userCount);
       } catch (err) {
-        console.error("Error fetching insights:", err);
+        toast.error("Error fetching insights");
       } finally {
         setLoadingInsights(false);
       }
@@ -386,7 +384,6 @@ export default function OrdersPage() {
         showConfirmButton: false,
       });
     } catch (err) {
-      console.error(err);
       DarkSwal.fire({
         icon: "error",
         title: "Failed",
@@ -461,7 +458,7 @@ export default function OrdersPage() {
         showConfirmButton: false,
       });
     } catch (err) {
-      console.error(err);
+      toast.error(err);
       DarkSwal.fire({
         icon: "error",
         title: "Failed",
@@ -614,7 +611,6 @@ export default function OrdersPage() {
           showConfirmButton: false,
         });
       } catch (err) {
-        console.error(err);
         DarkSwal.fire({
           icon: "error",
           title: "Failed",
@@ -626,7 +622,6 @@ export default function OrdersPage() {
         setAdminActionLoading((p) => ({ ...p, [orderId]: null }));
       }
     } catch (err) {
-      console.error(err);
       DarkSwal.fire({
         icon: "error",
         title: "Error",
@@ -718,7 +713,6 @@ export default function OrdersPage() {
         showConfirmButton: false,
       });
     } catch (err) {
-      console.error(err);
       DarkSwal.fire({
         icon: "error",
         title: "Failed",
@@ -809,7 +803,6 @@ export default function OrdersPage() {
       // Refresh orders
       fetchOrders();
     } catch (err) {
-      console.error(err);
       DarkSwal.fire({
         icon: "error",
         title: "Update Failed",
@@ -1142,7 +1135,6 @@ export default function OrdersPage() {
       // refresh orders so UI reflects new state
       await refreshOrdersWithDelay();
     } catch (err) {
-      console.error(err);
       DarkSwal.fire({
         icon: "error",
         title: "Failed",
@@ -1428,7 +1420,6 @@ export default function OrdersPage() {
                               })()}
                             </td>
                           </tr>
-                          {console.log(order)}
 
                           {/* EXPANDED DROPDOWN ROW - Responsive */}
                           {expandedRow === order.id && (

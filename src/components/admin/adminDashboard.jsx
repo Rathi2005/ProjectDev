@@ -143,7 +143,7 @@ export default function AdminDashboard() {
 
         setServerLocations(locations);
       } catch (err) {
-        console.error("Error fetching VM data:", err);
+        tost.error("Error fetching VM data:", err);
         // Fallback to mock data if API fails
         setServerLocations([
           {
@@ -216,7 +216,7 @@ export default function AdminDashboard() {
 
         setRecentActivity(normalized);
       } catch (err) {
-        console.error("Audit log fetch failed:", err);
+        tost.error("Audit log fetch failed:", err);
       } finally {
         setActivityLoading(false);
       }
