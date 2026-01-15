@@ -62,6 +62,7 @@ export default function AdminDashboard() {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [ramStats, setRamStats] = useState([]);
   const token = localStorage.getItem("adminToken");
 
   // State for VM data
@@ -939,20 +940,8 @@ export default function AdminDashboard() {
                 ))}
               </div>
             )}
-
-            {/* Performance Chart */}
-            <div className="mt-6">
-              <MetricChart
-                title="Overall VM Health"
-                serverId="1"
-                token={token}
-                color="#6366f1"
-                extract={(h) => vmHealthPercentage}
-              />
-            </div>
           </div>
 
-          {/* Recent Activity */}
           {/* Recent Activity */}
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
             <div className="flex items-center justify-between mb-6">

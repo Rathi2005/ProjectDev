@@ -21,6 +21,7 @@ import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
 import Profile from "./components/user/Profile";
 import PerformancePage from "./pages/admin/PerformancePage";
 import VMPerformancePage from "./pages/admin/VMPerformancePage";
+import ServerRamPage from "./pages/admin/ServerRamPage";
 
 export default function App() {
   return (
@@ -136,6 +137,15 @@ export default function App() {
                   { name: "vmid", label: "VM ID", type: "text" },
                 ]}
               />
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/servers/:id/ram"
+          element={
+            <AdminProtectedRoute>
+              <ServerRamPage/>
             </AdminProtectedRoute>
           }
         />

@@ -16,7 +16,7 @@ const Header = () => {
   // ✅ Check login state and decode token on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
-    
+
     if (token) {
       try {
         const decoded = jwtDecode(token);
@@ -58,25 +58,19 @@ const Header = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          <div className="bg-[#4f46e5] p-2 rounded-lg">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M3 7l9-4 9 4-9 4-9-4zm0 10l9 4 9-4m-9-4l9 4-9 4-9-4 9-4z"
-              />
-            </svg>
-          </div>
-          <h1 className="text-lg font-semibold text-white tracking-wide">
-            SERVERLINK
-          </h1>
+          <a
+            href="/dashboard"
+            className="flex items-center space-x-2 cursor-pointer hover:opacity-90 transition"
+          >
+            <img
+              src=""
+              alt="ServerLink Logo"
+              className="h-9 w-9 object-contain"
+            />
+            <h1 className="text-lg font-semibold text-white tracking-wide">
+              SERVERLINK
+            </h1>
+          </a>
         </div>
 
         {/* Navigation */}
@@ -137,19 +131,23 @@ const Header = () => {
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
                       onClick={() => setIsDropdownOpen(false)}
                     >
-                      <span className="material-icons text-[18px]">account_circle</span>
+                      <span className="material-icons text-[18px]">
+                        account_circle
+                      </span>
                       <span>Profile</span>
                     </a>
-                    
+
                     <a
                       href="/live-chart"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-gray-700"
                       onClick={() => setIsDropdownOpen(false)}
                     >
-                      <span className="material-icons text-[18px]">dashboard</span>
+                      <span className="material-icons text-[18px]">
+                        dashboard
+                      </span>
                       <span>Dashboard</span>
                     </a>
-                    
+
                     <button
                       onClick={handleLogout}
                       className="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-red-400 transition"
@@ -173,7 +171,9 @@ const Header = () => {
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
                       onClick={() => setIsDropdownOpen(false)}
                     >
-                      <span className="material-icons text-[18px]">person_add</span>
+                      <span className="material-icons text-[18px]">
+                        person_add
+                      </span>
                       <span>Sign Up</span>
                     </a>
                   </>

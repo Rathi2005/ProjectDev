@@ -57,14 +57,14 @@ const SummarySidebar = ({
       return {
         hourlyTotal: 0,
         monthlyTotal: 0,
-        ipv4Price: 42,
+        ipv4Price: 0,
       };
     }
 
     return {
       hourlyTotal: Number(selectedResources.pricing.hourly),
       monthlyTotal: Number(selectedResources.pricing.monthly),
-      ipv4Price: 42,
+      ipv4Price: 0,
     };
   }, [selectedResources]);
 

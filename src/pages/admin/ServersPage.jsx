@@ -8,6 +8,7 @@ import {
   Trash2,
   HardDrive,
   File,
+  MemoryStick,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -45,6 +46,12 @@ export default function ServersPage() {
     tokenId: "",
     tokenSecret: "",
   });
+
+  const [ramModal, setRamModal] = useState(false);
+  const [ramStats, setRamStats] = useState(null);
+  const [ramLoading, setRamLoading] = useState(false);
+  const [selectedServer, setSelectedServer] = useState(null);
+  const [allowedPercentage, setAllowedPercentage] = useState(90);
 
   const navigate = useNavigate();
   // const FETCH_SERVERS = import.meta.env.VITE_SERVERS;
@@ -452,8 +459,7 @@ export default function ServersPage() {
     }
   };
 
-  // ✅ Open rename modal
-  // ✅ Open edit modal
+  // Open edit modal
   const openEditModal = (server) => {
     setEditingServer(server);
     setEditFormData({
@@ -701,6 +707,18 @@ export default function ServersPage() {
                           >
                             <HardDrive className="w-3 h-3" />
                             <span className="hidden sm:inline">Disk</span>
+                          </button>
+                          <button
+                            onClick={() =>
+                              navigate(`/admin/servers/${server.id}/ram`)
+                            }
+                            className="flex items-center gap-1 bg-purple-600 hover:bg-purple-700
+             text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5
+             rounded-md transition-all duration-300"
+                            title="View RAM"
+                          >
+                            <MemoryStick className="w-3 h-3" />
+                            <span className="hidden sm:inline">RAM</span>
                           </button>
                           <button
                             onClick={() => openEditModal(server)}
