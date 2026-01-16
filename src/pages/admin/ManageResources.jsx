@@ -319,7 +319,7 @@ export default function ManageResourcesPage({
                   cidr: cidr,
                   subnetMask: subnetMask,
                   gateway: row.gateway.trim(),
-                  mac: "00:00:00:00:00:00",
+                  mac: null,
                   inUse: false,
                 };
 
