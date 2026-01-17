@@ -41,6 +41,8 @@ export default function UserOrdersPage() {
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [passwordInputs, setPasswordInputs] = useState({});
   const [passwordLoading, setPasswordLoading] = useState({});
+  const [protectionState, setProtectionState] = useState({});
+  const [protectionLoading, setProtectionLoading] = useState({});
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -387,6 +389,11 @@ export default function UserOrdersPage() {
       return;
     }
 
+    if (order.liveState?.toUpperCase() !== "RUNNING") {
+      toast.error("VM must be running to view password");
+      return;
+    }
+
     try {
       setPasswordFetching((p) => ({ ...p, [vmId]: true }));
 
@@ -700,7 +707,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       const token = localStorage.getItem("token");
 
       const res = await fetch(`${BASE_URL}/api/pricing/upgrades/${order.id}`, {
-        headers: {
+         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
@@ -713,7 +720,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       setPricingOptions(data);
 
       // Set defaults
-      setSelectedCpu(data.cpuOptions?.[0]?.tier.id ?? null);
+      setSelectedCpu( data.cpuOptions?.[0]?.tier.id ?? null);
       setSelectedRam(data.ramOptions?.[0]?.tier.id ?? null);
       setSelectedDisk(data.diskOptions?.[0]?.tier.id ?? null);
       setSelectedBandwidth(data.bandwidthOptions?.[0]?.tier.id ?? null);

@@ -192,7 +192,7 @@ const ResourcesSelector = ({
       bandwidthPrice
     ).toFixed(4);
 
-    const monthly = (parseFloat(hourly) * 720).toFixed(2);
+    const monthly = (parseFloat(hourly) * 730).toFixed(2);
 
     return { hourly, monthly, cpuPrice, ramPrice, diskPrice, bandwidthPrice };
   }, [vCPU,ram,disk,bandwidth,vcpuOptions,ramOptions,diskOptions,bandwidthOptions]);
@@ -552,7 +552,7 @@ const ResourcesSelector = ({
               </span>
             </div>
             <div className="text-sm text-gray-400">
-              ≈ ₹{pricing.monthly} / month (720 hours)
+              ≈ ₹{pricing.monthly} / month (730 hours)
             </div>
           </div>
         )}

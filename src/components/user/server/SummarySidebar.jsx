@@ -24,18 +24,10 @@ const SummarySidebar = ({
   serverId,
   onPaymentStart,
 }) => {
-  const [serverCount, setServerCount] = useState(1);
   const [vmName, setVmName] = useState("my-shared-vm-test-3");
   const [isLoading, setIsLoading] = useState(false);
   const [months, setMonths] = useState("1");
   const [configExpanded, setConfigExpanded] = useState(true);
-
-  // Function to extract numeric value from resource string
-  // const extractNumericValue = (str) => {
-  //   if (!str) return 0;
-  //   const match = str.match(/(\d+\.?\d*)/);
-  //   return match ? parseFloat(match[1]) : 0;
-  // };
 
   // Function to extract display name without price
   const extractDisplayName = (str) => {
@@ -43,13 +35,6 @@ const SummarySidebar = ({
     // Remove price part like " - Rs 40/hr"
     return str.split(" - Rs")[0].trim();
   };
-
-  // const extractPriceFromString = (str) => {
-  //   if (!str) return 0;
-  //   // Extract price from "4 cores - Rs 40/hr" or "4 gb - Rs 40/hr"
-  //   const match = str.match(/Rs\s*(\d+\.?\d*)\s*\/?hr?/i);
-  //   return match ? parseFloat(match[1]) : 0;
-  // };
 
   // Calculate pricing based on selected resources
   const calculatePricing = useMemo(() => {
@@ -70,10 +55,8 @@ const SummarySidebar = ({
 
   // Calculate total monthly price (including IPv4)
   const monthlyTotal = useMemo(() => {
-    return (
-      (calculatePricing.monthlyTotal + calculatePricing.ipv4Price) * serverCount
-    );
-  }, [calculatePricing, serverCount]);
+    return calculatePricing.monthlyTotal + calculatePricing.ipv4Price;
+  }, [calculatePricing]);
 
   // Calculate total payable amount (monthlyTotal * months)
   const totalPayable = useMemo(() => {
