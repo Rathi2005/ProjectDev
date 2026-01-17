@@ -850,7 +850,7 @@ export default function ManageResourcesPage({
                                 handleChange(i, f.name, e.target.value)
                               }
                               placeholder={`Enter ${f.label}`}
-                              required
+                              required={f.name !== "mac"}
                               className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
                             />
                           )}
@@ -918,7 +918,7 @@ export default function ManageResourcesPage({
                           onChange={(e) =>
                             handleChange(i, f.name, e.target.value)
                           }
-                          required
+                          required={f.name !== "mac"}
                           className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
                         >
                           <option value="">Select OS Type</option>
@@ -936,7 +936,7 @@ export default function ManageResourcesPage({
                             handleChange(i, f.name, e.target.value)
                           }
                           placeholder={`Enter ${f.label}`}
-                          required
+                          required={f.name !== "mac"}
                           className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
                         />
                       )}

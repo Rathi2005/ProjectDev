@@ -26,6 +26,10 @@ const BillingAddress = ({ email }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const isValidPhoneNumber = (phone) => {
+    return /^[0-9]{10}$/.test(phone);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -39,6 +43,11 @@ const BillingAddress = ({ email }) => {
       !formData.contactNumber
     ) {
       setError("Please fill in all required fields.");
+      return;
+    }
+
+    if (!isValidPhoneNumber(formData.contactNumber)) {
+      setError("Contact number must be exactly 10 digits.");
       return;
     }
 
@@ -84,6 +93,8 @@ const BillingAddress = ({ email }) => {
       setLoading(false);
     }
   };
+
+  
 
   return (
     <div className="min-h-screen bg-[#0e1525]">
