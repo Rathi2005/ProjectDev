@@ -50,7 +50,7 @@ export default function App() {
           path="/profile"
           element={
             <ProtectedRoute>
-              <Profile />
+              <Profile mode="user" />
             </ProtectedRoute>
           }
         />
@@ -61,6 +61,14 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/profile"
+          element={
+            <AdminProtectedRoute>
+              <Profile mode="admin" />
             </AdminProtectedRoute>
           }
         />

@@ -5,6 +5,7 @@ import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
 import Pagination from "../../components/Pagination";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import {
   Package,
   CheckCircle,
@@ -69,6 +70,7 @@ export default function OrdersPage() {
   const [deletedVmsCount, setDeletedVmsCount] = useState(0);
   const [garbageRecordsCount, setGarbageRecordsCount] = useState(0);
   const [loadingInsights, setLoadingInsights] = useState(true);
+  const [ipChangeLoading, setIpChangeLoading] = useState({});
   const navigate = useNavigate();
 
   const toggleRow = (id) => {
@@ -176,9 +178,6 @@ export default function OrdersPage() {
   }, []);
 
   // Fetch additional insights
-  // Fetch additional insights
-  // Update the fetchInsights function in your OrdersPage.jsx
-  // Fetch additional insights
   useEffect(() => {
     async function fetchInsights() {
       try {
@@ -199,7 +198,7 @@ export default function OrdersPage() {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${adminToken}`,
                 },
-              }
+              },
             );
 
             if (res.ok) {
@@ -225,7 +224,7 @@ export default function OrdersPage() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${adminToken}`,
             },
-          }
+          },
         )
           .then(async (res) => {
             if (res.ok) {
@@ -252,7 +251,7 @@ export default function OrdersPage() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${adminToken}`,
             },
-          }
+          },
         )
           .then(async (res) => {
             if (res.ok) {
@@ -284,7 +283,7 @@ export default function OrdersPage() {
               if (Array.isArray(data)) {
                 // Count unique users from the array
                 const uniqueUsers = new Set(
-                  data.map((user) => user.userId || user.id)
+                  data.map((user) => user.userId || user.id),
                 );
                 return uniqueUsers.size;
               } else if (data && typeof data === "object") {
@@ -365,7 +364,7 @@ export default function OrdersPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${adminToken}`,
           },
-        }
+        },
       );
 
       if (!res.ok) {
@@ -444,7 +443,7 @@ export default function OrdersPage() {
           headers: {
             Authorization: `Bearer ${adminToken}`,
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error(await res.text());
@@ -485,7 +484,7 @@ export default function OrdersPage() {
           Authorization: `Bearer ${adminToken}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     if (!res.ok) {
@@ -597,7 +596,7 @@ export default function OrdersPage() {
             headers: {
               Authorization: `Bearer ${adminToken}`,
             },
-          }
+          },
         );
 
         if (!res.ok) throw new Error(await res.text());
@@ -699,7 +698,7 @@ export default function OrdersPage() {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error(await res.text());
@@ -782,7 +781,7 @@ export default function OrdersPage() {
             Authorization: `Bearer ${adminToken}`,
           },
           body: JSON.stringify({ newProxmoxVmid: Number(newVmid) }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -817,10 +816,10 @@ export default function OrdersPage() {
   const insights = useMemo(() => {
     const totalOrders = orders.length;
     const activeOrders = orders.filter(
-      (o) => o.status === "ACTIVE" || o.status === "Active"
+      (o) => o.status === "ACTIVE" || o.status === "Active",
     ).length;
     const pendingOrders = orders.filter(
-      (o) => o.status === "PENDING_PAYMENT" || o.status === "Pending"
+      (o) => o.status === "PENDING_PAYMENT" || o.status === "Pending",
     ).length;
     const cancelledOrders = orders.filter((o) =>
       [
@@ -830,7 +829,7 @@ export default function OrdersPage() {
         "Expired",
         "FAILED",
         "Failed",
-      ].includes(o.status)
+      ].includes(o.status),
     ).length;
 
     // Calculate active revenue from local orders
@@ -1113,7 +1112,7 @@ export default function OrdersPage() {
           headers: {
             Authorization: `Bearer ${adminToken}`,
           },
-        }
+        },
       );
 
       if (!res.ok) {
@@ -1140,6 +1139,129 @@ export default function OrdersPage() {
         title: "Failed",
         text: err.message || "Termination override update failed",
       });
+    }
+  };
+
+  // ---------- FETCH AVAILABLE IPS FOR VMID CHANGE ----------
+  const fetchAvailableIps = async (serverId) => {
+    const adminToken = localStorage.getItem("adminToken");
+
+    const res = await fetch(
+      `${BASE_URL}/api/admin/vms/${serverId}/available-ips`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    return await res.json();
+  };
+
+  // ------- IP CHANGE HANDLER --------
+  const handleChangeIp = async (order) => {
+    // ⛔ Prevent double click
+    if (ipChangeLoading[order.id]) return;
+    setIpChangeLoading((p) => ({ ...p, [order.id]: true }));
+    try {
+      const adminToken = localStorage.getItem("adminToken");
+      if (!adminToken) return;
+
+      const ips = await fetchAvailableIps(order.serverId);
+
+      if (!ips.length) {
+        DarkSwal.fire({
+          icon: "warning",
+          title: "No IPs Available",
+          text: "No free IP addresses available on this server",
+        });
+        return;
+      }
+
+      const ipOptions = {};
+      ips.forEach((i) => {
+        ipOptions[i.id] = i.ip;
+      });
+
+      const { value: newIpId } = await DarkSwal.fire({
+        title: "Change IP Address",
+        html: `
+    <p class="text-sm text-gray-300 mb-2">
+      Current IP: <strong>${order.ipAddress || "N/A"}</strong>
+    </p>
+  `,
+        input: "select",
+        inputOptions: ipOptions,
+        inputPlaceholder: "Select new IP",
+        showCancelButton: true,
+        confirmButtonText: "Change IP",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#6366f1",
+        background: "#1e2640",
+        color: "#ffffff",
+
+        didOpen: () => {
+          const select = Swal.getInput();
+
+          if (select) {
+            select.style.backgroundColor = "#0e1525";
+            select.style.color = "#ffffff";
+            select.style.border = "1px solid rgba(255,255,255,0.15)";
+            select.style.borderRadius = "8px";
+            select.style.padding = "10px";
+          }
+        },
+
+        inputValidator: (value) => {
+          if (!value) return "Please select an IP";
+        },
+      });
+
+      if (!newIpId) return;
+
+      const res = await fetch(
+        `${BASE_URL}/api/admin/vms/${order.internalVmid}/change-ip`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ newIpId: Number(newIpId) }),
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id
+            ? {
+                ...o,
+                ipAddress: ips.find((ip) => ip.id === Number(newIpId))?.ip,
+              }
+            : o,
+        ),
+      );
+
+      toast.success("IP address changed successfully! It will take 30 seconds to reflect.");
+
+      // setTimeout(fetchOrders, 3000);
+    } catch (err) {
+      DarkSwal.fire({
+        icon: "error",
+        title: "IP Change Failed",
+        text: err.message || "Failed to change IP",
+      });
+    } finally {
+      setIpChangeLoading((p) => ({ ...p, [order.id]: false }));
     }
   };
 
@@ -1369,7 +1491,7 @@ export default function OrdersPage() {
                             <td className="py-3 px-4 sm:px-6">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                  order.status
+                                  order.status,
                                 )}`}
                               >
                                 {order.status}
@@ -1378,7 +1500,7 @@ export default function OrdersPage() {
                             <td className="py-3 px-4 sm:px-6">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-medium ${getLiveStatusColor(
-                                  normalizeLiveStatus(order.liveState)
+                                  normalizeLiveStatus(order.liveState),
                                 )}`}
                               >
                                 {normalizeLiveStatus(order.liveState)}
@@ -1401,7 +1523,7 @@ export default function OrdersPage() {
                                             serverId: order.serverId,
                                             vmName: order.vmName,
                                           },
-                                        }
+                                        },
                                       )
                                     }
                                     disabled={isVmStopped}
@@ -1507,7 +1629,7 @@ export default function OrdersPage() {
                                                     onClick={() =>
                                                       handleVmidEdit(
                                                         order.vmid,
-                                                        order.internalVmid
+                                                        order.internalVmid,
                                                       )
                                                     }
                                                     className="p-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white transition"
@@ -1519,6 +1641,39 @@ export default function OrdersPage() {
                                               </div>
                                             </div>
                                           )}
+
+                                        <div className="pt-4 border-t border-indigo-900/30">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-xs sm:text-sm text-gray-400">
+                                              IP Address
+                                            </span>
+
+                                            <div className="flex items-center gap-2">
+                                              <code className="bg-indigo-900/30 px-3 py-1 rounded text-xs sm:text-sm font-mono">
+                                                {order.ipAddress || "N/A"}
+                                              </code>
+
+                                              <button
+                                                onClick={() =>
+                                                  handleChangeIp(order)
+                                                }
+                                                disabled={
+                                                  ipChangeLoading[order.id]
+                                                }
+                                                className={`px-2 py-1 rounded-md text-xs transition
+    ${
+      ipChangeLoading[order.id]
+        ? "bg-gray-600/40 text-gray-400 cursor-not-allowed"
+        : "bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white"
+    }`}
+                                              >
+                                                {ipChangeLoading[order.id]
+                                                  ? "Changing..."
+                                                  : "Change"}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
 
@@ -1708,7 +1863,7 @@ export default function OrdersPage() {
                                       disabled={
                                         !canAction(
                                           order.liveState,
-                                          "hibernate"
+                                          "hibernate",
                                         ) || powerLoading[order.id]
                                       }
                                       className="flex-1 sm:flex-none px-3 py-2 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-50 text-indigo-300 rounded-lg font-medium text-sm"
@@ -1766,7 +1921,7 @@ export default function OrdersPage() {
                                       onClick={() =>
                                         handleTerminationOverride(
                                           order.internalVmid,
-                                          true
+                                          true,
                                         )
                                       }
                                       className="flex-1 sm:flex-none px-3 py-2 border border-emerald-500/40
@@ -1779,7 +1934,7 @@ export default function OrdersPage() {
                                       onClick={() =>
                                         handleTerminationOverride(
                                           order.internalVmid,
-                                          false
+                                          false,
                                         )
                                       }
                                       className="flex-1 sm:flex-none px-3 py-2 border border-orange-500/40
@@ -1866,14 +2021,14 @@ export default function OrdersPage() {
                           <div className="flex flex-wrap gap-2">
                             <span
                               className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                order.status
+                                order.status,
                               )}`}
                             >
                               {order.status}
                             </span>
                             <span
                               className={`px-2 py-1 rounded-full text-xs font-medium ${getLiveStatusColor(
-                                normalizeLiveStatus(order.liveState)
+                                normalizeLiveStatus(order.liveState),
                               )}`}
                             >
                               {normalizeLiveStatus(order.liveState)}

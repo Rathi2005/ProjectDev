@@ -13,7 +13,23 @@ import {
   X,
 } from "lucide-react";
 
-const Profile = () => {
+const Profile = ({ mode = "user" }) => {
+  const isAdmin = mode === "admin";
+
+  const tokenKey = isAdmin ? "adminToken" : "token";
+
+  const endpoints = {
+    fetchProfile: isAdmin ? "/api/admin/profile" : "/api/users/profile",
+
+    updateDetails: isAdmin
+      ? "/api/admin/profile/details"
+      : "/api/users/profile/details",
+
+    updateBilling: isAdmin
+      ? "/api/admin/profile/billing"
+      : "/api/users/profile/billing",
+  };
+
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [billing, setBilling] = useState({});
@@ -40,14 +56,14 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem(tokenKey);
       if (!token) {
         navigate("/login");
         return;
       }
 
       try {
-        const res = await fetch(`${BASE_URL}/api/users/profile`, {
+        const res = await fetch(`${BASE_URL}${endpoints.fetchProfile}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -61,7 +77,7 @@ const Profile = () => {
         setBilling(data.billingAddress || {});
       } catch (err) {
         toast.error(err);
-        localStorage.removeItem("token");
+        localStorage.removeItem(tokenKey);
         navigate("/login");
       } finally {
         setLoading(false);
@@ -69,7 +85,7 @@ const Profile = () => {
     };
 
     fetchProfile();
-  }, [navigate, BASE_URL]);
+  }, [navigate, BASE_URL, tokenKey, endpoints.fetchProfile]);
 
   const handleCancel = () => {
     setIsEditing(false);
@@ -83,10 +99,10 @@ const Profile = () => {
   };
 
   const saveDetails = async () => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem(tokenKey);
 
     try {
-      const res = await fetch(`${BASE_URL}/api/users/profile/details`, {
+      const res = await fetch(`${BASE_URL}${endpoints.updateDetails}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -105,11 +121,11 @@ const Profile = () => {
       // Update the profile state with the edited user data
       const updatedProfile = { ...profile, ...editedUser };
       setProfile(updatedProfile);
-      
+
       // Reset editing states
       setEditDetails(false);
       setIsEditing(false);
-      
+
       // Optional: Show success message
       toast.success("Profile updated successfully!");
     } catch (error) {
@@ -119,10 +135,13 @@ const Profile = () => {
   };
 
   const saveBilling = async () => {
-    const token = localStorage.getItem("token");
-
+    const token = localStorage.getItem(tokenKey);
+    if (!isValidPhoneNumber(billing.phoneNumber)) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
     try {
-      const res = await fetch(`${BASE_URL}/api/users/profile/billing`, {
+      const res = await fetch(`${BASE_URL}${endpoints.updateBilling}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -136,21 +155,28 @@ const Profile = () => {
       }
 
       // Update the profile state with new billing data
-      const updatedProfile = { 
-        ...profile, 
-        billingAddress: { ...billing } 
+      const updatedProfile = {
+        ...profile,
+        billingAddress: { ...billing },
       };
       setProfile(updatedProfile);
-      
+
       // Reset billing edit mode
       setEditBilling(false);
-      
+
       // Optional: Show success message
       toast.success("Billing address updated successfully!");
     } catch (error) {
       toast.error("Failed to save billing:", error);
       // Optional: Show error message to user
     }
+  };
+
+  const isValidPhoneNumber = (phone) => {
+    if (!phone) return false;
+
+    const digitsOnly = phone.replace(/\D/g, "");
+    return digitsOnly.length === 10;
   };
 
   // Reset billing data when canceling edit
@@ -178,13 +204,13 @@ const Profile = () => {
   // Format date if it exists
   const formatDate = (dateString) => {
     if (!dateString) return "Not available";
-    
+
     try {
       // If it's a timestamp (in seconds), convert to milliseconds
-      if (typeof dateString === 'number' && dateString < 10000000000) {
+      if (typeof dateString === "number" && dateString < 10000000000) {
         dateString = dateString * 1000;
       }
-      
+
       return new Date(dateString).toLocaleDateString();
     } catch (error) {
       toast.error("Error formatting date:", error);
@@ -195,7 +221,7 @@ const Profile = () => {
   // Decode JWT token for additional info
   let decodedToken = {};
   try {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem(tokenKey);
     if (token) {
       decodedToken = jwtDecode(token);
     }
@@ -308,7 +334,10 @@ const Profile = () => {
                   <input
                     value={editedUser.firstName || ""}
                     onChange={(e) =>
-                      setEditedUser({ ...editedUser, firstName: e.target.value })
+                      setEditedUser({
+                        ...editedUser,
+                        firstName: e.target.value,
+                      })
                     }
                     className="w-full mt-1 px-3 py-2 bg-[#0e1525] border border-gray-600 rounded-lg focus:outline-none focus:border-[#4f46e5]"
                   />
@@ -356,8 +385,11 @@ const Profile = () => {
               <div>
                 <label className="text-sm text-gray-400">Role</label>
                 <div className="mt-1">
-                  <span className="inline-block px-3 py-1 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-full text-sm">
-                    {profile.role || "User"}
+                  <span
+                    className={`inline-block px-3 py-1 rounded-full text-sm
+  ${isAdmin ? "bg-red-600/20 text-red-400" : "bg-indigo-600/20 text-indigo-400"}`}
+                  >
+                    {profile.role}
                   </span>
                 </div>
               </div>
@@ -448,7 +480,9 @@ const Profile = () => {
                     placeholder={`Enter ${label.toLowerCase()}`}
                   />
                 ) : (
-                  <p className="text-white mt-1">{profile.billingAddress?.[key] || "Not provided"}</p>
+                  <p className="text-white mt-1">
+                    {profile.billingAddress?.[key] || "Not provided"}
+                  </p>
                 )}
               </div>
             ))}
