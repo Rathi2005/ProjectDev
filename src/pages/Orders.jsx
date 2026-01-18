@@ -212,24 +212,31 @@ export default function UserOrdersPage() {
                   action === "start"
                     ? "ACTIVE"
                     : action === "stop"
-                    ? "STOPPED"
-                    : action === "reboot"
-                    ? "REBOOTING"
-                    : action === "rebuild"
-                    ? "PROVISIONING"
-                    : o.status,
+                      ? "STOPPED"
+                      : action === "reboot"
+                        ? "REBOOTING"
+                        : action === "rebuild"
+                          ? "PROVISIONING"
+                          : o.status,
                 liveState:
                   action === "start"
                     ? "RUNNING"
                     : action === "stop"
-                    ? "STOPPED"
-                    : action === "reboot"
-                    ? "REBOOTING"
-                    : o.liveState,
+                      ? "STOPPED"
+                      : action === "reboot"
+                        ? "REBOOTING"
+                        : o.liveState,
               }
-            : o
-        )
+            : o,
+        ),
       );
+
+      if (action === "stop") {
+        setPasswordVisible((prev) => ({
+          ...prev,
+          [vmId]: false,
+        }));
+      }
     } catch (err) {
       DarkSwal.fire({
         icon: "error",
@@ -245,7 +252,7 @@ export default function UserOrdersPage() {
   const filteredOrders = useMemo(() => {
     if (selectedStatus === "ALL") return orders;
     return orders.filter(
-      (order) => order.status?.toUpperCase() === selectedStatus.toUpperCase()
+      (order) => order.status?.toUpperCase() === selectedStatus.toUpperCase(),
     );
   }, [orders, selectedStatus]);
 
@@ -254,7 +261,7 @@ export default function UserOrdersPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentOrders = filteredOrders.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   useEffect(() => {
@@ -295,7 +302,7 @@ export default function UserOrdersPage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     if (!res.ok) {
@@ -390,7 +397,6 @@ export default function UserOrdersPage() {
     }
 
     if (order.liveState?.toUpperCase() !== "RUNNING") {
-      toast.error("VM must be running to view password");
       return;
     }
 
@@ -403,7 +409,7 @@ export default function UserOrdersPage() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!res.ok) {
@@ -425,6 +431,9 @@ export default function UserOrdersPage() {
       setPasswordFetching((p) => ({ ...p, [vmId]: false }));
     }
   };
+
+  const canViewPassword = (order) =>
+    order.status === "ACTIVE" && order.liveState?.toUpperCase() === "RUNNING";
 
   const togglePasswordView = (order) => {
     const vmId = order.originalData?.vmId || order.id; // Add fallback
@@ -620,7 +629,7 @@ export default function UserOrdersPage() {
 
     if (!password || password.length < 6 || !/^[a-zA-Z0-9]+$/.test(password)) {
       toast.error(
-        "Password must be alphanumeric and at least 6 characters long"
+        "Password must be alphanumeric and at least 6 characters long",
       );
       return;
     }
@@ -639,7 +648,7 @@ export default function UserOrdersPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ password }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -707,7 +716,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       const token = localStorage.getItem("token");
 
       const res = await fetch(`${BASE_URL}/api/pricing/upgrades/${order.id}`, {
-         headers: {
+        headers: {
           Authorization: `Bearer ${token}`,
         },
       });
@@ -720,7 +729,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       setPricingOptions(data);
 
       // Set defaults
-      setSelectedCpu( data.cpuOptions?.[0]?.tier.id ?? null);
+      setSelectedCpu(data.cpuOptions?.[0]?.tier.id ?? null);
       setSelectedRam(data.ramOptions?.[0]?.tier.id ?? null);
       setSelectedDisk(data.diskOptions?.[0]?.tier.id ?? null);
       setSelectedBandwidth(data.bandwidthOptions?.[0]?.tier.id ?? null);
@@ -757,7 +766,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           bandwidthPriceId: selectedBandwidth,
           addMonths,
         }),
-      }
+      },
     );
 
     if (!res.ok) throw new Error("Failed to initiate payment");
@@ -863,13 +872,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                       {filteredOrders.length !== 1 ? "s" : ""} •
                       {
                         filteredOrders.filter(
-                          (o) => o.status?.toUpperCase() === "ACTIVE"
+                          (o) => o.status?.toUpperCase() === "ACTIVE",
                         ).length
                       }{" "}
                       Active •
                       {
                         filteredOrders.filter(
-                          (o) => o.status?.toUpperCase() === "STOPPED"
+                          (o) => o.status?.toUpperCase() === "STOPPED",
                         ).length
                       }{" "}
                       Stopped
@@ -992,7 +1001,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                               <td className="py-3 px-4 sm:px-6">
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                    order.status
+                                    order.status,
                                   )}`}
                                 >
                                   {getStatusText(order.status)}
@@ -1001,7 +1010,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                               <td className="py-3 px-4 sm:px-6">
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${getLiveStatusColor(
-                                    order.liveState
+                                    order.liveState,
                                   )}`}
                                 >
                                   {order.liveState?.toUpperCase() || "UNKNOWN"}
@@ -1014,17 +1023,17 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                     normalizeLiveStatus(order.liveState) ===
                                       "RUNNING"
                                       ? "stop"
-                                      : "start"
+                                      : "start",
                                   ) && (
                                     <button
                                       onClick={() =>
                                         handlePowerAction(
                                           order,
                                           normalizeLiveStatus(
-                                            order.liveState
+                                            order.liveState,
                                           ) === "RUNNING"
                                             ? "stop"
-                                            : "start"
+                                            : "start",
                                         )
                                       }
                                       disabled={powerLoading[order.id]}
@@ -1167,7 +1176,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               </div>
                                               <p className="text-2xl font-bold text-emerald-300">
                                                 {formatCurrency(
-                                                  order.priceTotal
+                                                  order.priceTotal,
                                                 )}
                                               </p>
                                             </div>
@@ -1197,7 +1206,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                             {(() => {
                                               const renewConfig =
                                                 getRenewButtonConfig(
-                                                  order.expiresAt
+                                                  order.expiresAt,
                                                 );
                                               return (
                                                 renewConfig && (
@@ -1224,7 +1233,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   </div>
                                                   <span className="text-lg font-bold text-white">
                                                     {getDaysRemaining(
-                                                      order.expiresAt
+                                                      order.expiresAt,
                                                     )}{" "}
                                                     days
                                                   </span>
@@ -1329,20 +1338,20 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                 return (
                                                   <button
                                                     onClick={() =>
+                                                      canViewPassword(order) &&
                                                       togglePasswordView(order)
                                                     }
-                                                    className="p-2 rounded-lg hover:bg-indigo-900/30 transition"
-                                                    title={
-                                                      passwordVisible[vmId]
-                                                        ? "Hide Password"
-                                                        : "View Password"
+                                                    disabled={
+                                                      !canViewPassword(order)
                                                     }
+                                                    className={`p-2 rounded-lg transition
+                                                      ${
+                                                        canViewPassword(order)
+                                                          ? "hover:bg-indigo-900/30"
+                                                          : "opacity-40 cursor-not-allowed"
+                                                      }`}
                                                   >
-                                                    {passwordVisible[vmId] ? (
-                                                      <EyeOff className="w-4 h-4 text-indigo-400" />
-                                                    ) : (
-                                                      <Eye className="w-4 h-4 text-indigo-400" />
-                                                    )}
+                                                    <Eye className="w-4 h-4 text-indigo-400" />
                                                   </button>
                                                 );
                                               })()}
@@ -1369,7 +1378,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   <button
                                                     onClick={() =>
                                                       handleCopy(
-                                                        order.ipAddress
+                                                        order.ipAddress,
                                                       )
                                                     }
                                                     className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
@@ -1399,7 +1408,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   <button
                                                     onClick={() =>
                                                       toast.success(
-                                                        "Console access would open here"
+                                                        "Console access would open here",
                                                       )
                                                     }
                                                     className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
@@ -1420,13 +1429,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   onClick={() =>
                                                     handlePowerAction(
                                                       order,
-                                                      "start"
+                                                      "start",
                                                     )
                                                   }
                                                   disabled={
                                                     !canAction(
                                                       order.liveState,
-                                                      "start"
+                                                      "start",
                                                     ) || powerLoading[order.id]
                                                   }
                                                   className="flex items-center justify-center gap-2 p-2 bg-green-900/30 hover:bg-green-900/50 disabled:opacity-50 text-green-300 rounded text-sm transition-colors"
@@ -1438,13 +1447,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   onClick={() =>
                                                     handlePowerAction(
                                                       order,
-                                                      "stop"
+                                                      "stop",
                                                     )
                                                   }
                                                   disabled={
                                                     !canAction(
                                                       order.liveState,
-                                                      "stop"
+                                                      "stop",
                                                     ) || powerLoading[order.id]
                                                   }
                                                   className="flex items-center justify-center gap-2 p-2 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-50 text-red-300 rounded text-sm transition-colors"
@@ -1456,13 +1465,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   onClick={() =>
                                                     handlePowerAction(
                                                       order,
-                                                      "reboot"
+                                                      "reboot",
                                                     )
                                                   }
                                                   disabled={
                                                     !canAction(
                                                       order.liveState,
-                                                      "reboot"
+                                                      "reboot",
                                                     ) || powerLoading[order.id]
                                                   }
                                                   className="flex items-center justify-center gap-2 p-2 bg-purple-900/30 hover:bg-purple-900/50 disabled:opacity-50 text-purple-300 rounded text-sm transition-colors"
@@ -1838,7 +1847,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                           Showing {startIndex + 1} to{" "}
                           {Math.min(
                             startIndex + itemsPerPage,
-                            filteredOrders.length
+                            filteredOrders.length,
                           )}{" "}
                           of {filteredOrders.length} servers
                         </p>
