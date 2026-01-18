@@ -135,7 +135,7 @@ const Header = () => {
                     </a>
 
                     <a
-                      href="/live-chart"
+                      href="/dashboard"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-gray-700"
                       onClick={() => setIsDropdownOpen(false)}
                     >

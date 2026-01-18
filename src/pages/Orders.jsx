@@ -627,10 +627,27 @@ export default function UserOrdersPage() {
     const password = passwordInputs[order.id];
     const vmId = order.originalData?.vmId || order.id;
 
-    if (!password || password.length < 6 || !/^[a-zA-Z0-9]+$/.test(password)) {
-      toast.error(
-        "Password must be alphanumeric and at least 6 characters long",
-      );
+    // Define regex patterns for password validation
+    const windowsPasswordPattern =
+      /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const debianPasswordPattern = /^[a-zA-Z0-9]{6,}$/;
+
+    if (!password) {
+      toast.error("Password is required.");
+      return;
+    }
+
+    // Check if the VM is Windows or Debian and validate password accordingly
+    const isWindowsVm = order.originalData?.osType === "Windows"; // Assume `osType` is provided
+    const passwordValid = isWindowsVm
+      ? windowsPasswordPattern.test(password)
+      : debianPasswordPattern.test(password);
+
+    if (!passwordValid) {
+      const message = isWindowsVm
+        ? "Windows password must contain at least one uppercase letter, one number, and one special character (@, $, !, %, etc.)."
+        : "Debian password must be alphanumeric and at least 6 characters long.";
+      toast.error(message);
       return;
     }
 
@@ -658,27 +675,16 @@ export default function UserOrdersPage() {
 
       toast.success("Password saved successfully");
 
-      // ✅ 1. Update UI immediately (NO reload)
-      setVmPasswords((prev) => ({
-        ...prev,
-        [vmId]: password,
-      }));
+      // Update UI immediately (NO reload)
+      setVmPasswords((prev) => ({ ...prev, [vmId]: password }));
+      setPasswordVisible((prev) => ({ ...prev, [vmId]: true }));
 
-      // ✅ 2. Show password immediately
-      setPasswordVisible((prev) => ({
-        ...prev,
-        [vmId]: true,
-      }));
-
-      // ✅ 3. AUTO-HIDE after 10 seconds ⏱️
+      // Auto-hide after 10 seconds
       setTimeout(() => {
-        setPasswordVisible((prev) => ({
-          ...prev,
-          [vmId]: false,
-        }));
+        setPasswordVisible((prev) => ({ ...prev, [vmId]: false }));
       }, 10000);
 
-      // ✅ 4. Clear input
+      // Clear input
       setPasswordInputs((prev) => ({ ...prev, [order.id]: "" }));
     } catch (err) {
       toast.error(`❌ ${err.message}`);
