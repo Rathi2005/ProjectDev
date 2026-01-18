@@ -100,9 +100,6 @@ const Header = () => {
 
         {/* Right Section */}
         <div className="flex items-center space-x-4 relative">
-          <button className="p-2 hover:bg-[#1e293b] rounded-full transition">
-            <Settings className="w-5 h-5 text-gray-300 hover:text-[#4f46e5]" />
-          </button>
 
           {/* User Dropdown */}
           <div className="relative" ref={dropdownRef}>

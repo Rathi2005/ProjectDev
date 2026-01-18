@@ -18,7 +18,7 @@ import PricingDetailPage from "./pages/admin/PricingDetailPage";
 import Zones from "./pages/admin/Zones";
 import Orders from "./pages/Orders";
 import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
-import Profile from "./components/user/Profile";
+import Profile from "./components/Profile";
 import PerformancePage from "./pages/admin/PerformancePage";
 import VMPerformancePage from "./pages/admin/VMPerformancePage";
 import ServerRamPage from "./pages/admin/ServerRamPage";

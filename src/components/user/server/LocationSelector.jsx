@@ -17,25 +17,20 @@ const LocationSelector = ({ selected, onSelect }) => {
         if (!res.ok) throw new Error("Failed to fetch locations");
         const data = await res.json();
 
-        const formatted = Object.entries(data)
-          .map(([name, servers]) => {
-            // keep only ACTIVE servers
-            const activeServers = servers.filter(
-              (s) =>
-                s.status?.toUpperCase() === "ACTIVE" ||
-                s.isActive === 1 ||
-                s.active === true
-            );
-
-            return {
-              name,
-              servers: activeServers,
-            };
-          })
-          // 🔥 remove locations with NO active servers
-          .filter((loc) => loc.servers.length > 0);
-
-        setLocations(formatted);
+        const formatted = Object.entries(data).flatMap(
+          ([locationName, servers]) =>
+            servers
+              .filter(
+                (s) =>
+                  s.status?.toUpperCase() === "ACTIVE" ||
+                  s.isActive === 1 ||
+                  s.active === true,
+              )
+              .map((server) => ({
+                ...server,
+                locationName,
+              })),
+        );
 
         setLocations(formatted);
       } catch (err) {
@@ -67,65 +62,37 @@ const LocationSelector = ({ selected, onSelect }) => {
         scrollbar-track-[#151c2f]
       "
     >
-      {locations.map((loc, idx) => (
-        <div key={loc.name} className="flex justify-center">
+      {locations.map((server) => (
+        <div key={server.id} className="flex justify-center">
           <button
-            onClick={() => {
-              // ✅ Call onSelect with location name and first server ID
-              if (loc.servers.length > 0) {
-                onSelect(loc.name, loc.servers[0].id);
-              }
-            }}
+            onClick={() => onSelect(server.locationName, server.id)}
             className={`relative w-full max-w-[320px] min-h-[150px] p-5 rounded-xl border transition-all duration-200 text-left
-              ${
-                selected === loc.name
-                  ? "border-indigo-500 bg-[#1b2236]"
-                  : "border-[#2b3553] bg-[#141a2d] hover:border-indigo-400/70 hover:bg-[#1a2135]"
-              } shadow-sm hover:shadow-md`}
+        ${
+          selected === server.id
+            ? "border-indigo-500 bg-[#1b2236]"
+            : "border-[#2b3553] bg-[#141a2d] hover:border-indigo-400/70 hover:bg-[#1a2135]"
+        } shadow-sm hover:shadow-md`}
           >
-            {selected === loc.name && (
+            {selected === server.id && (
               <CheckCircle2 className="absolute top-3 right-3 w-5 h-5 text-indigo-400" />
             )}
 
             <div className="flex items-center gap-2 mb-2">
-              <div
-                className={`p-2 rounded-md ${
-                  selected === loc.name
-                    ? "bg-indigo-500/10 text-indigo-400"
-                    : "bg-gray-700/20 text-gray-400"
-                }`}
-              >
+              <div className="p-2 rounded-md bg-gray-700/20 text-gray-400">
                 <MapPin className="w-5 h-5" />
               </div>
-              <h3
-                className={`text-lg font-medium ${
-                  selected === loc.name ? "text-indigo-300" : "text-gray-200"
-                }`}
-              >
-                {loc.name}
+              <h3 className="text-lg font-medium text-gray-200">
+                {server.name}
               </h3>
             </div>
 
             <p className="text-xs text-gray-400 mb-2">
-              {loc.servers.length} server(s)
+              Location: {server.locationName}
             </p>
 
-            <ul className="text-sm text-gray-400 space-y-1">
-              {loc.servers.map((srv) => (
-                <li key={srv.id}>
-                  • {srv.name}{" "}
-                  <span
-                    className={`${
-                      srv.status === "ACTIVE"
-                        ? "text-green-400"
-                        : "text-red-400"
-                    } font-medium`}
-                  >
-                    ({srv.status})
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-sm font-medium">
+              Status: <span className="text-green-400">{server.status}</span>
+            </p>
           </button>
         </div>
       ))}
