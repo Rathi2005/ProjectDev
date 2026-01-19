@@ -3,6 +3,7 @@ import Header from "../components/user/Header";
 import PaymentFlow from "../components/payment/PaymentFlow";
 import Swal from "sweetalert2";
 import toast, { Toaster } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 import {
   Cpu,
@@ -43,6 +44,7 @@ export default function UserOrdersPage() {
   const [passwordLoading, setPasswordLoading] = useState({});
   const [protectionState, setProtectionState] = useState({});
   const [protectionLoading, setProtectionLoading] = useState({});
+  const navigate = useNavigate();
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -627,27 +629,18 @@ export default function UserOrdersPage() {
     const password = passwordInputs[order.id];
     const vmId = order.originalData?.vmId || order.id;
 
-    // Define regex patterns for password validation
-    const windowsPasswordPattern =
-      /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    const debianPasswordPattern = /^[a-zA-Z0-9]{6,}$/;
+    const strongPasswordPattern =
+      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)[A-Za-z\d]{8,}$/;
 
     if (!password) {
       toast.error("Password is required.");
       return;
     }
 
-    // Check if the VM is Windows or Debian and validate password accordingly
-    const isWindowsVm = order.originalData?.osType === "Windows"; // Assume `osType` is provided
-    const passwordValid = isWindowsVm
-      ? windowsPasswordPattern.test(password)
-      : debianPasswordPattern.test(password);
-
-    if (!passwordValid) {
-      const message = isWindowsVm
-        ? "Windows password must contain at least one uppercase letter, one number, and one special character (@, $, !, %, etc.)."
-        : "Debian password must be alphanumeric and at least 6 characters long.";
-      toast.error(message);
+    if (!strongPasswordPattern.test(password)) {
+      toast.error(
+        "Password must be at least 8 characters long and include one uppercase letter, one lowercase letter, and one number.",
+      );
       return;
     }
 
@@ -849,7 +842,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
                 {/* Action Buttons */}
                 <button
-                  onClick={() => (window.location.href = "/create-server")}
+                  onClick={() => navigate("/dashboard")}
                   className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium text-sm transition-all hover:scale-105 flex items-center justify-center gap-2"
                 >
                   <Server className="w-4 h-4" />
@@ -1273,8 +1266,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               actions and remote access.
                                               <br />
                                               <span className="text-yellow-400">
-                                                Alphanumeric • Minimum 6
-                                                characters
+                                                • Minimum 8 characters
                                               </span>
                                             </p>
 
@@ -1403,24 +1395,58 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                             {order.ipAddress &&
                                               order.liveState?.toUpperCase() ===
                                                 "RUNNING" && (
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <div className="grid grid-cols-3 gap-3">
+                                                  {/* SSH */}
                                                   <a
                                                     href={`ssh://root@${order.ipAddress}`}
-                                                    className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
+                                                    className="flex items-center justify-center gap-2 p-3 bg-[#0e1525]
+                   hover:bg-indigo-900/20 border border-indigo-900/50
+                   rounded-lg text-indigo-300 text-sm transition-colors"
                                                   >
                                                     <Terminal className="w-4 h-4" />
-                                                    SSH Connection
+                                                    SSH
                                                   </a>
+
+                                                  {/* Console */}
                                                   <button
                                                     onClick={() =>
                                                       toast.success(
                                                         "Console access would open here",
                                                       )
                                                     }
-                                                    className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
+                                                    className="flex items-center justify-center gap-2 p-3 bg-[#0e1525]
+                   hover:bg-indigo-900/20 border border-indigo-900/50
+                   rounded-lg text-indigo-300 text-sm transition-colors"
                                                   >
                                                     <Monitor className="w-4 h-4" />
-                                                    Console Access
+                                                    Console
+                                                  </button>
+
+                                                  {/* 🔥 Performance */}
+                                                  <button
+                                                    onClick={() =>
+                                                      navigate(
+                                                        `/user/vms/${order.id}/performance`,
+                                                        {
+                                                          state: {
+                                                            userId:
+                                                              order.originalData
+                                                                .userId,
+                                                            serverId:
+                                                              order.originalData
+                                                                .serverId,
+                                                            vmName:
+                                                              order.vmName,
+                                                          },
+                                                        },
+                                                      )
+                                                    }
+                                                    className="flex items-center justify-center gap-2 p-3 bg-indigo-600
+                   hover:bg-indigo-700 text-white rounded-lg text-sm
+                   font-semibold transition-colors"
+                                                  >
+                                                    <Activity className="w-4 h-4" />
+                                                    Performance
                                                   </button>
                                                 </div>
                                               )}
