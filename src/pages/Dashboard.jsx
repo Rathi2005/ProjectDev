@@ -288,7 +288,7 @@ export default function Dashboard() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#121a2a] border-t border-gray-800 h-12">
         <div className="flex items-center justify-around h-full">
           <a
-            href="#"
+            href="/orders"
             className="flex flex-col items-center p-2 text-gray-400 hover:text-[#4f46e5] transition"
           >
             <svg
