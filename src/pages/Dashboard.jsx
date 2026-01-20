@@ -304,7 +304,7 @@ export default function Dashboard() {
                   <span className="text-xs font-medium">
                     {isMobileSummaryOpen ? "Hide" : "Summary"}
                   </span>
-                </button>
+                </button> 
               )}
             </div>
           </div>
