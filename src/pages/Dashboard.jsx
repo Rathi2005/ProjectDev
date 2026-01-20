@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Sidebar from "../components/user/Sidebar";
 import Header from "../components/user/Header";
 import DashboardPage from "../components/user/dashboard/DashboardPage";
@@ -13,6 +13,7 @@ import { Menu, X, ListChecks, User, Settings } from "lucide-react";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [serverId, setServerId] = useState(null);
@@ -98,6 +99,37 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (location.state?.scrollTo !== "create-server") return;
+
+    let attempts = 0;
+    const maxAttempts = 40;
+
+    const interval = setInterval(() => {
+      const container = mainContentRef.current;
+      const el = document.getElementById("create-server");
+
+      if (container && el) {
+        const containerTop = container.getBoundingClientRect().top;
+        const elTop = el.getBoundingClientRect().top;
+
+        container.scrollTo({
+          top: container.scrollTop + (elTop - containerTop),
+          behavior: "smooth",
+        });
+
+        clearInterval(interval);
+      }
+
+      attempts++;
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [location.state]);
+
+  useEffect(() => {
     if (!serverId) return;
 
     // Reset dependent selections when server changes
@@ -143,7 +175,7 @@ export default function Dashboard() {
   useEffect(() => {
     cashfreeRef.current = Cashfree({ mode: "sandbox" });
   }, []);
-  
+
   const token = localStorage.getItem("token");
 
   const handlePayment = async (sessionId) => {
@@ -382,7 +414,7 @@ export default function Dashboard() {
             </div>
 
             {/* Server Creation Sections */}
-            <div id=" servers">
+            <div id="servers">
               {/* Create Server */}
               <div
                 id="create-server"

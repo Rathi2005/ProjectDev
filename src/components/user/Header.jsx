@@ -82,13 +82,13 @@ const Header = () => {
             <Globe className="w-4 h-4" />
             <span>Orders</span>
           </a>
-          <a
+          {/* <a
             href="#"
             className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
           >
             <Server className="w-4 h-4" />
             <span>Pricing</span>
-          </a>
+          </a> */}
           <a
             href="https://www.getwebup.in/aboutus.php"
             className="flex items-center space-x-1 hover:text-[#4f46e5] transition"

@@ -434,6 +434,18 @@ export default function UserOrdersPage() {
     }
   };
 
+  const isRebuildBlockedTime = () => {
+    const hourIST = Number(
+      new Intl.DateTimeFormat("en-IN", {
+        hour: "2-digit",
+        hour12: false,
+        timeZone: "Asia/Kolkata",
+      }).format(new Date()),
+    );
+
+    return hourIST >= 21 && hourIST < 24; // 9 PM – 10 PM IST
+  };
+
   const canViewPassword = (order) =>
     order.status === "ACTIVE" && order.liveState?.toUpperCase() === "RUNNING";
 
@@ -842,7 +854,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
                 {/* Action Buttons */}
                 <button
-                  onClick={() => navigate("/dashboard")}
+                  onClick={() =>
+                    navigate("/dashboard", {
+                      state: { scrollTo: "create-server" },
+                    })
+                  }
                   className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium text-sm transition-all hover:scale-105 flex items-center justify-center gap-2"
                 >
                   <Server className="w-4 h-4" />
@@ -1512,13 +1528,37 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   Reboot
                                                 </button>
                                                 <button
-                                                  onClick={() =>
-                                                    promptRebuildWithIso(order)
-                                                  }
+                                                  onClick={() => {
+                                                    if (
+                                                      isRebuildBlockedTime()
+                                                    ) {
+                                                      Swal.fire({
+                                                        icon: "warning",
+                                                        title:
+                                                          "Maintenance Window",
+                                                        text: "Rebuild is disabled between 9 PM and 10 PM (IST)",
+                                                        background: "#0e1525",
+                                                        color: "#e5e7eb",
+                                                      });
+                                                      return;
+                                                    }
+                                                    promptRebuildWithIso(order);
+                                                  }}
                                                   disabled={
-                                                    powerLoading[order.id]
+                                                    powerLoading[order.id] ||
+                                                    isRebuildBlockedTime()
                                                   }
-                                                  className="flex items-center justify-center gap-2 p-2 bg-orange-900/30 hover:bg-orange-900/50 disabled:opacity-50 text-orange-300 rounded text-sm transition-colors"
+                                                  title={
+                                                    isRebuildBlockedTime()
+                                                      ? "Rebuild disabled from 9 PM to 12 PM"
+                                                      : "Rebuild server"
+                                                  }
+                                                  className={`flex items-center justify-center gap-2 p-2 rounded text-sm transition
+    ${
+      isRebuildBlockedTime()
+        ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+        : "bg-orange-900/30 hover:bg-orange-900/50 text-orange-300"
+    }`}
                                                 >
                                                   <AlertCircle className="w-4 h-4" />
                                                   Rebuild
@@ -1966,8 +2006,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                       : `You don't have any servers with ${selectedStatus.toLowerCase()} status.`}
                   </p>
                   <button
-                    onClick={() => (window.location.href = "/create-server")}
-                    className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all hover:scale-105"
+                    onClick={() =>
+                      navigate("/dashboard", {
+                        state: { scrollTo: "create-server" },
+                      })
+                    }
+                    className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600
+             hover:from-indigo-700 hover:to-purple-700
+             text-white rounded-lg font-medium transition-all hover:scale-105"
                   >
                     Create Your First Server
                   </button>
