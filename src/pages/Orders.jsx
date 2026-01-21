@@ -138,7 +138,7 @@ export default function UserOrdersPage() {
       if (params.get("payment") === "success") {
         DarkSwal.fire({
           icon: "success",
-          title: "Payment Successful 🎉",
+          title: "Payment Successful",
           text: "Your plan has been updated successfully. It will be visible in a few moments.",
         });
 
@@ -443,7 +443,7 @@ export default function UserOrdersPage() {
       }).format(new Date()),
     );
 
-    return hourIST >= 21 && hourIST < 24; // 9 PM – 10 PM IST
+    return hourIST >= 21 && hourIST < 24; 
   };
 
   const canViewPassword = (order) =>
@@ -1438,7 +1438,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                     Console
                                                   </button>
 
-                                                  {/* 🔥 Performance */}
+                                                  {/* Performance */}
                                                   <button
                                                     onClick={() =>
                                                       navigate(

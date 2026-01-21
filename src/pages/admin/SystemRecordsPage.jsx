@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
+import CreateVmModal from "../../components/admin/CreateVmModel";
 import Swal from "sweetalert2";
 import {
   ArrowLeft,
@@ -66,7 +67,7 @@ export default function SystemRecordsPage() {
     zoneId: "",
     vmid: "",
     vmName: "",
-    planType: "", 
+    planType: "",
     cpuPriceId: "",
     ramPriceId: "",
     diskPriceId: "",
@@ -91,6 +92,7 @@ export default function SystemRecordsPage() {
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [storageOptions, setStorageOptions] = useState([]);
   const [loadingStorage, setLoadingStorage] = useState(false);
+  const [showCreateVm, setShowCreateVm] = useState(false);
 
   // Plan types for step 3
   const planTypes = [
@@ -171,6 +173,30 @@ export default function SystemRecordsPage() {
         setLoadingStorage(false);
       });
   }, [form.serverId, servers]);
+
+  const fetchServers = async () => {
+    const token = localStorage.getItem("adminToken");
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const res = await fetch(`${BASE_URL}/api/options/servers/by-location`, {
+      headers,
+    });
+    const data = await res.json();
+
+    const serversArray = [];
+    Object.values(data || {}).forEach((group) => {
+      if (Array.isArray(group)) {
+        serversArray.push(
+          ...group.map((s) => ({
+            ...s,
+            zoneId: s.zoneId || s.zone || null,
+          })),
+        );
+      }
+    });
+
+    setServers(serversArray);
+  };
 
   // Fetch pricing when plan type is selected (Step 4)
   useEffect(() => {
@@ -1155,6 +1181,19 @@ ${JSON.stringify(record, null, 2)}
                                   Add VM
                                 </button>
                               )}
+
+                              {pageType === "users-overview" && (
+                                <button
+                                  onClick={async () => {
+                                    setSelectedUser(record);
+                                    await fetchServers();
+                                    setShowCreateVm(true);
+                                  }}
+                                  className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-700 rounded"
+                                >
+                                  Create VM
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2011,6 +2050,15 @@ ${JSON.stringify(record, null, 2)}
               </div>
             </div>
           </div>
+        )}
+        {showCreateVm && selectedUser && (
+          <CreateVmModal
+            user={selectedUser}
+            servers={servers}
+            BASE_URL={BASE_URL}
+            onClose={() => setShowCreateVm(false)}
+            onSuccess={fetchRecords}
+          />
         )}
       </main>
 
