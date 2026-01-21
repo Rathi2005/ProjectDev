@@ -56,12 +56,6 @@ export default function AdminDashboard() {
     totalRevenue: 45280,
     monthlyGrowth: 12.5,
   });
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchCategory, setSearchCategory] = useState("all");
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
   const [ramStats, setRamStats] = useState([]);
   const token = localStorage.getItem("adminToken");
 
@@ -226,12 +220,6 @@ export default function AdminDashboard() {
     fetchAuditLogs();
   }, []);
 
-  // Mock data for search (you can replace with actual API calls)
-  const [allData, setAllData] = useState({
-    users: [],
-    servers: [],
-    orders: [],
-  });
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -240,86 +228,10 @@ export default function AdminDashboard() {
     }
   }, [navigate]);
 
-  // Handle search
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setSearchResults([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    const query = searchQuery.toLowerCase();
-    let results = [];
-
-    if (searchCategory === "all" || searchCategory === "users") {
-      results = [
-        ...results,
-        ...allData.users
-          .filter(
-            (user) =>
-              user.name.toLowerCase().includes(query) ||
-              user.email.toLowerCase().includes(query) ||
-              user.plan.toLowerCase().includes(query)
-          )
-          .map((user) => ({ ...user, type: "user" })),
-      ];
-    }
-
-    if (searchCategory === "all" || searchCategory === "servers") {
-      results = [
-        ...results,
-        ...allData.servers
-          .filter(
-            (server) =>
-              server.name.toLowerCase().includes(query) ||
-              server.ip.includes(query) ||
-              server.region.toLowerCase().includes(query) ||
-              server.type.toLowerCase().includes(query)
-          )
-          .map((server) => ({ ...server, type: "server" })),
-      ];
-    }
-
-    if (searchCategory === "all" || searchCategory === "orders") {
-      results = [
-        ...results,
-        ...allData.orders
-          .filter(
-            (order) =>
-              order.user.toLowerCase().includes(query) ||
-              order.type.toLowerCase().includes(query) ||
-              order.status.toLowerCase().includes(query) ||
-              order.id.toString().includes(query)
-          )
-          .map((order) => ({ ...order, type: "order" })),
-      ];
-    }
-
-    setSearchResults(results);
-    setShowSearchResults(results.length > 0);
-  }, [searchQuery, searchCategory, allData]);
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     navigate("/admin/login");
-  };
-
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
-    setIsSearchActive(true);
-  };
-
-  const handleSearchCategoryChange = (category) => {
-    setSearchCategory(category);
-    if (searchQuery) {
-      setShowSearchResults(true);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery("");
-    setShowSearchResults(false);
-    setIsSearchActive(false);
   };
 
   const getStatusColor = (status) => {
@@ -397,28 +309,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleResultClick = (result) => {
-    switch (result.type) {
-      case "user":
-        navigate(`/admin/users/${result.id}`);
-        break;
-      case "server":
-        navigate(`/admin/servers/${result.id}`);
-        break;
-      case "order":
-        navigate(`/admin/orders/${result.id}`);
-        break;
-    }
-    clearSearch();
-  };
-
-  const searchCategories = [
-    { id: "all", label: "All", icon: <Search className="w-4 h-4" /> },
-    { id: "users", label: "Users", icon: <User className="w-4 h-4" /> },
-    { id: "servers", label: "Servers", icon: <Server className="w-4 h-4" /> },
-    { id: "orders", label: "Orders", icon: <CreditCard className="w-4 h-4" /> },
-  ];
-
   // Calculate VM health percentage
   const vmHealthPercentage =
     stats.totalVMs > 0
@@ -479,208 +369,6 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-[#0e1420] via-[#121a2a] to-[#0e1420] text-white flex flex-col">
       {/* Header with Search */}
       <AdminHeader title="Admin Dashboard" onLogout={handleLogout} />
-
-      {/* Global Search Bar */}
-      <div className="px-4 md:px-6 lg:px-8 mt-4 relative z-40">
-        <div className="max-w-4xl mx-auto">
-          <div
-            className={`relative transition-all duration-300 ${
-              isSearchActive ? "scale-105" : ""
-            }`}
-          >
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearch}
-                onFocus={() => setIsSearchActive(true)}
-                onBlur={() => setTimeout(() => setIsSearchActive(false), 200)}
-                placeholder="Search across users, servers, orders..."
-                className="w-full pl-12 pr-12 py-3 bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-500"
-              />
-              {searchQuery && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-
-            {/* Search Category Filters */}
-            <div className="flex items-center gap-2 mt-3">
-              {searchCategories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => handleSearchCategoryChange(category.id)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                    searchCategory === category.id
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-800/50 text-gray-400 hover:bg-gray-700/50"
-                  }`}
-                >
-                  {category.icon}
-                  {category.label}
-                </button>
-              ))}
-              <div className="ml-auto text-xs text-gray-500">
-                {searchResults.length} results
-              </div>
-            </div>
-
-            {/* Search Results Dropdown */}
-            {showSearchResults && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-lg border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
-                <div className="max-h-96 overflow-y-auto">
-                  {searchResults.map((result, index) => (
-                    <div
-                      key={`${result.type}-${result.id}`}
-                      onClick={() => handleResultClick(result)}
-                      className={`p-4 hover:bg-gray-800/70 cursor-pointer transition-colors border-b border-gray-800/50 last:border-b-0 ${
-                        index === 0 ? "border-t-0" : ""
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`p-2 rounded-lg ${
-                            result.type === "user"
-                              ? "bg-blue-500/20"
-                              : result.type === "server"
-                              ? "bg-green-500/20"
-                              : "bg-purple-500/20"
-                          }`}
-                        >
-                          {getStatusIcon(result.type, result.status)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="font-semibold truncate">
-                              {result.type === "user" && result.name}
-                              {result.type === "server" && result.name}
-                              {result.type === "order" && `Order #${result.id}`}
-                            </h4>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                result.status
-                              )}`}
-                            >
-                              {result.status}
-                            </span>
-                          </div>
-
-                          <div className="text-sm text-gray-400 mb-2">
-                            {result.type === "user" && (
-                              <div className="flex items-center gap-2">
-                                <Mail className="w-3 h-3" />
-                                <span>{result.email}</span>
-                                <span className="mx-1">•</span>
-                                <span>{result.plan}</span>
-                              </div>
-                            )}
-
-                            {result.type === "server" && (
-                              <div className="flex items-center flex-wrap gap-3">
-                                <div className="flex items-center gap-1">
-                                  <Globe className="w-3 h-3" />
-                                  <span>{result.region}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Cpu className="w-3 h-3" />
-                                  <span>{result.cpu} vCPU</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <MemoryStick className="w-3 h-3" />
-                                  <span>{result.ram}GB RAM</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Wifi className="w-3 h-3" />
-                                  <span>{result.ip}</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {result.type === "order" && (
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1">
-                                  <User className="w-3 h-3" />
-                                  <span>{result.user}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>{result.date}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <CreditCard className="w-3 h-3" />
-                                  <span>₹{result.amount}</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="text-xs text-gray-500 flex items-center justify-between">
-                            <span className="capitalize">{result.type}</span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              Click to view details
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-3 bg-gray-800/50 border-t border-gray-700">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">
-                      Press{" "}
-                      <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">
-                        Enter
-                      </kbd>{" "}
-                      to view all results
-                    </span>
-                    <button
-                      onClick={() => {
-                        navigate(
-                          `/admin/search?q=${encodeURIComponent(
-                            searchQuery
-                          )}&category=${searchCategory}`
-                        );
-                        clearSearch();
-                      }}
-                      className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
-                    >
-                      View all results
-                      <Search className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* No Results */}
-            {showSearchResults && searchResults.length === 0 && searchQuery && (
-              <div className="absolute top-full left-0 right-0 mt-2 p-6 bg-gray-900/95 backdrop-blur-lg border border-gray-700 rounded-xl shadow-2xl z-50 text-center">
-                <Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <h4 className="font-semibold text-lg mb-1">No results found</h4>
-                <p className="text-gray-400 text-sm">
-                  No matches for "
-                  <span className="text-white">{searchQuery}</span>" in{" "}
-                  {searchCategory}
-                </p>
-                <button
-                  onClick={clearSearch}
-                  className="mt-4 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors"
-                >
-                  Clear search
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-6 lg:p-8 mt-4">
