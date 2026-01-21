@@ -217,8 +217,6 @@ export default function ActivityList({ vmId = null, maxItems = 6 }) {
 
   useEffect(() => {
     fetchLogs();
-    const intervalId = setInterval(fetchLogs, 30000);
-    return () => clearInterval(intervalId);
   }, [vmId, maxItems]);
 
   return (
