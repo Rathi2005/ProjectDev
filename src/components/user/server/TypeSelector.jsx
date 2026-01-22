@@ -6,7 +6,8 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
 
   const types = [
     {
-      name: "Shared vCPU",
+      label: "Shared CPU",
+      value: "Shared CPU",
       description:
         "Best price/performance ratio. Applications must be able to handle varying levels of CPU assignment. Not suitable for sustained high CPU usage.",
       tags: [
@@ -20,7 +21,8 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
       ),
     },
     {
-      name: "Dedicated vCPU",
+      label: "Virtual Dedicated",
+      value: "Dedicated CPU",
       description:
         "Best choice for critical production as well as high CPU usage applications. Delivers predictable performance and response times.",
       tags: ["High traffic applications", "Sustained high CPU usage"],
@@ -122,8 +124,8 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
 
         {/* Description */}
         <p className="text-gray-400 text-sm mb-6 max-w-3xl leading-relaxed">
-          Select the CPU type for your server. Choose shared vCPUs for lighter
-          workloads or dedicated vCPUs for consistent, high-performance
+          Select the CPU type for your server. Choose shared CPUs for lighter
+          workloads or dedicated CPUs for consistent, high-performance
           requirements.
         </p>
 
@@ -160,29 +162,29 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {types.map((type) => (
             <div
-              key={type.name}
+              key={type.value}
               className={`p-6 rounded-xl border transition-all duration-200 ${
                 !selectedOS
                   ? "cursor-not-allowed opacity-50 border-gray-800 bg-[#0d1421]"
-                  : selectedType === type.name
+                  : selectedType === type.value
                   ? "cursor-pointer border-indigo-500 bg-[#1a2238] shadow-lg"
                   : "cursor-pointer border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
               }`}
-              onClick={() => handleTypeSelect(type.name)}
+              onClick={() => handleTypeSelect(type.value)}
             >
               {/* Card Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    selectedType === type.name 
+                    selectedType === type.value
                       ? "bg-indigo-900/30" 
                       : "bg-gray-800"
                   }`}>
                     {type.icon}
                   </div>
-                  <h2 className="text-lg font-semibold">{type.name}</h2>
+                  <h2 className="text-lg font-semibold">{type.label}</h2>
                 </div>
-                {selectedType === type.name && (
+                {selectedType === type.value && (
                   <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
@@ -210,7 +212,7 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
                   <span
                     key={tag}
                     className={`text-xs px-3 py-1 rounded-md ${
-                      selectedType === type.name
+                      selectedType === type.value
                         ? "bg-indigo-900/50 text-indigo-200"
                         : "bg-gray-800 text-gray-300"
                     }`}

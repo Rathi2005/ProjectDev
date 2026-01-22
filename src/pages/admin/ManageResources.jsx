@@ -20,7 +20,6 @@ export default function ManageResourcesPage({
   const ipSingleFields = [
     { name: "ip", label: "IP Address", type: "text" },
     { name: "cidr", label: "CIDR (e.g. /23)", type: "text" },
-    { name: "subnetMask", label: "Subnet Mask", type: "text" },
     { name: "gateway", label: "Gateway", type: "text" },
     { name: "mac", label: "MAC Address", type: "text" },
     { name: "inUse", label: "In Use", type: "checkbox" },
@@ -74,7 +73,7 @@ export default function ManageResourcesPage({
   const getEmptyRow = useCallback(() => {
     const fieldsToUse = resolvedFields;
     return Object.fromEntries(
-      fieldsToUse.map((f) => [f.name, f.type === "checkbox" ? false : ""])
+      fieldsToUse.map((f) => [f.name, f.type === "checkbox" ? false : ""]),
     );
   }, [resolvedFields]);
 
@@ -216,7 +215,7 @@ export default function ManageResourcesPage({
           for (const row of rows) {
             if (!row.ip || !row.cidr || !row.gateway) {
               toast.error(
-                `Please fill all required fields for IP: ${row.ip || "row"}`
+                `Please fill all required fields for IP: ${row.ip || "row"}`,
               );
               continue;
             }
@@ -232,12 +231,12 @@ export default function ManageResourcesPage({
             }
 
             const cidr = row.cidr.startsWith("/") ? row.cidr : `/${row.cidr}`;
-            const subnetMask = row.subnetMask || cidrToSubnet(cidr);
+            const subnetMask = cidrToSubnet(cidr);
 
             const payload = {
               ip: row.ip.trim(),
               cidr: cidr,
-              subnetMask: subnetMask.trim(),
+              subnetMask,
               gateway: row.gateway.trim(),
               mac: row.mac?.trim() || null,
               inUse: Boolean(row.inUse),
@@ -331,7 +330,7 @@ export default function ManageResourcesPage({
                       Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify(payload),
-                  })
+                  }),
                 );
               }
 
@@ -358,7 +357,7 @@ export default function ManageResourcesPage({
                 Authorization: `Bearer ${token}`,
               },
               body: JSON.stringify(payload),
-            }
+            },
           );
 
           if (!res.ok) {
@@ -722,7 +721,7 @@ export default function ManageResourcesPage({
   const totalPages = Math.ceil(existing.length / itemsPerPage);
   const displayed = existing.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   // Get fields for display

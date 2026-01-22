@@ -22,8 +22,8 @@ export default function Sidebar() {
   const links = [
     { name: "Dashboard", icon: <Home size={18} />, id: "dashboard" },
     { name: "Servers", icon: <Server size={18} />, id: "servers" },
-    { name: "Security", icon: <Shield size={18} />, id: "security" },
-    { name: "Settings", icon: <Settings size={18} />, id: "settings" },
+    // { name: "Security", icon: <Shield size={18} />, id: "security" },
+    // { name: "Settings", icon: <Settings size={18} />, id: "settings" },
   ];
 
   const serversSubItems = [

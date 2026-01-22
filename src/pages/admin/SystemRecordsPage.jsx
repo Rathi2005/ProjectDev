@@ -6,6 +6,7 @@ import Footer from "../../components/user/Footer";
 import CreateVmModal from "../../components/admin/UsersDetails/CreateVmModel";
 import { showUserDetailsModal } from "../../components/admin/UsersDetails/UserDetailsModel";
 import ManualVmImportModal from "../../components/admin/UsersDetails/ManualVmImportModal";
+import Pagination from "../../components/Pagination";
 import Swal from "sweetalert2";
 import {
   ArrowLeft,
@@ -95,6 +96,11 @@ export default function SystemRecordsPage() {
   const [loadingStorage, setLoadingStorage] = useState(false);
   const [showCreateVm, setShowCreateVm] = useState(false);
 
+  const [page, setPage] = useState(0); // 0-based
+  const [size, setSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+
   // Plan types for step 3
   const planTypes = [
     { id: "DEDICATED", name: "Dedicated Resources" },
@@ -111,7 +117,13 @@ export default function SystemRecordsPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [pageType]);
+  }, [pageType, page, size, searchTerm]);
+
+  useEffect(() => {
+    if (pageType === "users-overview") {
+      setPage(0);
+    }
+  }, [searchTerm, pageType]);
 
   // Fetch ISOs when server is selected (Step 2)
   useEffect(() => {
@@ -312,14 +324,25 @@ export default function SystemRecordsPage() {
 
       let endpoint = "";
       switch (pageType) {
-        case "deleted-vms":
-          endpoint = `${BASE_URL}/api/admin/records/deleted-vms`;
+        case "deleted-vms": {
+          const searchParam = searchTerm
+            ? `&search=${encodeURIComponent(searchTerm)}`
+            : "";
+
+          endpoint = `${BASE_URL}/api/admin/records/deleted-vms?page=${page}&size=${size}${searchParam}&sortBy=deletionTimestamp&sortDir=desc`;
           break;
+        }
+
         case "garbage-records":
           endpoint = `${BASE_URL}/api/admin/garbage/records`;
           break;
         case "users-overview":
-          endpoint = `${BASE_URL}/api/admin/users/overview`;
+          const searchParam = searchTerm
+            ? `search=${encodeURIComponent(searchTerm)}&`
+            : "";
+          endpoint = `${BASE_URL}/api/admin/users/overview?search=${encodeURIComponent(
+            searchTerm,
+          )}&page=${page}&size=${size}&sortBy=id&sortDir=desc`;
           break;
         default:
           return;
@@ -338,52 +361,55 @@ export default function SystemRecordsPage() {
         let processedData = [];
 
         if (pageType === "users-overview") {
-          // Format 1: Direct array of user objects
-          if (Array.isArray(data)) {
-            processedData = data.map((user) => ({
-              id: user.userId || user.id,
-              firstName: user.firstName || "",
-              lastName: user.lastName || "",
-              email: user.email || "",
-              billingAddress: user.billingAddress || {},
-              vms: user.vms || [],
-              totalVMs: user.vms?.length || 0,
-              activeVMs:
-                user.vms?.filter(
-                  (vm) => vm.status === "ACTIVE" || vm.liveState === "running",
-                ).length || 0,
-              totalSpent: calculateUserSpent(user.vms || []),
-            }));
-          }
+          const users = data.users || [];
+
+          processedData = users.map((user) => ({
+            id: user.userId || user.id,
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+            email: user.email || "",
+            billingAddress: user.billingAddress || {},
+            vms: user.vms || [],
+            totalVMs: user.vms?.length || 0,
+            activeVMs:
+              user.vms?.filter(
+                (vm) => vm.status === "ACTIVE" || vm.liveState === "running",
+              ).length || 0,
+            totalSpent: calculateUserSpent(user.vms || []),
+          }));
+
+          setTotalItems(data.totalItems || 0);
+          setTotalPages(data.totalPages || 0);
         } else if (pageType === "deleted-vms") {
-          // Format for deleted VMs
-          if (Array.isArray(data)) {
-            processedData = data.map((vm) => ({
-              id: vm.id,
-              deletionStatus: vm.deletionStatus || "deleted",
-              originalVmId: vm.originalVmId,
-              orderId: vm.orderId,
-              vmid: vm.vmid,
-              name: vm.name,
-              ipAddress: vm.ipAddress || "N/A",
-              cores: vm.cores,
-              ramMb: vm.ramMb,
-              diskGb: vm.diskGb,
-              serverName: vm.serverName || "N/A",
-              serverNode: vm.serverNode,
-              location: vm.location,
-              isoName: vm.isoName,
-              planType: vm.planType,
-              priceTotal: vm.priceTotal,
-              provisionedMonths: vm.provisionedMonths || 1,
-              userId: vm.userId,
-              userEmail: vm.userEmail || "N/A",
-              userFullName: vm.userFullName || "N/A",
-              billingCompanyName: vm.billingCompanyName || "N/A",
-              originalCreatedAt: vm.originalCreatedAt,
-              deletionTimestamp: vm.deletionTimestamp,
-            }));
-          }
+          const records = data.content || [];
+
+          processedData = records.map((vm) => ({
+            id: vm.id,
+            deletionStatus: vm.deletionStatus || "deleted",
+            originalVmId: vm.originalVmId,
+            orderId: vm.orderId,
+            vmid: vm.vmid,
+            name: vm.name,
+            ipAddress: vm.ipAddress || "N/A",
+            cores: vm.cores,
+            ramMb: vm.ramMb,
+            diskGb: vm.diskGb,
+            serverName: vm.serverName || "N/A",
+            location: vm.location,
+            isoName: vm.isoName,
+            planType: vm.planType,
+            priceTotal: vm.priceTotal,
+            provisionedMonths: vm.provisionedMonths || 1,
+            userId: vm.userId,
+            userEmail: vm.userEmail || "N/A",
+            userFullName: vm.userFullName || "N/A",
+            billingCompanyName: vm.billingCompanyName || "N/A",
+            originalCreatedAt: vm.originalCreatedAt,
+            deletionTimestamp: vm.deletionTimestamp,
+          }));
+
+          setTotalItems(data.totalItems || 0);
+          setTotalPages(data.totalPages || 0);
         } else if (pageType === "garbage-records") {
           // Format for garbage records
           if (Array.isArray(data)) {
@@ -436,7 +462,7 @@ export default function SystemRecordsPage() {
   const calculateStats = (data) => {
     if (pageType === "users-overview") {
       setStats({
-        total: data.length,
+        total: totalItems,
         active: data.filter((user) => user.activeVMs > 0).length,
         pending: 0,
         revenue: data.reduce((sum, user) => sum + user.totalSpent, 0),
@@ -522,30 +548,8 @@ export default function SystemRecordsPage() {
 
   const config = getPageConfig();
 
-  const filteredRecords = records.filter((record) => {
-    if (!searchTerm) return true;
+  const filteredRecords = records;
 
-    const searchLower = searchTerm.toLowerCase();
-
-    // Search across all string properties
-    return Object.values(record).some((value) => {
-      if (typeof value === "string") {
-        return value.toLowerCase().includes(searchLower);
-      }
-      if (typeof value === "number") {
-        return value.toString().includes(searchLower);
-      }
-      if (Array.isArray(value)) {
-        return value.some((item) =>
-          JSON.stringify(item).toLowerCase().includes(searchLower),
-        );
-      }
-      if (typeof value === "object" && value !== null) {
-        return JSON.stringify(value).toLowerCase().includes(searchLower);
-      }
-      return false;
-    });
-  });
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -1040,7 +1044,9 @@ export default function SystemRecordsPage() {
                 <div>
                   <p className="text-gray-400 text-sm">Filtered</p>
                   <p className="text-2xl font-bold text-white">
-                    {filteredRecords.length}
+                    {pageType === "users-overview"
+                      ? totalItems
+                      : filteredRecords.length}
                   </p>
                 </div>
                 <Filter className="w-8 h-8 text-yellow-400" />
@@ -1183,25 +1189,6 @@ export default function SystemRecordsPage() {
                     </tbody>
                   </table>
                 </div>
-
-                {/* Pagination */}
-                <div className="p-4 border-t border-indigo-900/30">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-400">
-                      Showing {filteredRecords.length} of {records.length}{" "}
-                      records
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="px-3 py-1 text-sm border border-indigo-900/50 rounded disabled:opacity-50">
-                        Previous
-                      </button>
-                      <span className="text-sm">Page 1 of 1</span>
-                      <button className="px-3 py-1 text-sm border border-indigo-900/50 rounded disabled:opacity-50">
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </>
             )}
           </div>
@@ -1239,6 +1226,17 @@ export default function SystemRecordsPage() {
             </div>
           )}
         </div>
+
+        {(pageType === "users-overview"|| pageType === "deleted-vms") && (
+          <Pagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            showingFrom={totalItems === 0 ? 0 : page * size + 1}
+            showingTo={Math.min((page + 1) * size, totalItems)}
+            totalItems={totalItems}
+          />
+        )}
 
         {pageType === "users-overview" && showVmModal && (
           <ManualVmImportModal

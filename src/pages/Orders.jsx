@@ -443,7 +443,7 @@ export default function UserOrdersPage() {
       }).format(new Date()),
     );
 
-    return hourIST >= 21 && hourIST < 24; 
+    return hourIST >= 9 && hourIST < 11; 
   };
 
   const canViewPassword = (order) =>
@@ -1536,7 +1536,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                         icon: "warning",
                                                         title:
                                                           "Maintenance Window",
-                                                        text: "Rebuild is disabled between 9 PM and 10 PM (IST)",
+                                                        text: "Rebuild is disabled between 9 AM and 11 AM (IST)",
                                                         background: "#0e1525",
                                                         color: "#e5e7eb",
                                                       });
@@ -1550,7 +1550,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   }
                                                   title={
                                                     isRebuildBlockedTime()
-                                                      ? "Rebuild disabled from 9 PM to 12 PM"
+                                                      ? "Rebuild disabled from 9 AM to 11 AM"
                                                       : "Rebuild server"
                                                   }
                                                   className={`flex items-center justify-center gap-2 p-2 rounded text-sm transition

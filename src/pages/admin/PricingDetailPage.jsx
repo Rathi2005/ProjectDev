@@ -33,9 +33,12 @@ export default function PricingPage() {
       const token = localStorage.getItem("adminToken");
 
       try {
-        const res = await fetch(`${BASE_URL}/api/admin/pricing/${type}/${section}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          `${BASE_URL}/api/admin/pricing/${type}/${section}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
 
         if (res.ok) return (await res.json()) || [];
 
@@ -80,19 +83,24 @@ export default function PricingPage() {
 
       const converted = { ...newEntries[section] };
       Object.keys(converted).forEach((key) => {
-        if (["price", "cores", "ramMb", "diskGb", "bandwidthGb"].includes(key)) {
+        if (
+          ["price", "cores", "ramMb", "diskGb", "bandwidthGb"].includes(key)
+        ) {
           converted[key] = Number(converted[key]) || 0;
         }
       });
 
-      const res = await fetch(`${BASE_URL}/api/admin/pricing/${type}/${section}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${BASE_URL}/api/admin/pricing/${type}/${section}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(converted),
         },
-        body: JSON.stringify(converted),
-      });
+      );
 
       const result = await res.json().catch(() => ({}));
 
@@ -111,7 +119,7 @@ export default function PricingPage() {
       setNewEntries((prev) => ({
         ...prev,
         [section]: Object.fromEntries(
-          Object.keys(prev[section]).map((k) => [k, ""])
+          Object.keys(prev[section]).map((k) => [k, ""]),
         ),
       }));
     } catch (err) {
@@ -146,7 +154,13 @@ export default function PricingPage() {
 
       if (!newVal && newVal !== "") return;
 
-      updated[field] = ["price", "cores", "ramMb", "diskGb", "bandwidthGb"].includes(field)
+      updated[field] = [
+        "price",
+        "cores",
+        "ramMb",
+        "diskGb",
+        "bandwidthGb",
+      ].includes(field)
         ? Number(newVal) || 0
         : newVal;
     }
@@ -163,7 +177,7 @@ export default function PricingPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(updated),
-        }
+        },
       );
 
       if (!res.ok) return toast.error("Failed to update");
@@ -204,7 +218,7 @@ export default function PricingPage() {
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       if (!res.ok) return toast.error("Delete failed");
@@ -359,7 +373,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#0e1420] text-white flex flex-col">
       <AdminHeader />
 
-      <main className="flex-1 p-6 max-w-6xl mx-auto w-full space-y-10">
+      <main className="flex-1 p-6 w-full space-y-10">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white mb-2">
             {type.charAt(0).toUpperCase() + type.slice(1)} Pricing Management
