@@ -4,7 +4,7 @@ import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
 import Pagination from "../../components/Pagination";
 import toast from "react-hot-toast";
-import { FileText, CheckCircle, Clock, XCircle, Download } from "lucide-react";
+import { FileText, CheckCircle, Clock, XCircle, Download, Search } from "lucide-react";
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
@@ -13,44 +13,49 @@ export default function InvoicesPage() {
   const BASE_URL = import.meta.env.VITE_BASE_URL;
   const token = localStorage.getItem("adminToken");
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [page, setPage] = useState(0); // 0-based
+  const [size, setSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+  const [paymentStats, setPaymentStats] = useState({
+    totalPayments: 0,
+    paidPayments: 0,
+    pendingPayments: 0,
+    failedPayments: 0,
+  });
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-
-  const currentInvoices = invoices.slice(startIndex, endIndex);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [invoices]);
+    async function fetchPaymentStats() {
+      try {
+        if (!token) return;
 
-  const fetchPaymentsOverview = async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/payments/overview`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+        const res = await fetch(`${BASE_URL}/api/admin/stats/payments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-    if (!res.ok) {
-      throw new Error("Failed to fetch payments overview");
+        if (!res.ok) throw new Error("Failed to fetch payment stats");
+
+        const data = await res.json();
+
+        setPaymentStats({
+          totalPayments: data.totalPayments || 0,
+          paidPayments: data.paidPayments || 0,
+          pendingPayments: data.pendingPayments || 0,
+          failedPayments: data.failedPayments || 0,
+        });
+      } catch (err) {
+        toast.error("Failed to load payment insights");
+      } finally {
+        setLoadingStats(false);
+      }
     }
 
-    return res.json();
-  };
-
-  const fetchMasterLedger = async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/payments/master-ledger`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch master ledger");
-    }
-
-    return res.json();
-  };
+    fetchPaymentStats();
+  }, []);
 
   const fetchInvoices = useCallback(async () => {
     if (!token) {
@@ -63,65 +68,79 @@ export default function InvoicesPage() {
       setLoading(true);
       setError(null);
 
-      // 🔹 Fetch APIs separately
-      const overviewData = await fetchPaymentsOverview();
-      const ledgerData = await fetchMasterLedger();
+      const searchParam = searchTerm
+        ? `&search=${encodeURIComponent(searchTerm)}`
+        : "";
 
-      // 🔹 Build lookup map
-      const ledgerMap = new Map(
-        ledgerData.map((item) => [item.transactionId, item])
+      const res = await fetch(
+        `${BASE_URL}/api/admin/payments/overview?page=${page}&size=${size}${searchParam}&sortBy=timestamp&sortDir=desc`,
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
-      const normalized = overviewData.map((payment) => {
-        const ledgerMatch = ledgerMap.get(payment.transactionId);
+      if (!res.ok) throw new Error("Failed to fetch invoices");
 
-        const issueDate = new Date(payment.paymentTime);
-        const formattedDate = issueDate.toLocaleDateString("en-IN", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        });
+      const data = await res.json();
+
+      setTotalItems(data.totalItems || 0);
+      setTotalPages(data.totalPages || 0);
+
+      const normalized = (data.payments || []).map((p) => {
+        const issueDate = new Date(p.timestamp);
 
         return {
-          paymentId: payment.paymentId,
-          invoiceId: `INV-${payment.paymentId.toString().padStart(6, "0")}`,
-          customerName: payment.customerName || "N/A",
-          server: payment.vmName || "N/A",
+          recordId: p.recordId, // 🔑 used for invoice download
+          invoiceId: `INV-${p.recordId.toString().padStart(6, "0")}`,
 
-          issueDateRaw: payment.paymentTime,
-          issueDate: formattedDate,
+          customerName: p.customerName || "N/A",
+          customerEmail: p.customerEmail || "N/A",
+
+          server: p.vmName || "N/A",
+          ipAddress: p.ipAddress || "N/A",
+          specs: p.specs || "N/A",
+
+          issueDateRaw: p.timestamp,
+          issueDate: issueDate.toLocaleDateString("en-IN", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
+
           dueDate: calculateDueDate(issueDate),
 
           amount: new Intl.NumberFormat("en-IN", {
             style: "currency",
             currency: "INR",
-            minimumFractionDigits: 2,
-          }).format(payment.amount),
+          }).format(p.amount),
 
-          rawAmount: payment.amount,
-          paymentMethod: payment.gatewayId || "N/A",
-          status: payment.paymentStatus?.toUpperCase() || "UNKNOWN",
-          transactionId: payment.transactionId,
-          ledgerData: ledgerMatch,
+          rawAmount: p.amount,
+          paymentMethod: p.gatewayId || "N/A",
+          status: p.status?.toUpperCase() || "UNKNOWN",
+          transactionId: p.orderTransactionId,
+          recordType: p.recordType,
         };
       });
-
-      normalized.sort(
-        (a, b) => new Date(b.issueDateRaw) - new Date(a.issueDateRaw)
-      );
 
       setInvoices(normalized);
     } catch (err) {
       toast.error("Failed to fetch invoices");
-      setError(err.message || "Unable to load invoices. Please try again.");
+      setError(err.message || "Unable to load invoices");
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, page, size, searchTerm]);
 
   useEffect(() => {
     fetchInvoices();
-  }, [fetchInvoices]);
+  }, [fetchInvoices, page, size, searchTerm]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm]);
+
+  const isPaidStatus = (status) => {
+    if (!status) return false;
+    return status.toUpperCase().startsWith("PAID");
+  };
 
   const calculateDueDate = (issueDate) => {
     const dueDate = new Date(issueDate);
@@ -163,7 +182,7 @@ export default function InvoicesPage() {
                           : `<span class="text-gray-200 ml-2">${item}</span>`
                       }
                     </div>
-                  `
+                  `,
                 )
                 .join("")}
             </div>
@@ -203,41 +222,26 @@ export default function InvoicesPage() {
     });
   };
 
-  const generateInvoice = async (paymentId) => {
-    if (!paymentId || !token) {
-      alert("Missing payment ID or authentication");
-      return;
-    }
+  const generateInvoice = async (recordId) => {
+    if (!recordId || !token) return;
 
     try {
       const response = await fetch(
-        `${BASE_URL}/api/payments/${paymentId}/invoice`,
+        `${BASE_URL}/api/admin/payments/${recordId}/invoice`,
         {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch invoice");
-      }
+      if (!response.ok) throw new Error("Failed to fetch invoice");
 
       const blob = await response.blob();
-
       const url = window.URL.createObjectURL(blob);
-
-      // Open in new tab
       window.open(url, "_blank");
 
-      // Optional cleanup
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 10000);
-    } catch (err) {
-      toast.error("Invoice download failed:", err);
-      alert("Could not generate invoice. Please try again.");
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch {
+      toast.error("Invoice download failed");
     }
   };
 
@@ -268,36 +272,31 @@ export default function InvoicesPage() {
     }
   };
 
-  // Calculate stats
-  const stats = {
-    total: invoices.length,
-    paid: invoices.filter((i) => i.status === "PAID").length,
-    pending: invoices.filter((i) => i.status === "PENDING").length,
-    failed: invoices.filter((i) => i.status === "FAILED").length,
-    totalAmount: invoices.reduce((sum, inv) => sum + (inv.rawAmount || 0), 0),
-  };
-
   const insights = [
     {
-      title: "Total Invoices",
-      value: stats.total,
+      title: "Total Payments",
+      value: paymentStats.totalPayments,
       icon: <FileText className="w-6 h-6 text-indigo-400" />,
     },
     {
-      title: "Paid Invoices",
-      value: stats.paid,
+      title: "Paid Payments",
+      value: paymentStats.paidPayments,
       icon: <CheckCircle className="w-6 h-6 text-green-400" />,
       percentage:
-        stats.total > 0 ? Math.round((stats.paid / stats.total) * 100) : 0,
+        paymentStats.totalPayments > 0
+          ? Math.round(
+              (paymentStats.paidPayments / paymentStats.totalPayments) * 100,
+            )
+          : 0,
     },
     {
-      title: "Pending Invoices",
-      value: stats.pending,
+      title: "Pending Payments",
+      value: paymentStats.pendingPayments,
       icon: <Clock className="w-6 h-6 text-yellow-400" />,
     },
     {
-      title: "Failed Invoices",
-      value: stats.failed,
+      title: "Failed Payments",
+      value: paymentStats.failedPayments,
       icon: <XCircle className="w-6 h-6 text-red-400" />,
     },
   ];
@@ -322,7 +321,7 @@ export default function InvoicesPage() {
               disabled={loading}
               className="px-4 py-2 text-sm rounded-lg bg-indigo-900/30 hover:bg-indigo-800/30 border border-indigo-700/50 text-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Refreshing..." : "Refresh"}
+              {loading || loadingStats ? "Refreshing..." : "Refresh"}
             </button>
           </div>
         </div>
@@ -363,16 +362,33 @@ export default function InvoicesPage() {
           ))}
         </div>
 
+        <div className="bg-[#151c2f] border border-indigo-900/30 rounded-xl p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name, email, order ID, gateway, IP..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-[#0e1525]
+                   border border-indigo-900/50 rounded-lg
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto rounded-2xl border border-indigo-900/30 shadow-lg bg-[#151c2f]/50">
           <table className="min-w-full text-left border-collapse">
             <thead className="bg-[#151c2f] text-gray-300 uppercase text-sm">
               <tr>
                 <th className="py-3 px-6 font-medium">Invoice ID</th>
                 <th className="py-3 px-6 font-medium">Customer</th>
-                <th className="py-3 px-6 font-medium">Server</th>
+                <th className="py-3 px-6 font-medium">VM</th>
                 <th className="py-3 px-6 font-medium">Issue Date</th>
                 <th className="py-3 px-6 font-medium">Amount</th>
-                <th className="py-3 px-6 font-medium">Order Id</th>
+                <th className="py-3 px-6 font-medium">Order ID</th>
                 <th className="py-3 px-6 font-medium">Status</th>
                 <th className="py-3 px-6 font-medium">Actions</th>
               </tr>
@@ -407,7 +423,7 @@ export default function InvoicesPage() {
                   </td>
                 </tr>
               ) : (
-                currentInvoices.map((invoice) => (
+                invoices.map((invoice) => (
                   <tr
                     key={invoice.invoiceId}
                     className="border-t border-indigo-900/30 hover:bg-indigo-900/10 transition-colors"
@@ -455,7 +471,7 @@ export default function InvoicesPage() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${getStatusColor(
-                            invoice.status
+                            invoice.status,
                           )}`}
                         >
                           {getStatusIcon(invoice.status)}
@@ -464,36 +480,24 @@ export default function InvoicesPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <div className="flex flex-col gap-2 min-w-[180px]">
-                        {/* Top row */}
-                        <div className="flex gap-2">
-                          {invoice.paymentId && (
-                            <button
-                              onClick={() => generateInvoice(invoice.paymentId)}
-                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-xs transition-all"
-                            >
-                              <Download className="w-4 h-4" />
-                              Invoice
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Bottom row */}
-                        {invoice.ledgerData && (
-                          <button
-                            onClick={() =>
-                              showKeyValueModal(
-                                "Order Details",
-                                invoice.ledgerData
-                              )
-                            }
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-300 text-xs"
-                          >
-                            <FileText className="w-4 h-4" />
-                            Order Details
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => generateInvoice(invoice.recordId)}
+                        disabled={!isPaidStatus(invoice.status)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition
+      ${
+        isPaidStatus(invoice.status)
+          ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+          : "bg-gray-700/50 text-gray-400 cursor-not-allowed"
+      }`}
+                        title={
+                          isPaidStatus(invoice.status)
+                            ? "Download Invoice"
+                            : "Invoice available only for paid orders"
+                        }
+                      >
+                        <Download className="w-4 h-4" />
+                        Invoice
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -502,14 +506,14 @@ export default function InvoicesPage() {
           </table>
         </div>
 
-        {invoices.length > 0 && (
+        {totalItems > 0 && (
           <Pagination
-            currentPage={currentPage}
+            currentPage={page + 1}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            showingFrom={startIndex + 1}
-            showingTo={Math.min(endIndex, invoices.length)}
-            totalItems={invoices.length}
+            onPageChange={(p) => setPage(p - 1)}
+            showingFrom={page * size + 1}
+            showingTo={Math.min((page + 1) * size, totalItems)}
+            totalItems={totalItems}
           />
         )}
       </main>

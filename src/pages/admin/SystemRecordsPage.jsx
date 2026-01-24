@@ -120,9 +120,7 @@ export default function SystemRecordsPage() {
   }, [pageType, page, size, searchTerm]);
 
   useEffect(() => {
-    if (pageType === "users-overview") {
       setPage(0);
-    }
   }, [searchTerm, pageType]);
 
   // Fetch ISOs when server is selected (Step 2)
@@ -333,9 +331,15 @@ export default function SystemRecordsPage() {
           break;
         }
 
-        case "garbage-records":
-          endpoint = `${BASE_URL}/api/admin/garbage/records`;
+        case "garbage-records": {
+          const searchParam = searchTerm
+            ? `&search=${encodeURIComponent(searchTerm)}`
+            : "";
+
+          endpoint = `${BASE_URL}/api/admin/garbage/records?page=${page}&size=${size}${searchParam}&sortBy=failureTimestamp&sortDir=desc`;
           break;
+        }
+
         case "users-overview":
           const searchParam = searchTerm
             ? `search=${encodeURIComponent(searchTerm)}&`
@@ -411,28 +415,30 @@ export default function SystemRecordsPage() {
           setTotalItems(data.totalItems || 0);
           setTotalPages(data.totalPages || 0);
         } else if (pageType === "garbage-records") {
-          // Format for garbage records
-          if (Array.isArray(data)) {
-            processedData = data.map((record) => ({
-              id: record.id,
-              orderTransactionId: record.orderTransactionId || "N/A",
-              originalVmId: record.originalVmId,
-              vmName: record.vmName,
-              userEmail: record.userEmail || "N/A",
-              ipAddress: record.ipAddress || "N/A",
-              macAddress: record.macAddress || "N/A",
-              proxmoxVmId: record.proxmoxVmId,
-              cores: record.cores,
-              ramMb: record.ramMb,
-              diskGb: record.diskGb,
-              planType: record.planType,
-              amountRupees: record.amountRupees,
-              originalCreatedAt: record.originalCreatedAt,
-              failureTimestamp: record.failureTimestamp,
-              reason: record.reason,
-              status: "failed", // All garbage records are failed
-            }));
-          }
+          const records = data.content || [];
+
+          processedData = records.map((record) => ({
+            id: record.id,
+            orderTransactionId: record.orderTransactionId || "N/A",
+            originalVmId: record.originalVmId,
+            vmName: record.vmName,
+            userEmail: record.userEmail || "N/A",
+            ipAddress: record.ipAddress || "N/A",
+            macAddress: record.macAddress || "N/A",
+            proxmoxVmId: record.proxmoxVmId,
+            cores: record.cores,
+            ramMb: record.ramMb,
+            diskGb: record.diskGb,
+            planType: record.planType,
+            amountRupees: record.amountRupees,
+            originalCreatedAt: record.originalCreatedAt,
+            failureTimestamp: record.failureTimestamp,
+            reason: record.reason,
+            status: "failed",
+          }));
+
+          setTotalItems(data.totalItems || 0);
+          setTotalPages(data.totalPages || 0);
         }
 
         setRecords(processedData);
@@ -549,7 +555,6 @@ export default function SystemRecordsPage() {
   const config = getPageConfig();
 
   const filteredRecords = records;
-
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -1227,7 +1232,9 @@ export default function SystemRecordsPage() {
           )}
         </div>
 
-        {(pageType === "users-overview"|| pageType === "deleted-vms") && (
+        {(pageType === "users-overview" ||
+          pageType === "deleted-vms" ||
+          pageType === "garbage-records") && (
           <Pagination
             currentPage={page + 1}
             totalPages={totalPages}
