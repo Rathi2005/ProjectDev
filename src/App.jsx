@@ -23,6 +23,7 @@ import PerformancePage from "./pages/admin/PerformancePage";
 import VMPerformancePage from "./pages/admin/VMPerformancePage";
 import ServerRamPage from "./pages/admin/ServerRamPage";
 import UserVMPerformancePage from "./pages/VmPerformancePage";
+import OrderDetailsPage from "./components/admin/OrderDetailsPage";
 
 export default function App() {
   return (
@@ -113,6 +114,14 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <InvoicesPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders/:orderId"
+          element={
+            <AdminProtectedRoute>
+              <OrderDetailsPage />
             </AdminProtectedRoute>
           }
         />

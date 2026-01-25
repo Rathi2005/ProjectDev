@@ -120,7 +120,7 @@ export default function SystemRecordsPage() {
   }, [pageType, page, size, searchTerm]);
 
   useEffect(() => {
-      setPage(0);
+    setPage(0);
   }, [searchTerm, pageType]);
 
   // Fetch ISOs when server is selected (Step 2)
@@ -951,6 +951,69 @@ export default function SystemRecordsPage() {
     a.click();
   };
 
+  const lockDownUser = async (userId) => {
+    const token = localStorage.getItem("adminToken");
+
+    const confirm = await DarkSwal.fire({
+      title: "Lock Down User?",
+      text: "All VMs will be SUSPENDED and STOPPED immediately.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Lock Down",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/admin/users/${userId}/lock-down`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!res.ok) throw new Error("Failed to lock user");
+
+      DarkSwal.fire(
+        "Locked",
+        "User and all VMs locked successfully",
+        "success",
+      );
+      fetchRecords();
+    } catch (err) {
+      DarkSwal.fire("Error", err.message, "error");
+    }
+  };
+
+  const unlockUser = async (userId) => {
+    const token = localStorage.getItem("adminToken");
+
+    const confirm = await DarkSwal.fire({
+      title: "Unlock User?",
+      text: "All VMs will be ACTIVATED and STARTED.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Unlock",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/admin/users/${userId}/unlock`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Failed to unlock user");
+
+      DarkSwal.fire("Unlocked", "User and VMs activated", "success");
+      fetchRecords();
+    } catch (err) {
+      DarkSwal.fire("Error", err.message, "error");
+    }
+  };
+
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen flex flex-col">
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#0e1525]/90 backdrop-blur-md border-b border-indigo-900/30">
@@ -958,7 +1021,7 @@ export default function SystemRecordsPage() {
       </div>
 
       <main className="flex-1 mt-[72px] p-4 sm:p-6 lg:p-8 xl:p-10">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full mx-auto">
           {/* Header */}
           <div className="mb-8">
             <button
@@ -1187,6 +1250,28 @@ export default function SystemRecordsPage() {
                                   Create VM
                                 </button>
                               )}
+
+                              {pageType === "users-overview" &&
+                                !record.isLocked && (
+                                  <button
+                                    onClick={() => lockDownUser(record.id)}
+                                    className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 rounded flex items-center gap-1 justify-center"
+                                  >
+                                    <Shield className="w-3 h-3" />
+                                    Lock User
+                                  </button>
+                                )}
+
+                              {pageType === "users-overview" &&
+                                record.isLocked && (
+                                  <button
+                                    onClick={() => unlockUser(record.id)}
+                                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 rounded flex items-center gap-1 justify-center"
+                                  >
+                                    <CheckCircle className="w-3 h-3" />
+                                    Unlock User
+                                  </button>
+                                )}
                             </div>
                           </td>
                         </tr>

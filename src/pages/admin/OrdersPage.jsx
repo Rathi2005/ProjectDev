@@ -81,13 +81,12 @@ export default function OrdersPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [statusFilter, setStatusFilter] = useState("");
 
-
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
   const refreshOrdersWithDelay = async () => {
-    setTimeout(fetchOrders, 1000); 
+    setTimeout(fetchOrders, 1000);
   };
 
   async function fetchOrders() {
@@ -95,8 +94,19 @@ export default function OrdersPage() {
       setLoading(true);
       const adminToken = localStorage.getItem("adminToken");
 
+      const params = new URLSearchParams({
+        page,
+        size,
+        sortBy: "createdAt",
+        sortDir: "desc",
+      });
+
+      if (statusFilter) {
+        params.append("status", statusFilter);
+      }
+
       const res = await fetch(
-        `${BASE_URL}/api/admin/vms?page=${page}&size=${size}&sortBy=createdAt&sortDir=desc`,
+        `${BASE_URL}/api/admin/vms?${params.toString()}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -181,7 +191,12 @@ export default function OrdersPage() {
   // Fetch Orders from API
   useEffect(() => {
     fetchOrders();
-  }, [page, size]);
+  }, [page, size, statusFilter]);
+
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+    setPage(0); // reset pagination
+  };
 
   useEffect(() => {
     async function fetchStats() {
@@ -1433,18 +1448,50 @@ export default function OrdersPage() {
             {/* Table Container */}
             <div className="bg-[#151c2f] border border-indigo-900/30 rounded-xl sm:rounded-2xl shadow-lg overflow-hidden mt-6">
               {/* Table Header */}
-              <div className="p-4 sm:p-6 border-b border-indigo-900/30">
-                <h2 className="text-lg sm:text-xl font-semibold text-white">
-                  Order List
-                </h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  Showing {totalItems === 0 ? 0 : page * size + 1}–
-                  {Math.min((page + 1) * size, totalItems)} of {totalItems}{" "}
-                  orders
-                </p>
+              <div className="p-4 sm:p-6 border-b border-indigo-900/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-semibold text-white">
+                    Order List
+                  </h2>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Showing {totalItems === 0 ? 0 : page * size + 1}–
+                    {Math.min((page + 1) * size, totalItems)} of {totalItems}{" "}
+                    orders
+                  </p>
+                </div>
+
+                {/* STATUS FILTER */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Status:</span>
+                  <select
+                    value={statusFilter}
+                    onChange={handleStatusChange}
+                    className="bg-[#0e1525] border border-indigo-900/40
+          rounded-lg px-3 py-1.5 text-sm text-white
+          focus:outline-none focus:ring-2 focus:ring-indigo-500
+          hover:border-indigo-500/60 transition-colors cursor-pointer
+          min-w-[150px] appearance-none"
+                  >
+                    <option value="">All</option>
+                    <option value="ACTIVE" className="text-green-400">
+                      ACTIVE
+                    </option>
+                    <option value="SUSPENDED" className="text-orange-400">
+                      SUSPENDED
+                    </option>
+                    <option value="PENDING_PAYMENT" className="text-yellow-400">
+                      PENDING PAYMENT
+                    </option>
+                    <option value="MAINTENANCE" className="text-blue-400">
+                      MAINTENANCE
+                    </option>
+                    <option value="ERROR" className="text-red-400">
+                      ERROR
+                    </option>
+                  </select>
+                </div>
               </div>
 
-              {/* Responsive Table */}
               {/* Responsive Table */}
               <div className="relative w-full overflow-x-auto">
                 <div className="hidden lg:block">
@@ -1558,9 +1605,9 @@ export default function OrdersPage() {
                             </td>
                             <td className="py-3 px-4 sm:px-6">
                               {(() => {
-                                const isVmStopped =
+                                const isVmRunning =
                                   normalizeLiveStatus(order.liveState) ===
-                                  "STOP";
+                                  "START";
 
                                 return (
                                   <button
@@ -1576,14 +1623,14 @@ export default function OrdersPage() {
                                         },
                                       )
                                     }
-                                    disabled={isVmStopped}
+                                    disabled={!isVmRunning}
                                     className={`inline-flex items-center gap-2 px-3 py-1.5
-          rounded-md text-xs border transition
-          ${
-            isVmStopped
-              ? "bg-gray-700/40 text-gray-500 border-gray-600 cursor-not-allowed"
-              : "bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border-indigo-500/30"
-          }`}
+    rounded-md text-xs border transition
+    ${
+      isVmRunning
+        ? "bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border-indigo-500/30"
+        : "bg-gray-700/40 text-gray-500 border-gray-600 cursor-not-allowed"
+    }`}
                                   >
                                     <Activity className="w-4 h-4" />
                                     Performance
