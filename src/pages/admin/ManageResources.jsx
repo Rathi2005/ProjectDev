@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, Search } from "lucide-react";
 import { toast } from "react-hot-toast";
 import Swal from "sweetalert2";
 
@@ -48,6 +48,7 @@ export default function ManageResourcesPage({
   const [ipMode, setIpMode] = useState("single");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [searchQuery, setSearchQuery] = useState("");
 
   // 🔄 RESOLVE FIELDS BASED ON ENDPOINT AND MODE
   const resolvedFields = useMemo(() => {
@@ -717,9 +718,19 @@ export default function ManageResourcesPage({
     }
   };
 
+  const filteredExisting = useMemo(() => {
+    if (!searchQuery.trim()) return existing;
+
+    const q = searchQuery.toLowerCase();
+
+    return existing.filter((item) =>
+      Object.values(item).some((val) => String(val).toLowerCase().includes(q)),
+    );
+  }, [existing, searchQuery]);
+
   // UI RENDERING
-  const totalPages = Math.ceil(existing.length / itemsPerPage);
-  const displayed = existing.slice(
+  const totalPages = Math.ceil(filteredExisting.length / itemsPerPage);
+  const displayed = filteredExisting.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
@@ -1019,9 +1030,29 @@ export default function ManageResourcesPage({
             >
               {extraForm === "disks" ? "Available Disks" : "Existing Entries"}
               <span className="text-sm text-gray-400 ml-3">
-                ({existing.length} total)
+                ({filteredExisting.length} results)
               </span>
             </h2>
+            <div className="bg-[#151c2f] border border-indigo-900/30 rounded-xl p-4 mb-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search entries..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full pl-10 pr-4 py-2 bg-[#0e1525]
+                   border border-indigo-900/50 rounded-lg
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500
+                   text-gray-200 placeholder-gray-400"
+                  />
+                </div>
+              </div>
+            </div>
 
             {loading ? (
               <div className="flex justify-center items-center py-12">

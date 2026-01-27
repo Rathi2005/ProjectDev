@@ -20,7 +20,10 @@ const PaymentFlow = ({ onCreateSession, onClose }) => {
       if (!paymentSessionId) throw new Error("No payment session received");
 
       const cashfree = window.Cashfree({
-        mode: import.meta.env.VITE_CASHFREE_MODE || "sandbox",
+        mode:
+          import.meta.env.VITE_CASHFREE_MODE === "production"
+            ? "production"
+            : "sandbox",
       });
 
       cashfree.checkout({

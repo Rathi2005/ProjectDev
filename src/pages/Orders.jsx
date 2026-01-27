@@ -68,6 +68,9 @@ export default function UserOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  const [retryOrder, setRetryOrder] = useState(null);
+  const [showRetryPayment, setShowRetryPayment] = useState(false);
+
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
   };
@@ -103,6 +106,7 @@ export default function UserOrdersPage() {
         const transformedOrders = Array.isArray(data)
           ? data.map((order) => ({
               id: order.vmId,
+              orderId: order.orderId,
               vmName: order.vmName,
               status: order.status,
               liveState: order.liveState,
@@ -210,6 +214,7 @@ export default function UserOrdersPage() {
           o.id === vmId
             ? {
                 ...o,
+                orderId: o.orderId,
                 status:
                   action === "start"
                     ? "ACTIVE"
@@ -248,6 +253,34 @@ export default function UserOrdersPage() {
     } finally {
       setPowerLoading((prev) => ({ ...prev, [vmId]: null }));
     }
+  };
+
+  const createRetryPaymentSession = async (order) => {
+    const token = localStorage.getItem("token");
+    const paymentOrderId = order.orderId ?? order.originalData?.orderId;
+
+    const res = await fetch(
+      `${BASE_URL}/api/user/payments/${paymentOrderId}/retry`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Unable to retry payment");
+    }
+
+    const data = await res.json();
+
+    if (!data.paymentSessionId) {
+      throw new Error("Payment session not received");
+    }
+
+    return data.paymentSessionId; // ✅ IMPORTANT
   };
 
   // Filter orders based on selected status
@@ -443,7 +476,7 @@ export default function UserOrdersPage() {
       }).format(new Date()),
     );
 
-    return hourIST >= 9 && hourIST < 11; 
+    return hourIST >= 9 && hourIST < 11;
   };
 
   const canViewPassword = (order) =>
@@ -592,8 +625,7 @@ export default function UserOrdersPage() {
     { value: "ALL", label: "All Servers" },
     { value: "ACTIVE", label: "Active" },
     { value: "STOPPED", label: "Stopped" },
-    { value: "PENDING", label: "Pending" },
-    { value: "FAILED", label: "Failed" },
+    { value: "PENDING_PAYMENT", label: "Pending" },
   ];
 
   // Calculate days remaining until expiration
@@ -943,42 +975,19 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                             {/* Main Row */}
                             <tr className="border-t border-indigo-900/20 hover:bg-indigo-900/10 transition-all">
                               <td className="py-3 px-4 sm:px-6">
-                                {canShowDropdown(order.status) ? (
-                                  <button
-                                    onClick={() => toggleRow(order.id)}
-                                    className="text-left w-full flex items-center gap-2 text-indigo-300 hover:text-indigo-200 transition-colors"
-                                  >
-                                    {expandedRow === order.id ? (
-                                      <ChevronUp className="w-4 h-4" />
-                                    ) : (
-                                      <ChevronDown className="w-4 h-4" />
-                                    )}
-                                    <div className="flex items-center gap-2">
-                                      <Server className="w-4 h-4 text-gray-400" />
-                                      <div>
-                                        <p className="font-medium text-sm">
-                                          {order.vmName || `Server-${order.id}`}
-                                        </p>
-                                        <p className="text-xs text-gray-400">
-                                          {order.planType || "Standard"}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </button>
-                                ) : (
-                                  <div className="flex items-center gap-2 text-gray-400">
-                                    <Server className="w-4 h-4 text-gray-400" />
-                                    <div>
-                                      <p className="font-medium text-sm">
-                                        {order.vmName || `Server-${order.id}`}
-                                      </p>
-                                      <p className="text-xs text-gray-400">
-                                        {order.planType || "Standard"}
-                                      </p>
-                                    </div>
+                                <div className="flex items-center gap-2 text-gray-300">
+                                  <Server className="w-4 h-4 text-gray-400" />
+                                  <div>
+                                    <p className="font-medium text-sm">
+                                      {order.vmName || `Server-${order.id}`}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                      {order.planType || "Standard"}
+                                    </p>
                                   </div>
-                                )}
+                                </div>
                               </td>
+
                               <td className="py-3 px-4 sm:px-6">
                                 <div className="text-xs">
                                   <div className="flex items-center gap-1">
@@ -1033,56 +1042,34 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                               </td>
                               <td className="py-3 px-4 sm:px-6">
                                 <div className="flex items-center gap-2">
-                                  {canAction(
-                                    order.liveState,
-                                    normalizeLiveStatus(order.liveState) ===
-                                      "RUNNING"
-                                      ? "stop"
-                                      : "start",
-                                  ) && (
+                                  {order.status === "PENDING_PAYMENT" ? (
                                     <button
-                                      onClick={() =>
-                                        handlePowerAction(
-                                          order,
-                                          normalizeLiveStatus(
-                                            order.liveState,
-                                          ) === "RUNNING"
-                                            ? "stop"
-                                            : "start",
-                                        )
-                                      }
-                                      disabled={powerLoading[order.id]}
+                                      onClick={() => {
+                                        setRetryOrder(order);
+                                        setShowRetryPayment(true);
+                                      }}
+                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700
+             text-white rounded-lg text-xs font-semibold transition"
+                                    >
+                                      Make Payment
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => toggleRow(order.id)}
                                       className="p-1.5 hover:bg-indigo-900/30 rounded-lg transition-colors"
                                       title={
-                                        normalizeLiveStatus(order.liveState) ===
-                                        "RUNNING"
-                                          ? "Stop"
-                                          : "Start"
+                                        expandedRow === order.id
+                                          ? "Collapse"
+                                          : "Expand"
                                       }
                                     >
-                                      {normalizeLiveStatus(order.liveState) ===
-                                      "RUNNING" ? (
-                                        <Square className="w-4 h-4 text-red-400" />
+                                      {expandedRow === order.id ? (
+                                        <ChevronUp className="w-4 h-4 text-indigo-400" />
                                       ) : (
-                                        <Play className="w-4 h-4 text-green-400" />
+                                        <ChevronDown className="w-4 h-4 text-indigo-400" />
                                       )}
                                     </button>
                                   )}
-                                  <button
-                                    onClick={() => toggleRow(order.id)}
-                                    className="p-1.5 hover:bg-indigo-900/30 rounded-lg transition-colors"
-                                    title={
-                                      expandedRow === order.id
-                                        ? "Collapse"
-                                        : "Expand"
-                                    }
-                                  >
-                                    {expandedRow === order.id ? (
-                                      <ChevronUp className="w-4 h-4 text-indigo-400" />
-                                    ) : (
-                                      <ChevronDown className="w-4 h-4 text-indigo-400" />
-                                    )}
-                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -2023,6 +2010,40 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           </>
         )}
       </main>
+      {showRetryPayment && retryOrder && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm
+                  flex items-center justify-center p-4"
+        >
+          <div
+            className="bg-[#0e1525] w-full max-w-md rounded-xl
+                    border border-indigo-900/50"
+          >
+            <div
+              className="p-6 border-b border-indigo-900/40
+                      flex justify-between items-center"
+            >
+              <h2 className="text-lg font-bold text-white">Complete Payment</h2>
+              <button
+                onClick={() => setShowRetryPayment(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6">
+              <PaymentFlow
+                onCreateSession={() => createRetryPaymentSession(retryOrder)}
+                onClose={() => {
+                  setShowRetryPayment(false);
+                  window.location.reload(); // optional
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

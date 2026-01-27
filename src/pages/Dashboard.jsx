@@ -172,8 +172,22 @@ export default function Dashboard() {
 
   const cashfreeRef = useRef(null);
 
+  const CASHFREE_MODE =
+    import.meta.env.VITE_CASHFREE_MODE === "production"
+      ? "production"
+      : "sandbox";
+
   useEffect(() => {
-    cashfreeRef.current = Cashfree({ mode: "sandbox" });
+    if (!window.Cashfree) {
+      console.error("Cashfree SDK not loaded");
+      return;
+    }
+
+    cashfreeRef.current = window.Cashfree({
+      mode: CASHFREE_MODE,
+    });
+
+    console.log("Cashfree initialized in", CASHFREE_MODE, "mode");
   }, []);
 
   const token = localStorage.getItem("token");
@@ -304,7 +318,7 @@ export default function Dashboard() {
                   <span className="text-xs font-medium">
                     {isMobileSummaryOpen ? "Hide" : "Summary"}
                   </span>
-                </button> 
+                </button>
               )}
             </div>
           </div>

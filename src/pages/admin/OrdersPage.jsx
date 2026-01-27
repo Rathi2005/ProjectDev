@@ -44,6 +44,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [expandedRow, setExpandedRow] = useState(null);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
+  const [tableLoading, setTableLoading] = useState(false);
 
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -81,6 +82,17 @@ export default function OrdersPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [statusFilter, setStatusFilter] = useState("");
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 400);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
   };
@@ -91,7 +103,7 @@ export default function OrdersPage() {
 
   async function fetchOrders() {
     try {
-      setLoading(true);
+      setTableLoading(true);
       const adminToken = localStorage.getItem("adminToken");
 
       const params = new URLSearchParams({
@@ -100,6 +112,10 @@ export default function OrdersPage() {
         sortBy: "createdAt",
         sortDir: "desc",
       });
+
+      if (debouncedSearch) {
+        params.append("search", debouncedSearch);
+      }
 
       if (statusFilter) {
         params.append("status", statusFilter);
@@ -184,6 +200,7 @@ export default function OrdersPage() {
         showConfirmButton: false,
       });
     } finally {
+      setTableLoading(false);
       setLoading(false);
     }
   }
@@ -191,7 +208,11 @@ export default function OrdersPage() {
   // Fetch Orders from API
   useEffect(() => {
     fetchOrders();
-  }, [page, size, statusFilter]);
+  }, [page, size, statusFilter, debouncedSearch]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   const handleStatusChange = (e) => {
     setStatusFilter(e.target.value);
@@ -1374,7 +1395,7 @@ export default function OrdersPage() {
         </div>
 
         {/* Loading state */}
-        {loading || loadingInsights ? (
+        {loading ? (
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
@@ -1461,39 +1482,53 @@ export default function OrdersPage() {
                 </div>
 
                 {/* STATUS FILTER */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">Status:</span>
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* SEARCH INPUT */}
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search VM, IP, Email, Order ID, VMID..."
+                    className="bg-[#0e1525] border border-indigo-900/40
+      rounded-lg px-3 py-2 text-sm text-white
+      focus:outline-none focus:ring-2 focus:ring-indigo-500
+      hover:border-indigo-500/60 transition-colors
+      min-w-[260px]"
+                  />
+
+                  {/* STATUS FILTER (UNCHANGED) */}
                   <select
                     value={statusFilter}
                     onChange={handleStatusChange}
                     className="bg-[#0e1525] border border-indigo-900/40
-          rounded-lg px-3 py-1.5 text-sm text-white
-          focus:outline-none focus:ring-2 focus:ring-indigo-500
-          hover:border-indigo-500/60 transition-colors cursor-pointer
-          min-w-[150px] appearance-none"
+      rounded-lg px-3 py-2 text-sm text-white
+      focus:outline-none focus:ring-2 focus:ring-indigo-500
+      hover:border-indigo-500/60 transition-colors
+      min-w-[150px] appearance-none"
                   >
                     <option value="">All</option>
-                    <option value="ACTIVE" className="text-green-400">
-                      ACTIVE
-                    </option>
-                    <option value="SUSPENDED" className="text-orange-400">
-                      SUSPENDED
-                    </option>
-                    <option value="PENDING_PAYMENT" className="text-yellow-400">
-                      PENDING PAYMENT
-                    </option>
-                    <option value="MAINTENANCE" className="text-blue-400">
-                      MAINTENANCE
-                    </option>
-                    <option value="ERROR" className="text-red-400">
-                      ERROR
-                    </option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="SUSPENDED">SUSPENDED</option>
+                    <option value="PENDING_PAYMENT">PENDING PAYMENT</option>
+                    <option value="MAINTENANCE">MAINTENANCE</option>
+                    <option value="ERROR">ERROR</option>
                   </select>
                 </div>
               </div>
 
               {/* Responsive Table */}
               <div className="relative w-full overflow-x-auto">
+                {tableLoading && (
+                  <div className="absolute inset-0 z-20 bg-[#0e1525]/70 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="animate-spin h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                      <span className="text-xs text-gray-400">
+                        Fetching Records…
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="hidden lg:block">
                   <table className="w-full min-w-[1200px] text-left">
                     <thead className="bg-[#1a2337] text-gray-300 uppercase text-xs sm:text-sm">
