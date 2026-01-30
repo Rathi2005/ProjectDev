@@ -157,7 +157,6 @@ export default function OrdersPage() {
 
         monthlyPrice: order.monthlyPrice,
         paidAmount: order.totalAmount,
-        totalAmount: order.totalAmount,
 
         vmName: order.vmName,
         isoName: order.os,
@@ -1879,6 +1878,29 @@ export default function OrdersPage() {
                                             <span className="px-2 sm:px-3 py-1 bg-indigo-900/30 rounded-full text-xs sm:text-sm font-medium">
                                               {order.planType || "Standard"}
                                             </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Parent Server Details */}
+                                        <div className="pt-3 border-t border-indigo-900/30 space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-xs sm:text-sm text-gray-400">
+                                              Parent Server Node
+                                            </span>
+                                            <code className="bg-indigo-900/30 px-2 py-1 rounded text-xs sm:text-sm font-mono">
+                                              {order.originalData
+                                                ?.parentServerNode || "N/A"}
+                                            </code>
+                                          </div>
+
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-xs sm:text-sm text-gray-400">
+                                              Parent Server IP
+                                            </span>
+                                            <code className="bg-indigo-900/30 px-2 py-1 rounded text-xs sm:text-sm font-mono">
+                                              {order.originalData
+                                                ?.parentServerIp || "N/A"}
+                                            </code>
                                           </div>
                                         </div>
 

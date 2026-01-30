@@ -10,6 +10,7 @@ import {
 
 const PaymentFlow = ({ onCreateSession, onClose }) => {
   const [loading, setLoading] = useState(false);
+  
 
   const handlePayNow = async () => {
     if (loading) return;

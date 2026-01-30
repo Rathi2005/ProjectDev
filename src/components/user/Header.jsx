@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Globe, Server, Ticket, Settings, User } from "lucide-react";
+import { Globe, Server, Ticket, Settings, User, Wallet } from "lucide-react";
 import useLogout from "./Logout";
 import { jwtDecode } from "jwt-decode";
 import toast from "react-hot-toast";
@@ -9,6 +9,7 @@ const Header = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const dropdownRef = useRef(null);
+  const APP_NAME = import.meta.env.VITE_APP_NAME;
 
   // ✅ Call your hook here — this gives you the logout function
   const logout = useLogout();
@@ -63,12 +64,12 @@ const Header = () => {
             className="flex items-center space-x-2 cursor-pointer hover:opacity-90 transition"
           >
             <img
-              src=""
-              alt="ServerLink Logo"
+              src="/favicon.ico"
+              alt="Logo"
               className="h-9 w-9 object-contain"
             />
             <h1 className="text-lg font-semibold text-white tracking-wide">
-              SERVERLINK
+              {APP_NAME}
             </h1>
           </a>
         </div>
@@ -100,6 +101,14 @@ const Header = () => {
 
         {/* Right Section */}
         <div className="flex items-center space-x-4 relative">
+          {/* Wallet */}
+          <a
+            href="/wallet"
+            className="flex items-center gap-2 p-2 border border-gray-600 rounded-full hover:border-[#4f46e5] hover:text-[#4f46e5] transition"
+            title="Wallet"
+          >
+            <Wallet className="w-5 h-5" />
+          </a>
 
           {/* User Dropdown */}
           <div className="relative" ref={dropdownRef}>

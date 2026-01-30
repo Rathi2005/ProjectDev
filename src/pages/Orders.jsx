@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Header from "../components/user/Header";
 import PaymentFlow from "../components/payment/PaymentFlow";
+import CouponAndWallet from "../components/payment/CouponAndWallet";
 import Swal from "sweetalert2";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -790,7 +791,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
     }
   };
 
-  const createUpgradeSession = async () => {
+  const createUpgradeSession = async ({ useWallet, couponCode }) => {
     const token = localStorage.getItem("token");
 
     const res = await fetch(
@@ -808,17 +809,37 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           diskPriceId: selectedDisk,
           bandwidthPriceId: selectedBandwidth,
           addMonths,
+          useWalletBalance: useWallet,
+          couponCode,
         }),
       },
     );
 
-    if (!res.ok) throw new Error("Failed to initiate payment");
+    if (!res.ok) {
+      throw new Error("Upgrade / renewal failed");
+    }
 
     const data = await res.json();
-    if (!data.paymentSessionId) {
-      throw new Error("Payment session not received");
+
+    // Scenario B: Instant success
+    if (data.status === "COMPLETED") {
+      Swal.fire({
+        icon: "success",
+        title: "Upgrade Successful",
+        text: data.message,
+        background: "#0e1525",
+        color: "#e5e7eb",
+      });
+
+      return null; // VERY IMPORTANT
     }
-    return data.paymentSessionId;
+
+    // Scenario A: Payment required
+    if (data.paymentSessionId) {
+      return data.paymentSessionId;
+    }
+
+    throw new Error("Unexpected upgrade response");
   };
 
   return (
@@ -1884,9 +1905,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
                           {/* PaymentFlow handles everything */}
                           <div className="p-6">
-                            <PaymentFlow
-                              onCreateSession={createUpgradeSession}
-                              onClose={() => {
+                            <CouponAndWallet
+                              totalAmount={0 /* optional for now */}
+                              disabled={false}
+                              onCreateSession={({ useWallet, couponCode }) =>
+                                createUpgradeSession({ useWallet, couponCode })
+                              }
+                              onInstantSuccess={() => {
                                 setShowPaymentFlow(false);
                                 setUpgradeModalOpen(false);
                                 window.location.reload();

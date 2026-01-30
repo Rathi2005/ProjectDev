@@ -482,7 +482,7 @@ export default function Dashboard() {
             </div>
 
             {/* Other Sections */}
-            <div
+            {/* <div
               id="security"
               className="min-h-screen px-4 sm:px-6 lg:px-8 py-6 lg:py-16"
             >
@@ -494,7 +494,7 @@ export default function Dashboard() {
               className="min-h-screen px-4 sm:px-6 lg:px-8 py-6 lg:py-16"
             >
               <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
-            </div>
+            </div> */}
 
             {/* Footer - Placed inside the scrollable content at the bottom */}
             <Footer />

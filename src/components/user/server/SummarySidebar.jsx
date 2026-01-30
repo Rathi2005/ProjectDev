@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import Swal from "sweetalert2";
 import {
   CheckCircle,
   AlertCircle,
@@ -11,9 +12,8 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
-  Database,
-  HardDrive,
-  Wifi,
+  Wallet,
+  Tag,
 } from "lucide-react";
 
 const SummarySidebar = ({
@@ -28,11 +28,41 @@ const SummarySidebar = ({
   const [isLoading, setIsLoading] = useState(false);
   const [months, setMonths] = useState("1");
   const [configExpanded, setConfigExpanded] = useState(true);
+  const [useWalletBalance, setUseWalletBalance] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletPaying, setWalletPaying] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletFetched, setWalletFetched] = useState(false);
+
+  // Coupon Code
+  const [useCoupon, setUseCoupon] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponValidating, setCouponValidating] = useState(false);
+  const [couponValidated, setCouponValidated] = useState(false);
+  const [couponError, setCouponError] = useState("");
+  const [couponData, setCouponData] = useState(null);
+
+  const canApplyDiscounts = useMemo(() => {
+    return (
+      selectedResources?.cpuPriceId &&
+      selectedResources?.ramPriceId &&
+      selectedResources?.diskPriceId &&
+      selectedResources?.bandwidthPriceId &&
+      Number(months) > 0
+    );
+  }, [selectedResources, months]);
+
+  const isCouponBlockingPayment = useMemo(() => {
+    return useCoupon && !couponValidated;
+  }, [useCoupon, couponValidated]);
+
+  const disablePayForCoupon = useMemo(() => {
+    return useCoupon && !couponValidated;
+  }, [useCoupon, couponValidated]);
 
   // Function to extract display name without price
   const extractDisplayName = (str) => {
     if (!str) return "";
-    // Remove price part like " - Rs 40/hr"
     return str.split(" - Rs")[0].trim();
   };
 
@@ -70,16 +100,29 @@ const SummarySidebar = ({
       vmName: vmName,
       serverId: serverId || null,
       isoId: selectedOS?.id || null,
-      planType: selectedType
-        ? selectedType.toUpperCase().replace(/\s+/g, "_").replace("_VCPU", "")
-        : null,
+      planType: selectedType?.toLowerCase().includes("dedicated")
+        ? "DEDICATED"
+        : "SHARED",
       cpuPriceId: selectedResources?.cpuPriceId || null,
       ramPriceId: selectedResources?.ramPriceId || null,
       diskPriceId: selectedResources?.diskPriceId || null,
       bandwidthPriceId: selectedResources?.bandwidthPriceId || null,
       months: Number(months),
+      useWalletBalance,
+      couponCode: useCoupon && couponCode.trim() ? couponCode.trim() : null,
+      clientReferenceId: `vm-${Date.now()}`,
     };
-  }, [vmName, serverId, selectedOS, selectedType, selectedResources, months]);
+  }, [
+    vmName,
+    serverId,
+    selectedOS,
+    selectedType,
+    selectedResources,
+    months,
+    useWalletBalance,
+    useCoupon,
+    couponCode,
+  ]);
 
   // Handle VM name change
   const handleVmNameChange = (e) => {
@@ -129,7 +172,7 @@ const SummarySidebar = ({
         }
 
         throw new Error(
-          `HTTP ${response.status}: ${errorText || response.statusText}`
+          `HTTP ${response.status}: ${errorText || response.statusText}`,
         );
       }
 
@@ -164,16 +207,39 @@ const SummarySidebar = ({
     }
   };
 
+  const fetchWalletBalance = async () => {
+    if (walletFetched || walletLoading) return;
+
+    setWalletLoading(true);
+    try {
+      const res = await apiRequest(
+        `${import.meta.env.VITE_BASE_URL}/api/wallet`,
+        { method: "GET" },
+      );
+      const data = await res.json();
+      setWalletBalance(Number(data.balance || 0));
+      setWalletFetched(true);
+    } catch (e) {
+      console.error("Failed to fetch wallet balance");
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
   // Handle server creation
   const handleCreateServer = async () => {
     if (!isConfigurationComplete()) {
       alert(
-        "⚠️ Please complete all server configuration steps before creating the server."
+        "⚠️ Please complete all server configuration steps before creating the server.",
       );
       return;
     }
 
     setIsLoading(true);
+
+    if (useWalletBalance) {
+      setWalletPaying(true);
+    }
 
     try {
       await testTokenValidity();
@@ -182,7 +248,7 @@ const SummarySidebar = ({
 
       if (!CREATE_SERVER_URL) {
         throw new Error(
-          "API endpoint not configured. Please check environment variables."
+          "API endpoint not configured. Please check environment variables.",
         );
       }
 
@@ -192,11 +258,45 @@ const SummarySidebar = ({
       });
 
       const data = await response.json();
-      if (data?.paymentSessionId && data?.paymentId) {
-        onPaymentStart?.(data.paymentSessionId, data.paymentId);
-      } else {
-        alert("Payment session not received");
+      // Scenario B: Instant success (Wallet / Coupon)
+      if (data?.status === "COMPLETED") {
+        Swal.fire({
+          icon: "success",
+          title: "Payment Successful",
+          text: data.message || "VM provisioning has started.",
+          background: "#0e1525",
+          color: "#e5e7eb",
+          confirmButtonColor: "#6366f1",
+        }).then(() => {
+          window.location.reload();
+        });
+
+        return;
       }
+
+      // Scenario A: Gateway payment required
+      if (data?.paymentSessionId) {
+        if (data.walletDeducted > 0) {
+          Swal.fire({
+            icon: "info",
+            title: "Wallet Applied",
+            html: `
+        <div class="text-sm">
+          Wallet Used: <b>₹${data.walletDeducted}</b><br/>
+          Remaining to Pay: <b>₹${data.remainingToPay}</b>
+        </div>
+      `,
+            background: "#0e1525",
+            color: "#e5e7eb",
+            confirmButtonColor: "#6366f1",
+          });
+        }
+        onPaymentStart?.(data.paymentSessionId, data.paymentId);
+
+        return;
+      }
+
+      throw new Error("Unexpected payment response");
     } catch (error) {
       let errorMessage = error.message || "Unknown error occurred";
 
@@ -215,11 +315,80 @@ const SummarySidebar = ({
         errorMessage = "Please log in to create a server.";
       }
 
-      alert(`❌ Server creation failed: ${errorMessage}`);
+      alert(`Server creation failed: ${errorMessage}`);
     } finally {
       setIsLoading(false);
+      setWalletPaying(false);
     }
   };
+
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    if (!canApplyDiscounts) {
+      setCouponError("Please select VM resources first");
+      return;
+    }
+
+    setCouponValidating(true);
+    setCouponError("");
+    setCouponValidated(false);
+
+    try {
+      const res = await apiRequest(
+        `${import.meta.env.VITE_BASE_URL}/api/coupons/validate`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            code: couponCode.trim(),
+            orderAmount: totalPayable,
+          }),
+        },
+      );
+
+      const data = await res.json();
+
+      if (data.valid) {
+        setCouponValidated(true);
+        setCouponData(data);
+        Swal.fire({
+          icon: "success",
+          title: "Coupon Applied",
+          text: data.message,
+          background: "#0e1525",
+          color: "#e5e7eb",
+          confirmButtonColor: "#6366f1",
+        });
+      } else {
+        setCouponValidated(false);
+        setCouponData(null);
+        setCouponError(data.error || "Invalid coupon");
+      }
+    } catch (e) {
+      setCouponError("Failed to validate coupon. Please try again.");
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  useEffect(() => {
+    // Reset wallet & coupon when pricing changes
+    setUseWalletBalance(false);
+    setUseCoupon(false);
+    setCouponCode("");
+    setCouponValidated(false);
+    setCouponData(null);
+    setCouponError("");
+  }, [
+    selectedResources?.cpuPriceId,
+    selectedResources?.ramPriceId,
+    selectedResources?.diskPriceId,
+    selectedResources?.bandwidthPriceId,
+    months,
+  ]);
 
   // Check if all required configuration is complete
   const isConfigurationComplete = () => {
@@ -262,11 +431,28 @@ const SummarySidebar = ({
     if (!selectedResources || !selectedResources.vCPU) return "Not configured";
 
     return `${extractDisplayName(
-      selectedResources.vCPU
+      selectedResources.vCPU,
     )} • ${extractDisplayName(selectedResources.ram)} • ${extractDisplayName(
-      selectedResources.disk
+      selectedResources.disk,
     )} • ${extractDisplayName(selectedResources.bandwidth)}`;
   };
+
+  const isCreateButtonDisabled = useMemo(() => {
+    return (
+      !isConfigurationComplete() ||
+      !hasValidToken ||
+      isLoading ||
+      (useCoupon && !couponValidated) ||
+      walletPaying
+    );
+  }, [
+    isConfigurationComplete,
+    hasValidToken,
+    isLoading,
+    useCoupon,
+    couponValidated,
+    walletPaying,
+  ]);
 
   return (
     <aside className="w-full bg-[#121a2a] border-l border-gray-800 flex flex-col h-full">
@@ -315,8 +501,9 @@ const SummarySidebar = ({
               type="text"
               value={vmName}
               onChange={handleVmNameChange}
-              className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="Enter server name"
+              disabled={isLoading}
             />
           </div>
 
@@ -330,8 +517,9 @@ const SummarySidebar = ({
               min="1"
               value={months}
               onChange={(e) => setMonths(e.target.value)}
-              className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="1"
+              disabled={isLoading}
             />
           </div>
         </div>
@@ -340,7 +528,8 @@ const SummarySidebar = ({
         <div className="bg-gray-900/30 rounded-xl border border-gray-700/50">
           <button
             onClick={() => setConfigExpanded(!configExpanded)}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/30 transition-colors rounded-t-xl"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/30 transition-colors rounded-t-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading}
           >
             <div className="flex items-center gap-2">
               <Cpu className="w-4 h-4 text-gray-400" />
@@ -551,26 +740,148 @@ const SummarySidebar = ({
             </div>
           </div>
         </div>
+
+        {/* Wallet Option */}
+        <div className="bg-gray-900/40 border border-gray-700 rounded-lg p-3">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useWalletBalance}
+              disabled={!canApplyDiscounts || isLoading || walletPaying}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setUseWalletBalance(checked);
+
+                if (checked) {
+                  fetchWalletBalance();
+                }
+              }}
+              className="w-4 h-4 accent-indigo-600 disabled:opacity-50"
+            />
+            <div className="flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-indigo-400" />
+              <div>
+                <p className="text-sm font-medium text-white">
+                  Use Wallet Balance
+                </p>
+                <p className="text-xs text-gray-400">
+                  {!canApplyDiscounts
+                    ? "Select VM resources to enable wallet"
+                    : walletLoading
+                      ? "Fetching wallet balance..."
+                      : `Available: ₹${walletBalance.toFixed(2)}`}
+                </p>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        {/* Coupon Option */}
+        <div className="bg-gray-900/40 border border-gray-700 rounded-lg p-3">
+          <label className="flex items-center gap-3 cursor-pointer mb-2">
+            <input
+              type="checkbox"
+              checked={useCoupon}
+              disabled={!canApplyDiscounts || isLoading || walletPaying}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setUseCoupon(checked);
+                if (!checked) {
+                  setCouponCode("");
+                  setCouponValidated(false);
+                  setCouponData(null);
+                  setCouponError("");
+                }
+              }}
+              className="w-4 h-4 accent-indigo-600 disabled:opacity-50"
+            />
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-green-400" />
+              <div>
+                <p className="text-sm font-medium text-white">Use Coupon</p>
+                <p className="text-xs text-gray-400">
+                  Apply promo code for discount
+                </p>
+              </div>
+            </div>
+          </label>
+
+          {useCoupon && (
+            <div className="mt-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  disabled={
+                    !canApplyDiscounts ||
+                    isLoading ||
+                    couponValidated ||
+                    walletPaying
+                  }
+                  onChange={(e) => {
+                    setCouponCode(e.target.value);
+                    setCouponValidated(false);
+                    setCouponError("");
+                  }}
+                  placeholder="Enter coupon code"
+                  className="flex-1 w-8 bg-[#0a0f1c] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <button
+                  onClick={validateCoupon}
+                  disabled={
+                    !canApplyDiscounts ||
+                    couponValidating ||
+                    !couponCode.trim() ||
+                    isLoading ||
+                    walletPaying
+                  }
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  {couponValidating ? (
+                    <>
+                      <Loader2 className="inline w-3 h-3 mr-1 animate-spin" />
+                      Applying...
+                    </>
+                  ) : (
+                    "Apply"
+                  )}
+                </button>
+              </div>
+              {couponError && (
+                <p className="text-xs text-red-400 mt-2">{couponError}</p>
+              )}
+              {couponValidated && couponData && (
+                <div className="text-xs text-green-400 mt-2 bg-green-900/20 p-2 rounded">
+                  ✓ Discount Applied: ₹{couponData.discountAmount.toFixed(2)} (
+                  {couponData.discountType === "percentage"
+                    ? `${couponData.discountValue}%`
+                    : "Fixed amount"}
+                  )
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer */}
       <div className="p-5 border-t border-gray-800 space-y-4 bg-[#0e1525]/50">
         {/* Status Indicators */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div
-              className={`flex items-center gap-1 px-2 py-1 rounded ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg ${
                 hasValidToken
-                  ? "bg-green-900/30 text-green-400"
-                  : "bg-red-900/30 text-red-400"
+                  ? "bg-green-900/30 text-green-400 border border-green-800/50"
+                  : "bg-red-900/30 text-red-400 border border-red-800/50"
               }`}
             >
               {hasValidToken ? (
-                <CheckCircle className="w-3 h-3" />
+                <CheckCircle className="w-4 h-4" />
               ) : (
-                <AlertCircle className="w-3 h-3" />
+                <AlertCircle className="w-4 h-4" />
               )}
-              <span className="text-sm">
+              <span className="text-sm font-medium">
                 {hasValidToken ? "Authenticated" : "Login Required"}
               </span>
             </div>
@@ -584,10 +895,10 @@ const SummarySidebar = ({
         {/* Primary Action Button */}
         <button
           onClick={handleCreateServer}
-          disabled={!isConfigurationComplete() || !hasValidToken || isLoading}
-          className={`w-full py-3.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-base
+          disabled={isCreateButtonDisabled}
+          className={`w-full py-3.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-base relative
             ${
-              isConfigurationComplete() && hasValidToken && !isLoading
+              !isCreateButtonDisabled
                 ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 : "bg-gray-800 text-gray-400 cursor-not-allowed"
             }`}
@@ -596,6 +907,11 @@ const SummarySidebar = ({
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
               Creating Server...
+            </>
+          ) : walletPaying ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Processing Wallet Payment...
             </>
           ) : !hasValidToken ? (
             <>
@@ -607,6 +923,11 @@ const SummarySidebar = ({
               <AlertCircle className="w-5 h-5" />
               Complete Configuration ({completionPercentage}%)
             </>
+          ) : useCoupon && !couponValidated ? (
+            <>
+              <Tag className="w-5 h-5" />
+              Apply Valid Coupon First
+            </>
           ) : (
             <>
               <CreditCard className="w-5 h-5" />
@@ -615,6 +936,24 @@ const SummarySidebar = ({
           )}
         </button>
       </div>
+
+      {/* Wallet Payment Overlay */}
+      {walletPaying && (
+        <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4 bg-[#121a2a] p-8 rounded-2xl border border-gray-700 shadow-2xl">
+            <div className="relative">
+              <div className="absolute inset-0 animate-ping bg-indigo-400/20 rounded-full"></div>
+              <Loader2 className="w-12 h-12 text-indigo-400 animate-spin" />
+            </div>
+            <p className="text-gray-200 text-lg font-medium">
+              Processing wallet payment...
+            </p>
+            <p className="text-gray-400 text-sm">
+              Please do not close this window
+            </p>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };

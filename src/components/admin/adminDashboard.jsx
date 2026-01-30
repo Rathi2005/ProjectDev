@@ -250,8 +250,6 @@ export default function AdminDashboard() {
         return "text-green-400 bg-green-400/10";
       case "error":
         return "text-red-400 bg-red-400/10";
-      case "warning":
-        return "text-yellow-400 bg-yellow-400/10";
       case "info":
         return "text-blue-400 bg-blue-400/10";
       case "critical":

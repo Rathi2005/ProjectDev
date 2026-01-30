@@ -1,4 +1,18 @@
-import { RefreshCw, X, Server, Cpu, HardDrive, MemoryStick, Globe, Calendar, Upload, Database, Network, Settings, CheckCircle } from "lucide-react";
+import {
+  RefreshCw,
+  X,
+  Server,
+  Cpu,
+  HardDrive,
+  MemoryStick,
+  Globe,
+  Calendar,
+  Upload,
+  Database,
+  Network,
+  Settings,
+  CheckCircle,
+} from "lucide-react";
 
 export default function ManualVmImportModal({
   show,
@@ -19,7 +33,7 @@ export default function ManualVmImportModal({
   loadingStorage,
 }) {
   if (!show) return null;
-  
+
   const planTypes = [
     { id: "DEDICATED", name: "Dedicated Resources" },
     { id: "SHARED", name: "Shared Resources" },
@@ -28,7 +42,27 @@ export default function ManualVmImportModal({
   // Calculate completion status for progress indicator
   const isStep1Complete = form.serverId && form.storageId;
   const isStep2Complete = form.planType;
-  const isStep3Complete = form.cpuPriceId && form.ramPriceId && form.diskPriceId && form.bandwidthPriceId;
+  const isStep3Complete =
+    form.cpuPriceId &&
+    form.ramPriceId &&
+    form.diskPriceId &&
+    form.bandwidthPriceId;
+
+  const cidrToSubnetMask = (cidr) => {
+    const prefix = Number(cidr?.replace("/", ""));
+    if (isNaN(prefix) || prefix < 0 || prefix > 32) return "";
+
+    let mask = [];
+    let remaining = prefix;
+
+    for (let i = 0; i < 4; i++) {
+      const bits = Math.min(8, remaining);
+      mask.push(bits === 0 ? 0 : 256 - Math.pow(2, 8 - bits));
+      remaining -= bits;
+    }
+
+    return mask.join(".");
+  };
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -37,26 +71,37 @@ export default function ManualVmImportModal({
         <div className="flex items-center justify-between p-6 border-b border-gray-800 bg-gradient-to-r from-gray-900 to-gray-950">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-2xl font-bold text-white">Manual VM Import</h2>
+              <h2 className="text-2xl font-bold text-white">
+                Manual VM Import
+              </h2>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
-                  <div className={`w-3 h-3 rounded-full ${isStep1Complete ? "bg-green-500" : "bg-gray-600"}`}></div>
+                  <div
+                    className={`w-3 h-3 rounded-full ${isStep1Complete ? "bg-green-500" : "bg-gray-600"}`}
+                  ></div>
                   <span className="text-xs text-gray-400">1. Server</span>
                 </div>
                 <div className="w-4 h-px bg-gray-700"></div>
                 <div className="flex items-center gap-1">
-                  <div className={`w-3 h-3 rounded-full ${isStep2Complete ? "bg-green-500" : "bg-gray-600"}`}></div>
+                  <div
+                    className={`w-3 h-3 rounded-full ${isStep2Complete ? "bg-green-500" : "bg-gray-600"}`}
+                  ></div>
                   <span className="text-xs text-gray-400">2. Plan Type</span>
                 </div>
                 <div className="w-4 h-px bg-gray-700"></div>
                 <div className="flex items-center gap-1">
-                  <div className={`w-3 h-3 rounded-full ${isStep3Complete ? "bg-green-500" : "bg-gray-600"}`}></div>
+                  <div
+                    className={`w-3 h-3 rounded-full ${isStep3Complete ? "bg-green-500" : "bg-gray-600"}`}
+                  ></div>
                   <span className="text-xs text-gray-400">3. Resources</span>
                 </div>
               </div>
             </div>
             <p className="text-gray-400 text-sm">
-              Importing VM for <span className="text-emerald-400 font-medium">{selectedUser?.email}</span>
+              Importing VM for{" "}
+              <span className="text-emerald-400 font-medium">
+                {selectedUser?.email}
+              </span>
             </p>
           </div>
           <button
@@ -74,9 +119,11 @@ export default function ManualVmImportModal({
               <div className="p-2 bg-emerald-500/10 rounded-lg">
                 <Settings className="w-5 h-5 text-emerald-500" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Step 1: Basic Information</h3>
+              <h3 className="text-lg font-semibold text-white">
+                Step 1: Basic Information
+              </h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* VM Name */}
               <div>
@@ -112,9 +159,11 @@ export default function ManualVmImportModal({
               <div className="p-2 bg-blue-500/10 rounded-lg">
                 <Server className="w-5 h-5 text-blue-500" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Step 2: Server Configuration</h3>
+              <h3 className="text-lg font-semibold text-white">
+                Step 2: Server Configuration
+              </h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Server Selection */}
               <div>
@@ -128,9 +177,13 @@ export default function ManualVmImportModal({
                   <select
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 appearance-none transition"
                     value={form.serverId}
-                    onChange={(e) => setForm({ ...form, serverId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, serverId: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select Server</option>
+                    <option value="" className="bg-gray-900">
+                      Select Server
+                    </option>
                     {servers.length > 0 ? (
                       servers.map((s) => (
                         <option key={s.id} value={s.id} className="bg-gray-900">
@@ -144,7 +197,9 @@ export default function ManualVmImportModal({
                     )}
                   </select>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{servers.length} servers available</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {servers.length} servers available
+                </p>
               </div>
 
               {/* Storage Selection */}
@@ -159,7 +214,9 @@ export default function ManualVmImportModal({
                   <select
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 appearance-none transition"
                     value={form.storageId}
-                    onChange={(e) => setForm({ ...form, storageId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, storageId: e.target.value })
+                    }
                     disabled={loadingStorage || storageOptions.length === 0}
                   >
                     <option value="" className="bg-gray-900">
@@ -167,7 +224,11 @@ export default function ManualVmImportModal({
                     </option>
                     {storageOptions.length > 0 ? (
                       storageOptions.map((storage) => (
-                        <option key={storage.id || storage.storage} value={storage.id || storage.storage} className="bg-gray-900">
+                        <option
+                          key={storage.id || storage.storage}
+                          value={storage.id || storage.storage}
+                          className="bg-gray-900"
+                        >
                           {storage.label || storage.storage || `${storage.id}`}
                           {storage.size && ` (${formatBytes(storage.size)})`}
                           {storage.type && ` - ${storage.type}`}
@@ -187,7 +248,7 @@ export default function ManualVmImportModal({
                 <p className="text-xs text-gray-500 mt-1">
                   {form.serverId
                     ? storageOptions.length > 0
-                      ? `${storageOptions.length} storage option${storageOptions.length !== 1 ? 's' : ''}`
+                      ? `${storageOptions.length} storage option${storageOptions.length !== 1 ? "s" : ""}`
                       : loadingStorage
                         ? "Loading..."
                         : "No storage found"
@@ -207,12 +268,20 @@ export default function ManualVmImportModal({
                   <select
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 appearance-none transition"
                     value={form.isoId}
-                    onChange={(e) => setForm({ ...form, isoId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, isoId: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select ISO</option>
+                    <option value="" className="bg-gray-900">
+                      Select ISO
+                    </option>
                     {isos.length > 0 ? (
                       isos.map((iso) => (
-                        <option key={iso.id || iso.iso} value={iso.id} className="bg-gray-900">
+                        <option
+                          key={iso.id || iso.iso}
+                          value={iso.id}
+                          className="bg-gray-900"
+                        >
                           {iso.iso}
                         </option>
                       ))
@@ -230,7 +299,7 @@ export default function ManualVmImportModal({
                 <p className="text-xs text-gray-500 mt-1">
                   {form.serverId
                     ? isos.length > 0
-                      ? `${isos.length} ISO${isos.length !== 1 ? 's' : ''} available`
+                      ? `${isos.length} ISO${isos.length !== 1 ? "s" : ""} available`
                       : "No ISOs found"
                     : "Select server to view ISOs"}
                 </p>
@@ -244,9 +313,11 @@ export default function ManualVmImportModal({
               <div className="p-2 bg-purple-500/10 rounded-lg">
                 <div className="w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-500 rounded"></div>
               </div>
-              <h3 className="text-lg font-semibold text-white">Step 3: Select Plan Type</h3>
+              <h3 className="text-lg font-semibold text-white">
+                Step 3: Select Plan Type
+              </h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Plan Type Selection */}
               <div>
@@ -271,9 +342,15 @@ export default function ManualVmImportModal({
                       })
                     }
                   >
-                    <option value="" className="bg-gray-900">Select plan type</option>
+                    <option value="" className="bg-gray-900">
+                      Select plan type
+                    </option>
                     {planTypes.map((plan) => (
-                      <option key={plan.id} value={plan.id} className="bg-gray-900">
+                      <option
+                        key={plan.id}
+                        value={plan.id}
+                        className="bg-gray-900"
+                      >
                         {plan.name}
                       </option>
                     ))}
@@ -303,10 +380,14 @@ export default function ManualVmImportModal({
                     <div className="text-sm text-green-400">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4" />
-                        <span>{form.planType.toLowerCase()} pricing loaded</span>
+                        <span>
+                          {form.planType.toLowerCase()} pricing loaded
+                        </span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        CPU: {cpuOptions.length} plans | RAM: {ramOptions.length} plans | Disk: {diskOptions.length} plans | Bandwidth: {bandwidthOptions.length} plans
+                        CPU: {cpuOptions.length} plans | RAM:{" "}
+                        {ramOptions.length} plans | Disk: {diskOptions.length}{" "}
+                        plans | Bandwidth: {bandwidthOptions.length} plans
                       </div>
                     </div>
                   ) : (
@@ -333,7 +414,7 @@ export default function ManualVmImportModal({
                   <RefreshCw className="w-4 h-4 text-gray-400 animate-spin ml-2" />
                 )}
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* CPU */}
                 <div>
@@ -344,7 +425,9 @@ export default function ManualVmImportModal({
                   <select
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
                     value={form.cpuPriceId}
-                    onChange={(e) => setForm({ ...form, cpuPriceId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, cpuPriceId: e.target.value })
+                    }
                     disabled={loadingPricing || cpuOptions.length === 0}
                   >
                     <option value="" className="bg-gray-900">
@@ -365,7 +448,8 @@ export default function ManualVmImportModal({
                     )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    {cpuOptions.length} CPU plan{cpuOptions.length !== 1 ? 's' : ''}
+                    {cpuOptions.length} CPU plan
+                    {cpuOptions.length !== 1 ? "s" : ""}
                   </p>
                 </div>
 
@@ -378,7 +462,9 @@ export default function ManualVmImportModal({
                   <select
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
                     value={form.ramPriceId}
-                    onChange={(e) => setForm({ ...form, ramPriceId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, ramPriceId: e.target.value })
+                    }
                     disabled={loadingPricing || ramOptions.length === 0}
                   >
                     <option value="" className="bg-gray-900">
@@ -399,7 +485,8 @@ export default function ManualVmImportModal({
                     )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    {ramOptions.length} RAM plan{ramOptions.length !== 1 ? 's' : ''}
+                    {ramOptions.length} RAM plan
+                    {ramOptions.length !== 1 ? "s" : ""}
                   </p>
                 </div>
 
@@ -412,7 +499,9 @@ export default function ManualVmImportModal({
                   <select
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
                     value={form.diskPriceId}
-                    onChange={(e) => setForm({ ...form, diskPriceId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, diskPriceId: e.target.value })
+                    }
                     disabled={loadingPricing || diskOptions.length === 0}
                   >
                     <option value="" className="bg-gray-900">
@@ -433,7 +522,8 @@ export default function ManualVmImportModal({
                     )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    {diskOptions.length} Disk plan{diskOptions.length !== 1 ? 's' : ''}
+                    {diskOptions.length} Disk plan
+                    {diskOptions.length !== 1 ? "s" : ""}
                   </p>
                 </div>
 
@@ -446,7 +536,9 @@ export default function ManualVmImportModal({
                   <select
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
                     value={form.bandwidthPriceId}
-                    onChange={(e) => setForm({ ...form, bandwidthPriceId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, bandwidthPriceId: e.target.value })
+                    }
                     disabled={loadingPricing || bandwidthOptions.length === 0}
                   >
                     <option value="" className="bg-gray-900">
@@ -467,7 +559,8 @@ export default function ManualVmImportModal({
                     )}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    {bandwidthOptions.length} Bandwidth plan{bandwidthOptions.length !== 1 ? 's' : ''}
+                    {bandwidthOptions.length} Bandwidth plan
+                    {bandwidthOptions.length !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
@@ -480,9 +573,11 @@ export default function ManualVmImportModal({
               <div className="p-2 bg-amber-500/10 rounded-lg">
                 <Network className="w-5 h-5 text-amber-500" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Step 5: Network Configuration</h3>
+              <h3 className="text-lg font-semibold text-white">
+                Step 5: Network Configuration
+              </h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* IP Address */}
               <div>
@@ -498,7 +593,9 @@ export default function ManualVmImportModal({
                     placeholder="e.g., 192.168.1.100"
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
                     value={form.ipAddress}
-                    onChange={(e) => setForm({ ...form, ipAddress: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, ipAddress: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -517,7 +614,9 @@ export default function ManualVmImportModal({
                     placeholder="e.g., BC:24:11:AA:BB:CC"
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
                     value={form.macAddress}
-                    onChange={(e) => setForm({ ...form, macAddress: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, macAddress: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -531,8 +630,15 @@ export default function ManualVmImportModal({
                   type="text"
                   placeholder="/24"
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
-                  value={form.cidr}
-                  onChange={(e) => setForm({ ...form, cidr: e.target.value })}
+                  // value={form.cidr}
+                  onChange={(e) => {
+                    const cidr = e.target.value;
+                    setForm({
+                      ...form,
+                      cidr,
+                      subnetMask: cidrToSubnetMask(cidr),
+                    });
+                  }}
                 />
               </div>
 
@@ -546,7 +652,9 @@ export default function ManualVmImportModal({
                   placeholder="e.g., 192.168.1.1"
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
                   value={form.gateway}
-                  onChange={(e) => setForm({ ...form, gateway: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, gateway: e.target.value })
+                  }
                 />
               </div>
 
@@ -560,7 +668,10 @@ export default function ManualVmImportModal({
                   placeholder="e.g., 255.255.255.0"
                   className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
                   value={form.subnetMask}
-                  onChange={(e) => setForm({ ...form, subnetMask: e.target.value })}
+                  disabled
+                  onChange={(e) =>
+                    setForm({ ...form, subnetMask: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -572,9 +683,11 @@ export default function ManualVmImportModal({
               <div className="p-2 bg-orange-500/10 rounded-lg">
                 <Calendar className="w-5 h-5 text-orange-500" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Step 6: Expiration Date</h3>
+              <h3 className="text-lg font-semibold text-white">
+                Step 6: Expiration Date
+              </h3>
             </div>
-            
+
             <div className="w-full md:w-1/3">
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Expires At
@@ -586,7 +699,9 @@ export default function ManualVmImportModal({
                 <input
                   type="date"
                   className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition [color-scheme:dark]"
-                  onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, expiresAt: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -597,7 +712,8 @@ export default function ManualVmImportModal({
         <div className="px-6 py-4 border-t border-gray-800 bg-gray-900/50">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="text-sm text-gray-400">
-              Required fields: VM Name, VMID, Server, Plan Type, and all resource plans
+              Required fields: VM Name, VMID, Server, Plan Type, and all
+              resource plans
             </div>
             <div className="flex gap-3 w-full sm:w-auto">
               <button

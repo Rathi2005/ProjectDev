@@ -24,6 +24,7 @@ import VMPerformancePage from "./pages/admin/VMPerformancePage";
 import ServerRamPage from "./pages/admin/ServerRamPage";
 import UserVMPerformancePage from "./pages/VmPerformancePage";
 import OrderDetailsPage from "./components/admin/OrderDetailsPage";
+import Wallet from "./pages/Wallet";
 
 export default function App() {
   return (
@@ -53,6 +54,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Profile mode="user" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wallet"
+          element={
+            <ProtectedRoute>
+              <Wallet />
             </ProtectedRoute>
           }
         />
