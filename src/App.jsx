@@ -7,6 +7,7 @@ import AdminProtectedRoute from "./AdminProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Credits from "./pages/Credits";
 import AdminLoginPage from "./pages/admin/AdminLogin";
 import AdminDashboard from "./components/admin/adminDashboard";
 import OrdersPage from "./pages/admin/OrdersPage";
@@ -24,6 +25,7 @@ import VMPerformancePage from "./pages/admin/VMPerformancePage";
 import ServerRamPage from "./pages/admin/ServerRamPage";
 import UserVMPerformancePage from "./pages/VmPerformancePage";
 import OrderDetailsPage from "./components/admin/OrderDetailsPage";
+import CreditPage from "./pages/admin/CreditPage";
 import Wallet from "./pages/Wallet";
 
 export default function App() {
@@ -62,6 +64,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Wallet />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/credits"
+          element={
+            <ProtectedRoute>
+              <Credits />
             </ProtectedRoute>
           }
         />
@@ -230,6 +240,15 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <Zones />
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/credits"
+          element={
+            <AdminProtectedRoute>
+              <CreditPage />
             </AdminProtectedRoute>
           }
         />

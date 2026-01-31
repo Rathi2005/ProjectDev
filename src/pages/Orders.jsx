@@ -45,6 +45,9 @@ export default function UserOrdersPage() {
   const [passwordLoading, setPasswordLoading] = useState({});
   const [protectionState, setProtectionState] = useState({});
   const [protectionLoading, setProtectionLoading] = useState({});
+  const [accountStatus, setAccountStatus] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+
   const navigate = useNavigate();
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -76,8 +79,39 @@ export default function UserOrdersPage() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
+  useEffect(() => {
+    const checkAccountStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await fetch(`${BASE_URL}/api/user/status`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch account status");
+
+        const data = await res.json();
+        setAccountStatus(data);
+      } catch (err) {
+        console.error("Account status check failed", err);
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+
+    checkAccountStatus();
+  }, [BASE_URL]);
+
   // Fetch User Orders from API
   useEffect(() => {
+    if (statusLoading) return;
+    if (accountStatus?.isLocked) {
+      setLoading(false);
+      return;
+    }
     async function fetchUserOrders() {
       try {
         const token = localStorage.getItem("token");
@@ -134,7 +168,7 @@ export default function UserOrdersPage() {
     }
 
     fetchUserOrders();
-  }, [BASE_URL]);
+  }, [BASE_URL, statusLoading, accountStatus]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -858,7 +892,30 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         }}
       />
 
-      <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <main className="relative p-4 sm:p-6 lg:p-8 space-y-6">
+        {!statusLoading && accountStatus?.isLocked && (
+          <div
+            className="absolute inset-0 z-[50] bg-black/60 backdrop-blur-md
+                  flex items-center justify-center"
+          >
+            <div className="text-center px-6">
+              <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+                <Shield className="w-10 h-10 text-red-400 opacity-80" />
+              </div>
+
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Account Suspended
+              </h2>
+
+              <p className="text-gray-300 max-w-md mx-auto">
+                Your services are temporarily stopped by the administrator.
+                <br />
+                Please contact support for more information.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Loading state */}
         {loading ? (
           <div className="flex items-center justify-center min-h-[400px]">

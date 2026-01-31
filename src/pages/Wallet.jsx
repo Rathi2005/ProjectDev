@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Header from "./../components/user/Header";
 import Footer from "./../components/user/Footer";
 import PaymentFlow from "./../components/payment/PaymentFlow";
+
 import {
   CreditCard,
   DollarSign,
@@ -27,8 +28,6 @@ export default function WalletPage() {
   const [transactions, setTransactions] = useState([]);
   const [logsLoading, setLogsLoading] = useState(true);
 
-  const [showWithdraw, setShowWithdraw] = useState(false);
-
   // Add fund
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState(null);
@@ -38,6 +37,9 @@ export default function WalletPage() {
   const [fiatBalance, setFiatBalance] = useState(0);
   const [currency, setCurrency] = useState("INR");
   const [walletLoading, setWalletLoading] = useState(true);
+
+  const recentTransactions = transactions.slice(0, 10);
+  const [showAllTxModal, setShowAllTxModal] = useState(false);
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -168,32 +170,6 @@ export default function WalletPage() {
     }
   };
 
-  const handleWithdraw = () => {
-    if (amount && parseFloat(amount) > 0) {
-      if (parseFloat(amount) <= fiatBalance) {
-        setBalance((prev) => prev - parseFloat(amount));
-        setTransactions((prev) => [
-          {
-            id: prev.length + 1,
-            type: "withdrawal",
-            amount: -parseFloat(amount),
-            description: "Withdrawal Request",
-            date: new Date().toISOString().split("T")[0],
-            status: "pending",
-            method: "Bank Transfer",
-          },
-          ...prev,
-        ]);
-        setShowWithdraw(false);
-        setAmount("");
-
-        alert(`$${amount} withdrawal requested successfully!`);
-      } else {
-        alert("Insufficient balance");
-      }
-    }
-  };
-
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     alert("Copied to clipboard!");
@@ -244,12 +220,6 @@ export default function WalletPage() {
                   Manage your funds and transactions
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <button className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2">
-                  <History className="w-4 h-4" />
-                  View All
-                </button>
-              </div>
             </div>
           </div>
 
@@ -293,19 +263,6 @@ export default function WalletPage() {
                       Credit Card
                     </span>
                   </button>
-
-                  <button
-                    onClick={() => setShowWithdraw(true)}
-                    className="flex flex-col items-center p-4 bg-gray-900/20 hover:bg-gray-800/30 border border-gray-800 rounded-xl transition-all hover:scale-[1.02] group"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center mb-3 group-hover:bg-gray-700">
-                      <Upload className="w-6 h-6 text-gray-400" />
-                    </div>
-                    <span className="text-white font-medium">Withdraw</span>
-                    <span className="text-xs text-gray-400 mt-1">
-                      Bank Transfer
-                    </span>
-                  </button>
                   <button className="flex flex-col items-center p-4 bg-gray-900/20 hover:bg-gray-800/30 border border-gray-800 rounded-xl transition-all hover:scale-[1.02] group">
                     <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center mb-3 group-hover:bg-gray-700">
                       <Download className="w-6 h-6 text-gray-400" />
@@ -342,7 +299,7 @@ export default function WalletPage() {
                       No transactions found
                     </p>
                   ) : (
-                    transactions.map((transaction) => (
+                    recentTransactions.map((transaction) => (
                       <div
                         key={transaction.id}
                         className="flex items-center justify-between p-3 hover:bg-gray-900/30 rounded-xl transition-colors group"
@@ -396,7 +353,10 @@ export default function WalletPage() {
                     ))
                   )}
                 </div>
-                <button className="w-full mt-6 py-3 text-center text-indigo-400 hover:text-indigo-300 transition-colors text-sm font-medium border-t border-gray-800 pt-4">
+                <button
+                  onClick={() => setShowAllTxModal(true)}
+                  className="w-full mt-6 py-3 text-center text-indigo-400 hover:text-indigo-300 transition-colors text-sm font-medium border-t border-gray-800 pt-4"
+                >
                   View All Transactions →
                 </button>
               </div>
@@ -496,81 +456,57 @@ export default function WalletPage() {
             </div>
           )}
 
-          {/* Withdraw Modal */}
-          {showWithdraw && (
+          {showAllTxModal && (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-              <div className="bg-[#121a2a] border border-gray-800 rounded-2xl w-full max-w-md animate-fadeIn">
-                <div className="p-6 border-b border-gray-800">
+              <div className="bg-[#121a2a] border border-gray-800 rounded-2xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+                {/* Header */}
+                <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                   <h3 className="text-xl font-bold text-white">
-                    Withdraw Funds
+                    All Transactions
                   </h3>
+                  <button
+                    onClick={() => setShowAllTxModal(false)}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    ✕
+                  </button>
                 </div>
-                <div className="p-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">
-                        Amount (Rupees)
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                          ₹
-                        </span>
-                        <input
-                          type="number"
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                          placeholder="0.00"
-                          min="1"
-                          max={balance}
-                          step="0.01"
-                        />
+
+                {/* Body */}
+                <div className="p-6 overflow-y-auto space-y-4">
+                  {transactions.map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-gray-900/30"
+                    >
+                      <div>
+                        <p className="text-white font-medium">
+                          {transaction.description}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {transaction.date} • {transaction.referenceId}
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Available:{" "}
-                        <span className="text-green-400">
-                          ${fiatBalance.toFixed(2)}
+
+                      <div className="text-right">
+                        <p
+                          className={`font-bold ${
+                            transaction.amount > 0
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {transaction.amount > 0 ? "+" : ""}₹
+                          {Math.abs(transaction.amount).toFixed(2)}
+                        </p>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded border ${getStatusColor(transaction.status)}`}
+                        >
+                          {transaction.status}
                         </span>
-                      </p>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">
-                        Withdraw To
-                      </label>
-                      <select className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-600">
-                        <option>
-                          Bank Account (•••• 1234) - 2-3 business days
-                        </option>
-                        <option>PayPal (user@example.com) - Instant</option>
-                        <option>Crypto Wallet - 10-30 minutes</option>
-                      </select>
-                    </div>
-                    <div className="p-4 bg-yellow-900/20 border border-yellow-900/30 rounded-xl">
-                      <p className="text-sm text-yellow-400 flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4" />
-                        Withdrawals may take 1-3 business days to process
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 mt-8">
-                    <button
-                      onClick={() => setShowWithdraw(false)}
-                      className="flex-1 px-4 py-3 rounded-xl border border-gray-700 hover:bg-gray-800 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleWithdraw}
-                      disabled={
-                        !amount ||
-                        parseFloat(amount) <= 0 ||
-                        parseFloat(amount) > fiatBalance
-                      }
-                      className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                    >
-                      Withdraw ${amount || "0.00"}
-                    </button>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>

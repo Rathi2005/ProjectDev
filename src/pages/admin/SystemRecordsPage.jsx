@@ -367,20 +367,45 @@ export default function SystemRecordsPage() {
         if (pageType === "users-overview") {
           const users = data.users || [];
 
-          processedData = users.map((user) => ({
-            id: user.userId || user.id,
-            firstName: user.firstName || "",
-            lastName: user.lastName || "",
-            email: user.email || "",
-            billingAddress: user.billingAddress || {},
-            vms: user.vms || [],
-            totalVMs: user.vms?.length || 0,
-            activeVMs:
-              user.vms?.filter(
-                (vm) => vm.status === "ACTIVE" || vm.liveState === "running",
-              ).length || 0,
-            totalSpent: calculateUserSpent(user.vms || []),
-          }));
+          const adminToken = localStorage.getItem("adminToken");
+          processedData = await Promise.all(
+            users.map(async (user) => {
+              let isLocked = false;
+
+              try {
+                const lockRes = await fetch(
+                  `${BASE_URL}/api/admin/users/${user.userId}/lock-status`,
+                  {
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                  },
+                );
+
+                if (lockRes.ok) {
+                  const lockData = await lockRes.json();
+                  isLocked = lockData.isLocked;
+                }
+              } catch (err) {
+                console.error("Lock status fetch failed", err);
+              }
+
+              return {
+                id: user.userId || user.id,
+                firstName: user.firstName || "",
+                lastName: user.lastName || "",
+                email: user.email || "",
+                billingAddress: user.billingAddress || {},
+                vms: user.vms || [],
+                totalVMs: user.vms?.length || 0,
+                activeVMs:
+                  user.vms?.filter(
+                    (vm) =>
+                      vm.status === "ACTIVE" || vm.liveState === "running",
+                  ).length || 0,
+                totalSpent: calculateUserSpent(user.vms || []),
+                isLocked, 
+              };
+            }),
+          );
 
           setTotalItems(data.totalItems || 0);
           setTotalPages(data.totalPages || 0);
@@ -1266,7 +1291,7 @@ export default function SystemRecordsPage() {
                                 record.isLocked && (
                                   <button
                                     onClick={() => unlockUser(record.id)}
-                                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 rounded flex items-center gap-1 justify-center"
+                                    className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded flex items-center gap-1 justify-center"
                                   >
                                     <CheckCircle className="w-3 h-3" />
                                     Unlock User

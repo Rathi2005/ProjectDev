@@ -94,6 +94,20 @@ const SummarySidebar = ({
     return monthlyTotal * monthsNum;
   }, [monthlyTotal, months]);
 
+  const discountAmount = useMemo(() => {
+    if (!couponValidated || !couponData) return 0;
+
+    if (couponData.discountType === "percentage") {
+      return (totalPayable * couponData.discountValue) / 100;
+    }
+
+    return couponData.discountAmount || 0;
+  }, [couponValidated, couponData, totalPayable]);
+
+  const finalPayable = useMemo(() => {
+    return Math.max(totalPayable - discountAmount, 0);
+  }, [totalPayable, discountAmount]);
+
   // Prepare the complete server configuration object
   const serverConfig = useMemo(() => {
     return {
@@ -111,6 +125,7 @@ const SummarySidebar = ({
       useWalletBalance,
       couponCode: useCoupon && couponCode.trim() ? couponCode.trim() : null,
       clientReferenceId: `vm-${Date.now()}`,
+      payableAmount: finalPayable,
     };
   }, [
     vmName,
@@ -719,24 +734,17 @@ const SummarySidebar = ({
                 </div>
                 <div className="text-right">
                   <div className="text-xl font-bold text-white">
-                    ₹{totalPayable.toFixed(2)}
+                    ₹{finalPayable.toFixed(2)}
                   </div>
-                  {Number(months) > 1 && (
-                    <div className="text-xs text-gray-400">
-                      (₹{monthlyTotal.toFixed(2)} × {months} months)
+
+                  {couponValidated && discountAmount > 0 && (
+                    <div className="text-xs text-green-400 mt-1">
+                      Coupon Discount: −₹{discountAmount.toFixed(2)}
                     </div>
                   )}
+
                 </div>
               </div>
-
-              {Number(months) > 1 && (
-                <div className="flex justify-between items-center text-xs text-gray-400 mt-2 pt-2 border-t border-gray-700/30">
-                  <span>Equivalent to:</span>
-                  <span>
-                    ₹{(totalPayable / Number(months)).toFixed(2)}/month
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -931,7 +939,7 @@ const SummarySidebar = ({
           ) : (
             <>
               <CreditCard className="w-5 h-5" />
-              Pay ₹{totalPayable.toFixed(2)} & Deploy
+              Pay ₹{finalPayable.toFixed(2)} & Deploy
             </>
           )}
         </button>

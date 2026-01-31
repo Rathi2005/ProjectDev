@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Globe, Server, Ticket, Settings, User, Wallet } from "lucide-react";
+import { Globe, Server, Ticket, Settings, User, Wallet, ShoppingBag } from "lucide-react";
 import useLogout from "./Logout";
 import { jwtDecode } from "jwt-decode";
 import toast from "react-hot-toast";
@@ -80,16 +80,18 @@ const Header = () => {
             href="/orders"
             className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
           >
-            <Globe className="w-4 h-4" />
+            <ShoppingBag className="w-4 h-4" />
             <span>Orders</span>
           </a>
-          {/* <a
-            href="#"
+
+          <a
+            href="/credits"
             className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
           >
-            <Server className="w-4 h-4" />
-            <span>Pricing</span>
-          </a> */}
+            <Wallet className="w-4 h-4" />
+            <span>Credits</span>
+          </a>
+
           <a
             href="https://www.getwebup.in/aboutus.php"
             className="flex items-center space-x-1 hover:text-[#4f46e5] transition"

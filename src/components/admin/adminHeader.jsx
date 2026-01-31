@@ -10,6 +10,11 @@ import {
   Menu,
   X,
   ChevronDown,
+  ShoppingCart,
+  Receipt,
+  Map,
+  Tags,
+  Wallet,
 } from "lucide-react";
 
 import useLogout from "./logout"; 
@@ -55,19 +60,19 @@ const AdminHeader = () => {
   const navLinks = [
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/users-overview", icon: Users, label: "Users" },
-    { href: "/admin/orders", icon: Users, label: "Orders" },
-    { href: "/admin/invoices", icon: FileBarChart, label: "Invoices" },
+    { href: "/admin/orders", icon: ShoppingCart, label: "Orders" },
+    { href: "/admin/invoices", icon: Receipt, label: "Invoices" },
     // { href: "/admin/servers", icon: FileBarChart, label: "Servers" },
-    { href: "/admin/zones", icon: FileBarChart, label: "Zones" },
+    { href: "/admin/zones", icon: Map, label: "Zones" },
     {
       label: "Pricing",
-      icon: FileBarChart,
+      icon: Tags,
       dropdown: [
         { href: "/admin/pricing/dedicated", label: "Dedicated" },
         { href: "/admin/pricing/shared", label: "Shared" },
       ],
     },
-    // { href: "/admin/settings", icon: Settings, label: "Settings" },
+    { href: "/admin/credits", icon: Wallet, label: "Credits" },
   ];
 
   const handleDropdownClick = (e) => {
