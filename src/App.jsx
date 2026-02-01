@@ -69,14 +69,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
+        {/* <Route
           path="/credits"
           element={
             <ProtectedRoute>
               <Credits />
             </ProtectedRoute>
           }
-        />
+        /> */}
         <Route
         path="/user/vms/:vmid/performance"
           element={
