@@ -17,44 +17,34 @@ import {
   Wallet,
 } from "lucide-react";
 
-import useLogout from "./logout"; 
-
+import useLogout from "./logout";
 
 const AdminHeader = () => {
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [openPricingMenu, setOpenPricingMenu] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownRef = useRef(null);
-  const pricingDropdownRef = useRef(null); // Separate ref for pricing dropdown
 
   const token = localStorage.getItem("adminToken");
   const logout = useLogout();
-  
+
   const handleLogout = async () => {
-    await logout(); 
+    await logout();
   };
 
   // ✅ Fixed: Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Check if click is outside profile dropdown
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
       }
-      
-      // Check if click is outside pricing dropdown
-      if (pricingDropdownRef.current && !pricingDropdownRef.current.contains(event.target)) {
-        // Only close if the click is not on the pricing button itself
-        const pricingButton = event.target.closest('button');
-        if (!pricingButton || !pricingButton.textContent.includes('Pricing')) {
-          setOpenPricingMenu(false);
-        }
-      }
+
+      setOpenDropdown(null);
     };
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
   const navLinks = [
@@ -72,17 +62,23 @@ const AdminHeader = () => {
         { href: "/admin/pricing/shared", label: "Shared" },
       ],
     },
-    { href: "/admin/credits", icon: Wallet, label: "Credits" },
+    {
+      label: "Credits",
+      icon: Wallet,
+      dropdown: [
+        { href: "/admin/credits/coupons", icon: Wallet, label: "Coupons" },
+        { href: "/admin/credits/wallets", icon: Wallet, label: "Wallets" },
+      ],
+    },
   ];
 
-  const handleDropdownClick = (e) => {
-    e.stopPropagation(); // Prevent event bubbling
-    setOpenPricingMenu((prev) => !prev);
+  const handleDropdownClick = (label) => {
+    setOpenDropdown((prev) => (prev === label ? null : label));
   };
 
   const handleDropdownLinkClick = (href) => {
     navigate(href);
-    setOpenPricingMenu(false);
+    setOpenDropdown(null);
     setIsMobileMenuOpen(false);
   };
 
@@ -102,35 +98,42 @@ const AdminHeader = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8 text-sm">
           {navLinks.map(({ href, icon: Icon, label, dropdown }) => (
-            <div key={label} className="relative group" ref={dropdown ? pricingDropdownRef : null}>
+            <div key={label} className="relative group">
               {dropdown ? (
                 <>
                   <button
-                    onClick={handleDropdownClick}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDropdownClick(label);
+                    }}
                     className="flex items-center space-x-1 hover:text-[#22c55e] transition"
                   >
                     <Icon className="w-4 h-4" />
                     <span>{label}</span>
                     <ChevronDown
                       className={`w-4 h-4 ml-1 transition-transform ${
-                        openPricingMenu ? "rotate-180" : ""
+                        openDropdown === label ? "rotate-180" : ""
                       }`}
                     />
                   </button>
 
                   {/* ✅ Dropdown menu */}
-                  {openPricingMenu && (
-                    <div 
+                  {openDropdown === label && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
                       className="absolute left-0 mt-2 w-44 bg-[#121a2a] border border-gray-700 rounded-md shadow-lg py-1 z-50"
                     >
                       {dropdown.map((item) => (
-                        <button
-                          key={item.href}
-                          onClick={() => handleDropdownLinkClick(item.href)}
-                          className="w-full text-left block px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#22c55e] transition"
+                        <Link
+                          to={item.href}
+                          onClick={() => {
+                            setOpenDropdown(null);
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="block px-4 py-2 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#22c55e] transition"
                         >
                           {item.label}
-                        </button>
+                        </Link>
                       ))}
                     </div>
                   )}
@@ -199,25 +202,28 @@ const AdminHeader = () => {
 
       {/* Mobile Dropdown Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-[#121a2a] border-t border-gray-700 py-4 px-6 animate-fadeIn">
+        <div
+          className="md:hidden bg-[#121a2a] border-t border-gray-700 py-4 px-6 animate-fadeIn"
+          onClick={(e) => e.stopPropagation()}
+        >
           {navLinks.map(({ href, icon: Icon, label, dropdown }) => (
             <div key={label}>
               {dropdown ? (
                 <>
                   <button
-                    onClick={() => setOpenPricingMenu((prev) => !prev)}
+                    onClick={() => handleDropdownClick(label)}
                     className="flex items-center space-x-2 py-2 w-full text-left text-gray-300 hover:text-[#22c55e] transition"
                   >
                     <Icon className="w-4 h-4" />
                     <span>{label}</span>
                     <ChevronDown
                       className={`w-4 h-4 ml-auto transition-transform ${
-                        openPricingMenu ? "rotate-180" : ""
+                        openDropdown === label ? "rotate-180" : ""
                       }`}
                     />
                   </button>
 
-                  {openPricingMenu && (
+                  {openDropdown === label && (
                     <div className="ml-6 mt-1 border-l border-gray-700 pl-3">
                       {dropdown.map((item) => (
                         <button

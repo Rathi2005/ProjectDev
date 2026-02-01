@@ -3,11 +3,16 @@ import React from "react";
 import { Toaster } from "react-hot-toast";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
-import AdminProtectedRoute from "./AdminProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Credits from "./pages/Credits";
+import Orders from "./pages/Orders";
+import Profile from "./components/Profile";
+import UserVMPerformancePage from "./pages/VmPerformancePage";
+import Wallet from "./pages/Wallet";
+
+import AdminProtectedRoute from "./AdminProtectedRoute";
 import AdminLoginPage from "./pages/admin/AdminLogin";
 import AdminDashboard from "./components/admin/adminDashboard";
 import OrdersPage from "./pages/admin/OrdersPage";
@@ -17,16 +22,13 @@ import ManageResourcesPage from "./pages/admin/ManageResources";
 import VMsPage from "./pages/admin/VMs";
 import PricingDetailPage from "./pages/admin/PricingDetailPage";
 import Zones from "./pages/admin/Zones";
-import Orders from "./pages/Orders";
 import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
-import Profile from "./components/Profile";
 import PerformancePage from "./pages/admin/PerformancePage";
 import VMPerformancePage from "./pages/admin/VMPerformancePage";
 import ServerRamPage from "./pages/admin/ServerRamPage";
-import UserVMPerformancePage from "./pages/VmPerformancePage";
 import OrderDetailsPage from "./components/admin/OrderDetailsPage";
-import CreditPage from "./pages/admin/CreditPage";
-import Wallet from "./pages/Wallet";
+import CreditPage from "./pages/admin/Credits/CouponsManagementPage";
+import WalletsManagementPage from "./pages/admin/Credits/WalletsManagementPage";
 
 export default function App() {
   return (
@@ -83,6 +85,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin" element={<AdminLoginPage />} />
         <Route
@@ -245,10 +248,18 @@ export default function App() {
         />
 
         <Route
-          path="/admin/credits"
+          path="/admin/credits/coupons"
           element={
             <AdminProtectedRoute>
               <CreditPage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/credits/wallets"
+          element={
+            <AdminProtectedRoute>
+              <WalletsManagementPage />
             </AdminProtectedRoute>
           }
         />

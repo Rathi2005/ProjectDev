@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import Header from "../../components/admin/adminHeader";
-import Footer from "../../components/user/Footer";
+import Header from "../../../components/admin/adminHeader";
+import Footer from "../../../components/user/Footer";
 import {
   Search,
   Filter,
@@ -278,7 +278,7 @@ const CouponManagementPage = () => {
               <Wallet className="w-7 h-7 text-emerald-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Coupon Management</h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Coupon Management</h1>
               <p className="text-gray-400">
                 Create and manage promotional codes
               </p>
