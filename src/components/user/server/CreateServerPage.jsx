@@ -78,53 +78,6 @@ const CreateServerPage = ({
             />
           </section>
 
-          {/* Selected Location Confirmation */}
-          {selectedLocation && (
-            <div className="mt-8 p-6 bg-[#1a2238] rounded-lg border border-gray-700">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-900/30 flex items-center justify-center">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-5 w-5 text-green-400" 
-                    viewBox="0 0 20 20" 
-                    fill="currentColor"
-                  >
-                    <path 
-                      fillRule="evenodd" 
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" 
-                      clipRule="evenodd" 
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-gray-300">
-                    <span className="font-semibold text-green-400">
-                      Location Selected:
-                    </span>{" "}
-                    {selectedLocation}
-                  </p>
-                  <p className="text-gray-300 mt-1">
-                    <span className="font-semibold text-blue-400">Server ID:</span>{" "}
-                    {serverId}
-                  </p>
-                  <p className="text-gray-400 text-sm mt-3">
-                    Continue to the next step to choose your operating system.
-                  </p>
-                  <button
-                    onClick={() => {
-                      document.getElementById("server-image").scrollIntoView({ 
-                        behavior: "smooth", 
-                        block: "start" 
-                      });
-                    }}
-                    className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors text-sm font-medium"
-                  >
-                    Continue to OS Selection
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

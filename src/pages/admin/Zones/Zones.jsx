@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
-import Header from "../../components/admin/adminHeader";
-import Footer from "../../components/user/Footer";
-import { PlusCircle, Loader2, Trash2, Edit, Server, Globe } from "lucide-react";
+import Header from "../../../components/admin/adminHeader";
+import Footer from "../../../components/user/Footer";
+import {
+  PlusCircle,
+  Loader2,
+  Trash2,
+  Edit,
+  Server,
+  Globe,
+  File,
+  ToggleLeft,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -19,7 +28,7 @@ export default function ZonesPage() {
   const navigate = useNavigate();
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-  // ✅ Configure SweetAlert2 dark theme
+  // Configure SweetAlert2 dark theme
   const swalDarkTheme = {
     customClass: {
       popup: "dark-swal-popup",
@@ -35,13 +44,13 @@ export default function ZonesPage() {
     cancelButtonColor: "#ef4444",
   };
 
-  // ✅ Fetch all zones
+  // Fetch all zones
   useEffect(() => {
     const fetchZones = async () => {
       setLoading(true);
       try {
         const token = localStorage.getItem("adminToken");
-        const res = await fetch(`${BASE_URL}/api/options/zones`, {
+        const res = await fetch(`${BASE_URL}/api/admin/zones`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -66,7 +75,7 @@ export default function ZonesPage() {
     fetchZones();
   }, [BASE_URL]);
 
-  // ✅ Add Zone
+  // Add Zone
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -101,7 +110,7 @@ export default function ZonesPage() {
     }
   };
 
-  // ✅ Delete Zone with confirmation
+  // Delete Zone with confirmation
   const handleDeleteZone = async (zoneId, zoneName) => {
     const result = await Swal.fire({
       ...swalDarkTheme,
@@ -136,6 +145,7 @@ export default function ZonesPage() {
     if (result.isConfirmed) {
       try {
         const token = localStorage.getItem("adminToken");
+
         const res = await fetch(`${BASE_URL}/api/admin/zones/${zoneId}`, {
           method: "DELETE",
           headers: {
@@ -145,11 +155,16 @@ export default function ZonesPage() {
         });
 
         if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
+          const errorData = await res.json();
+
+          if (res.status === 409) {
+            throw new Error(errorData.error);
+          }
+
+          throw new Error("Failed to delete zone");
         }
 
-        // Remove zone from state
-        setZones(zones.filter((zone) => zone.id !== zoneId));
+        setZones((prev) => prev.filter((zone) => zone.id !== zoneId));
 
         await Swal.fire({
           ...swalDarkTheme,
@@ -163,14 +178,14 @@ export default function ZonesPage() {
         Swal.fire({
           ...swalDarkTheme,
           icon: "error",
-          title: "Error",
-          text: "Failed to delete zone. Please try again.",
+          title: "Cannot Delete Zone",
+          text: err.message,
         });
       }
     }
   };
 
-  // ✅ Rename Zone
+  // Rename Zone
   const handleRenameZone = async () => {
     if (!renameName.trim() || !editingZone) {
       toast.error("Please enter a valid zone name");
@@ -189,7 +204,7 @@ export default function ZonesPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!res.ok) {
@@ -199,8 +214,8 @@ export default function ZonesPage() {
       // Update zone in state
       setZones(
         zones.map((zone) =>
-          zone.id === editingZone.id ? { ...zone, name: renameName } : zone
-        )
+          zone.id === editingZone.id ? { ...zone, name: renameName } : zone,
+        ),
       );
 
       setRenameModal(false);
@@ -213,14 +228,61 @@ export default function ZonesPage() {
     }
   };
 
-  // ✅ Open rename modal
+  // Update Zone Status
+  const handleToggleStatus = async (zone) => {
+    const newStatus = zone.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+    const result = await Swal.fire({
+      ...swalDarkTheme,
+      title: "Update Zone Status",
+      text: `Are you sure you want to mark "${zone.name}" as ${newStatus}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: `Yes, set ${newStatus}`,
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const token = localStorage.getItem("adminToken");
+      const res = await fetch(
+        `${BASE_URL}/api/admin/zones/${zone.id}/status?status=${newStatus}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      const updatedZone = await res.json();
+
+      setZones((prev) =>
+        prev.map((z) =>
+          z.id === zone.id ? { ...z, status: updatedZone.status } : z,
+        ),
+      );
+
+      toast.success(`Zone marked as ${updatedZone.status}`);
+    } catch (err) {
+      toast.error("Failed to update zone status");
+    }
+  };
+
+  // Open rename modal
   const openRenameModal = (zone) => {
     setEditingZone(zone);
     setRenameName(zone.name);
     setRenameModal(true);
   };
 
-  // ✅ Style for SweetAlert
+  // Style for SweetAlert
   useEffect(() => {
     const style = document.createElement("style");
     style.textContent = `
@@ -322,6 +384,7 @@ export default function ZonesPage() {
                   <tr>
                     <th className="px-4 py-3 sm:px-6 text-center">Zone ID</th>
                     <th className="px-4 py-3 sm:px-6 text-center">Zone Name</th>
+                    <th className="px-4 py-3 sm:px-6 text-center">Status</th>
                     <th className="px-4 py-3 sm:px-6 text-center">Actions</th>
                   </tr>
                 </thead>
@@ -338,6 +401,9 @@ export default function ZonesPage() {
                       </td>
                       <td className="px-4 py-3 sm:px-6 text-gray-200 text-center font-medium">
                         {zone.name || "—"}
+                      </td>
+                      <td className="px-4 py-3 sm:px-6 text-gray-200 text-center font-medium">
+                        {zone.status || "—"}
                       </td>
                       <td className="px-4 py-3 sm:px-6 text-center">
                         <div className="flex flex-wrap gap-2 justify-center">
@@ -365,6 +431,25 @@ export default function ZonesPage() {
                           >
                             <Edit className="w-3 h-3" />
                             Rename
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(zone)}
+                            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-600/30
+             text-white text-xs sm:text-sm px-3 py-1.5 rounded-md
+             transition-all duration-300 shadow-sm"
+                          >
+                            <ToggleLeft className="w-3 h-3" />
+                            Toggle Status
+                          </button>
+                          <button
+                            onClick={() =>
+                              navigate(`/admin/zones/${zone.id}/isos`)
+                            }
+                            className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all duration-300"
+                            title="Add ISOs"
+                          >
+                            <File className="w-3 h-3" />
+                            <span className="hidden sm:inline">ISOs</span>
                           </button>
                           <button
                             onClick={() => handleDeleteZone(zone.id, zone.name)}

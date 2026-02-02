@@ -15,8 +15,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  const [serverId, setServerId] = useState(null);
+  const [zoneId, setZoneId] = useState(null);
   const [selectedOS, setSelectedOS] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
   const [selectedResources, setSelectedResources] = useState({});
@@ -130,14 +129,12 @@ export default function Dashboard() {
   }, [location.state]);
 
   useEffect(() => {
-    if (!serverId) return;
+    if (!zoneId) return;
 
-    // Reset dependent selections when server changes
     setSelectedOS(null);
     setSelectedType(null);
     setSelectedResources({});
-  }, [serverId]);
-
+  }, [zoneId]);
   // Close mobile menu when resizing to desktop
   useEffect(() => {
     const handleResize = () => {
@@ -152,6 +149,30 @@ export default function Dashboard() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    if (!zoneId) return;
+
+    const attempts = 0;
+    const interval = setInterval(() => {
+      const container = mainContentRef.current;
+      const el = document.getElementById("server-image");
+
+      if (container && el) {
+        const containerTop = container.getBoundingClientRect().top;
+        const elTop = el.getBoundingClientRect().top;
+
+        container.scrollTo({
+          top: container.scrollTop + (elTop - containerTop),
+          behavior: "smooth",
+        });
+
+        clearInterval(interval);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [zoneId]);
+
   const toggleMobileSummary = () => {
     setIsMobileSummaryOpen(!isMobileSummaryOpen);
   };
@@ -163,7 +184,7 @@ export default function Dashboard() {
   // Check if all server creation steps are completed
   const isServerCreationComplete = () => {
     return (
-      selectedLocation &&
+      zoneId &&
       selectedOS &&
       selectedType &&
       Object.keys(selectedResources).length > 0
@@ -209,7 +230,7 @@ export default function Dashboard() {
       },
 
       onFailure: () => {
-        alert("❌ Payment failed");
+        alert("Payment failed");
       },
 
       onClose: () => {
@@ -435,10 +456,8 @@ export default function Dashboard() {
                 className="min-h-screen px-4 sm:px-6 lg:px-8 py-6 lg:py-16"
               >
                 <CreateServerPage
-                  selectedLocation={selectedLocation}
-                  setSelectedLocation={setSelectedLocation}
-                  setServerId={setServerId}
-                  serverId={serverId}
+                  selectedLocation={zoneId}
+                  setSelectedLocation={setZoneId}
                 />
               </div>
 
@@ -448,8 +467,8 @@ export default function Dashboard() {
                 className="min-h-screen px-4 sm:px-6 lg:px-8 py-6 lg:py-16"
               >
                 <ImageSelector
-                  key={serverId}
-                  serverId={serverId}
+                  key={zoneId}
+                  zoneId={zoneId}
                   setSelectedOS={setSelectedOS}
                 />
               </div>
@@ -516,11 +535,11 @@ export default function Dashboard() {
               style={{ top: "72px" }}
             >
               <SummarySidebar
-                selectedLocation={selectedLocation}
+                selectedLocation={zoneId}
                 selectedOS={selectedOS}
                 selectedType={selectedType}
                 selectedResources={selectedResources}
-                serverId={serverId}
+                zoneId={zoneId}
                 onMobileCreate={() => {
                   alert("Server creation would proceed here!");
                 }}
@@ -569,11 +588,11 @@ export default function Dashboard() {
                 <div className="flex-1 overflow-y-auto px-4">
                   <div className="py-4">
                     <SummarySidebar
-                      selectedLocation={selectedLocation}
+                      selectedLocation={zoneId}
                       selectedOS={selectedOS}
                       selectedType={selectedType}
                       selectedResources={selectedResources}
-                      serverId={serverId}
+                      zoneId={zoneId}
                       isMobile={true}
                       onPaymentStart={handlePayment}
                     />

@@ -21,7 +21,8 @@ import ServersPage from "./pages/admin/ServersPage";
 import ManageResourcesPage from "./pages/admin/ManageResources";
 import VMsPage from "./pages/admin/VMs";
 import PricingDetailPage from "./pages/admin/PricingDetailPage";
-import Zones from "./pages/admin/Zones";
+import Zones from "./pages/admin/Zones/Zones";
+import ZonesIsosPage from "./pages/admin/Zones/ZoneIsosPage";
 import SystemRecordsPage from "./pages/admin/SystemRecordsPage";
 import PerformancePage from "./pages/admin/PerformancePage";
 import VMPerformancePage from "./pages/admin/VMPerformancePage";
@@ -69,14 +70,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        {/* <Route
-          path="/credits"
-          element={
-            <ProtectedRoute>
-              <Credits />
-            </ProtectedRoute>
-          }
-        /> */}
+
         <Route
         path="/user/vms/:vmid/performance"
           element={
@@ -125,6 +119,14 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <VMPerformancePage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/zones/:zoneId/isos"
+          element={
+            <AdminProtectedRoute>
+              <ZonesIsosPage />
             </AdminProtectedRoute>
           }
         />

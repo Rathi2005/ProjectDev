@@ -21,7 +21,7 @@ const SummarySidebar = ({
   selectedOS,
   selectedType,
   selectedResources,
-  serverId,
+  zoneId,
   onPaymentStart,
 }) => {
   const [vmName, setVmName] = useState("my-shared-vm-test-3");
@@ -112,8 +112,8 @@ const SummarySidebar = ({
   const serverConfig = useMemo(() => {
     return {
       vmName: vmName,
-      serverId: serverId || null,
-      isoId: selectedOS?.id || null,
+      zoneId: Number(zoneId),               
+    zoneIsoId: Number(selectedOS?.id), 
       planType: selectedType?.toLowerCase().includes("dedicated")
         ? "DEDICATED"
         : "SHARED",
@@ -129,7 +129,7 @@ const SummarySidebar = ({
     };
   }, [
     vmName,
-    serverId,
+    zoneId,
     selectedOS,
     selectedType,
     selectedResources,
@@ -408,7 +408,7 @@ const SummarySidebar = ({
   // Check if all required configuration is complete
   const isConfigurationComplete = () => {
     const complete =
-      serverId &&
+      zoneId &&
       selectedOS?.id &&
       selectedType &&
       selectedResources?.cpuPriceId &&
@@ -431,7 +431,7 @@ const SummarySidebar = ({
   // Calculate completion percentage
   const completionPercentage = useMemo(() => {
     const steps = [
-      serverId,
+      zoneId,
       selectedOS?.id,
       selectedType,
       selectedResources?.cpuPriceId,
@@ -439,7 +439,7 @@ const SummarySidebar = ({
     ];
     const completed = steps.filter(Boolean).length;
     return Math.round((completed / steps.length) * 100);
-  }, [serverId, selectedOS, selectedType, selectedResources, months]);
+  }, [zoneId, selectedOS, selectedType, selectedResources, months]);
 
   // Format resource display string
   const formatResourceDisplay = () => {
@@ -577,19 +577,19 @@ const SummarySidebar = ({
                 <div className="flex items-center gap-3">
                   <div
                     className={`p-2 rounded-lg ${
-                      serverId ? "bg-green-900/20" : "bg-gray-800"
+                      zoneId ? "bg-green-900/20" : "bg-gray-800"
                     }`}
                   >
                     <Globe
                       className={`w-4 h-4 ${
-                        serverId ? "text-green-400" : "text-gray-500"
+                        zoneId ? "text-green-400" : "text-gray-500"
                       }`}
                     />
                   </div>
                   <div>
                     <p className="font-medium text-sm">Location</p>
                     <p className="text-sm text-gray-400">
-                      {selectedLocation || "Not selected"}
+                      {zoneId ? `Zone #${zoneId}` : "Not selected"}
                     </p>
                   </div>
                 </div>
