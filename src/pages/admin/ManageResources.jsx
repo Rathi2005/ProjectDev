@@ -11,6 +11,8 @@ export default function ManageResourcesPage({
   endpoint,
   fields,
   showExisting = true,
+  showAddForm = true,
+  showActions = true,
   extraForm = null,
 }) {
   const { id } = useParams();
@@ -766,261 +768,250 @@ export default function ManageResourcesPage({
         </h1>
 
         {/* ADD FORM SECTION */}
-        <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-4 md:p-6 shadow-2xl border border-indigo-900/40">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* IP MODE SELECTOR (ONLY FOR IPS) */}
-            {endpoint === "/ips" && (
-              <div className="flex flex-wrap gap-2 md:gap-4 mb-6">
+        {showAddForm && (
+          <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-4 md:p-6 shadow-2xl border border-indigo-900/40">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* IP MODE SELECTOR (ONLY FOR IPS) */}
+              {endpoint === "/ips" && (
+                <div className="flex flex-wrap gap-2 md:gap-4 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setIpMode("single")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
+                      ipMode === "single"
+                        ? "bg-indigo-600 shadow-lg shadow-indigo-500/25"
+                        : "bg-gray-700 hover:bg-gray-600"
+                    }`}
+                  >
+                    Add Single IP
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIpMode("range")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
+                      ipMode === "range"
+                        ? "bg-green-600 shadow-lg shadow-green-500/25"
+                        : "bg-gray-700 hover:bg-gray-600"
+                    }`}
+                  >
+                    Add IP Range
+                  </button>
+                </div>
+              )}
+
+              {/* FORM TABLE - DESKTOP */}
+              <div className="hidden sm:block overflow-x-auto rounded-xl border border-indigo-900/40">
+                <table className="min-w-[600px] w-full text-left border-collapse">
+                  <thead className="bg-[#151c2f] text-gray-300 uppercase text-sm tracking-wider">
+                    <tr>
+                      {currentFields.map((f) => (
+                        <th
+                          key={f.name}
+                          className="px-4 md:px-6 py-3 border-b border-indigo-900/40"
+                        >
+                          {f.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr
+                        key={i}
+                        className={`${
+                          i % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"
+                        } relative group`} // Add relative and group classes
+                      >
+                        {currentFields.map((f) => (
+                          <td
+                            key={f.name}
+                            className="px-4 md:px-6 py-3 border-b border-indigo-900/30"
+                          >
+                            {f.type === "checkbox" ? (
+                              <input
+                                type="checkbox"
+                                checked={row[f.name]}
+                                onChange={(e) =>
+                                  handleChange(i, f.name, e.target.checked)
+                                }
+                                className="w-5 h-5 accent-indigo-600"
+                              />
+                            ) : (
+                              <input
+                                type={f.type}
+                                value={row[f.name]}
+                                onChange={(e) =>
+                                  handleChange(i, f.name, e.target.value)
+                                }
+                                placeholder={`Enter ${f.label}`}
+                                required={f.name !== "mac"}
+                                className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
+                              />
+                            )}
+                          </td>
+                        ))}
+
+                        {/* Delete button positioned absolutely on the right */}
+                        {i > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newRows = rows.filter(
+                                (_, idx) => idx !== i,
+                              );
+                              setRows(
+                                newRows.length ? newRows : [getEmptyRow()],
+                              );
+                            }}
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100"
+                            title="Remove Row"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* FORM MOBILE VIEW */}
+              <div className="block sm:hidden space-y-4">
+                {rows.map((row, i) => (
+                  <div
+                    key={i}
+                    className="bg-[#141b2e] border border-indigo-900/40 rounded-xl p-4 space-y-3 relative"
+                  >
+                    {currentFields.map((f) => (
+                      <div key={f.name} className="flex flex-col">
+                        <label className="text-gray-300 text-sm mb-1">
+                          {f.label}
+                        </label>
+                        {f.type === "checkbox" ? (
+                          <input
+                            type="checkbox"
+                            checked={row[f.name]}
+                            onChange={(e) =>
+                              handleChange(i, f.name, e.target.checked)
+                            }
+                            className="w-5 h-5 accent-indigo-600"
+                          />
+                        ) : f.type === "iso-select" ? (
+                          // ✅ ISO ONLY (MOBILE)
+                          <select
+                            value={row[f.name]}
+                            onChange={(e) =>
+                              handleChange(i, f.name, e.target.value)
+                            }
+                            required={f.name !== "mac"}
+                            className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
+                          >
+                            <option value="">Select OS Type</option>
+                            {ISO_OS_TYPES.map((os) => (
+                              <option key={os} value={os}>
+                                {os}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={f.type}
+                            value={row[f.name]}
+                            onChange={(e) =>
+                              handleChange(i, f.name, e.target.value)
+                            }
+                            placeholder={`Enter ${f.label}`}
+                            required={f.name !== "mac"}
+                            className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
+                          />
+                        )}
+                      </div>
+                    ))}
+
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newRows = rows.filter((_, idx) => idx !== i);
+                          setRows(newRows.length ? newRows : [getEmptyRow()]);
+                        }}
+                        className="absolute top-3 right-3 text-red-500 hover:text-red-600 transition-all p-1"
+                        title="Remove Row"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* FORM BUTTONS */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-6">
                 <button
                   type="button"
-                  onClick={() => setIpMode("single")}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-                    ipMode === "single"
-                      ? "bg-indigo-600 shadow-lg shadow-indigo-500/25"
-                      : "bg-gray-700 hover:bg-gray-600"
-                  }`}
+                  onClick={addRow}
+                  className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 md:px-5 md:py-3 rounded-xl shadow-md transition-all duration-300 w-full sm:w-auto"
                 >
-                  Add Single IP
+                  <PlusCircle className="w-5 h-5" />
+                  Add Row
                 </button>
 
                 <button
-                  type="button"
-                  onClick={() => setIpMode("range")}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base ${
-                    ipMode === "range"
-                      ? "bg-green-600 shadow-lg shadow-green-500/25"
-                      : "bg-gray-700 hover:bg-gray-600"
+                  type="submit"
+                  disabled={saving}
+                  className={`flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-xl text-white shadow-md transition-all duration-300 w-full sm:w-auto ${
+                    saving
+                      ? "bg-indigo-700 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700"
                   }`}
                 >
-                  Add IP Range
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      {endpoint === "/ips" && ipMode === "range"
+                        ? "Creating Range..."
+                        : "Saving..."}
+                    </>
+                  ) : endpoint === "/ips" && ipMode === "range" ? (
+                    "Create Range"
+                  ) : (
+                    "Save"
+                  )}
                 </button>
               </div>
-            )}
+            </form>
+          </div>
+        )}
 
-            {/* FORM TABLE - DESKTOP */}
-            <div className="hidden sm:block overflow-x-auto rounded-xl border border-indigo-900/40">
-              <table className="min-w-[600px] w-full text-left border-collapse">
-                <thead className="bg-[#151c2f] text-gray-300 uppercase text-sm tracking-wider">
-                  <tr>
-                    {currentFields.map((f) => (
-                      <th
-                        key={f.name}
-                        className="px-4 md:px-6 py-3 border-b border-indigo-900/40"
-                      >
-                        {f.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {rows.map((row, i) => (
-                    <tr
-                      key={i}
-                      className={`${
-                        i % 2 === 0 ? "bg-[#141b2e]" : "bg-[#19223c]"
-                      } relative group`} // Add relative and group classes
-                    >
-                      {currentFields.map((f) => (
-                        <td
-                          key={f.name}
-                          className="px-4 md:px-6 py-3 border-b border-indigo-900/30"
-                        >
-                          {f.type === "checkbox" ? (
-                            <input
-                              type="checkbox"
-                              checked={row[f.name]}
-                              onChange={(e) =>
-                                handleChange(i, f.name, e.target.checked)
-                              }
-                              className="w-5 h-5 accent-indigo-600"
-                            />
-                          ) : f.type === "iso-select" ? (
-                            // ✅ ISO ONLY DROPDOWN
-                            <select
-                              value={row[f.name]}
-                              onChange={(e) =>
-                                handleChange(i, f.name, e.target.value)
-                              }
-                              required
-                              className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
-                            >
-                              <option value="">Select OS Type</option>
-                              {ISO_OS_TYPES.map((os) => (
-                                <option key={os} value={os}>
-                                  {os}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input
-                              type={f.type}
-                              value={row[f.name]}
-                              onChange={(e) =>
-                                handleChange(i, f.name, e.target.value)
-                              }
-                              placeholder={`Enter ${f.label}`}
-                              required={f.name !== "mac"}
-                              className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
-                            />
-                          )}
-                        </td>
-                      ))}
-
-                      {/* Delete button positioned absolutely on the right */}
-                      {i > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newRows = rows.filter((_, idx) => idx !== i);
-                            setRows(newRows.length ? newRows : [getEmptyRow()]);
-                          }}
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100"
-                          title="Remove Row"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* FORM MOBILE VIEW */}
-            <div className="block sm:hidden space-y-4">
-              {rows.map((row, i) => (
-                <div
-                  key={i}
-                  className="bg-[#141b2e] border border-indigo-900/40 rounded-xl p-4 space-y-3 relative"
-                >
-                  {currentFields.map((f) => (
-                    <div key={f.name} className="flex flex-col">
-                      <label className="text-gray-300 text-sm mb-1">
-                        {f.label}
-                      </label>
-                      {f.type === "checkbox" ? (
-                        <input
-                          type="checkbox"
-                          checked={row[f.name]}
-                          onChange={(e) =>
-                            handleChange(i, f.name, e.target.checked)
-                          }
-                          className="w-5 h-5 accent-indigo-600"
-                        />
-                      ) : f.type === "iso-select" ? (
-                        // ✅ ISO ONLY (MOBILE)
-                        <select
-                          value={row[f.name]}
-                          onChange={(e) =>
-                            handleChange(i, f.name, e.target.value)
-                          }
-                          required={f.name !== "mac"}
-                          className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
-                        >
-                          <option value="">Select OS Type</option>
-                          {ISO_OS_TYPES.map((os) => (
-                            <option key={os} value={os}>
-                              {os}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type={f.type}
-                          value={row[f.name]}
-                          onChange={(e) =>
-                            handleChange(i, f.name, e.target.value)
-                          }
-                          placeholder={`Enter ${f.label}`}
-                          required={f.name !== "mac"}
-                          className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
-                        />
-                      )}
-                    </div>
-                  ))}
-
-                  {i > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newRows = rows.filter((_, idx) => idx !== i);
-                        setRows(newRows.length ? newRows : [getEmptyRow()]);
-                      }}
-                      className="absolute top-3 right-3 text-red-500 hover:text-red-600 transition-all p-1"
-                      title="Remove Row"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* FORM BUTTONS */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-6">
-              <button
-                type="button"
-                onClick={addRow}
-                className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 md:px-5 md:py-3 rounded-xl shadow-md transition-all duration-300 w-full sm:w-auto"
-              >
-                <PlusCircle className="w-5 h-5" />
-                Add Row
-              </button>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className={`flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-xl text-white shadow-md transition-all duration-300 w-full sm:w-auto ${
-                  saving
-                    ? "bg-indigo-700 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700"
-                }`}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    {endpoint === "/ips" && ipMode === "range"
-                      ? "Creating Range..."
-                      : "Saving..."}
-                  </>
-                ) : endpoint === "/ips" && ipMode === "range" ? (
-                  "Create Range"
-                ) : (
-                  "Save"
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* EXISTING ENTRIES SECTION */}
+        {/*   TRIES SECTION */}
         {(showExisting || extraForm === "disks") && (
           <div className="bg-gradient-to-br from-[#151c2f] to-[#1e2640] rounded-2xl p-4 md:p-6 shadow-2xl border border-indigo-900/40">
             <h2
@@ -1077,9 +1068,11 @@ export default function ManageResourcesPage({
                             {key}
                           </th>
                         ))}
-                        <th className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/40 text-center">
-                          Actions
-                        </th>
+                        {showActions && (
+                          <th className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/40 text-center">
+                            Actions
+                          </th>
+                        )}
                       </tr>
                     </thead>
 
@@ -1123,51 +1116,53 @@ export default function ManageResourcesPage({
                           })}
 
                           {/* ACTION BUTTONS */}
-                          <td className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 text-center">
-                            <div className="flex justify-center gap-2 md:gap-4">
-                              <button
-                                onClick={() => handleEdit(item)}
-                                className="p-1 md:p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-all"
-                                title="Edit"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-4 w-4 md:h-5 md:w-5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={2}
+                          {showActions && (
+                            <td className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 text-center">
+                              <div className="flex justify-center gap-2 md:gap-4">
+                                <button
+                                  onClick={() => handleEdit(item)}
+                                  className="p-1 md:p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition-all"
+                                  title="Edit"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M16.862 4.487a2.12 2.12 0 113.001 3.001L7.5 19.85l-4 1 1-4 12.362-12.363z"
-                                  />
-                                </svg>
-                              </button>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4 md:h-5 md:w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M16.862 4.487a2.12 2.12 0 113.001 3.001L7.5 19.85l-4 1 1-4 12.362-12.363z"
+                                    />
+                                  </svg>
+                                </button>
 
-                              <button
-                                onClick={() => handleDelete(item)}
-                                className="p-1 md:p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                                title="Delete"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-4 w-4 md:h-5 md:w-5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={2}
+                                <button
+                                  onClick={() => handleDelete(item)}
+                                  className="p-1 md:p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                  title="Delete"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4 md:h-5 md:w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

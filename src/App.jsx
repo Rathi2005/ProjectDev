@@ -186,6 +186,8 @@ export default function App() {
                   { name: "iso", label: "ISO Name", type: "text" },
                   { name: "vmid", label: "VM ID", type: "text" },
                 ]}
+                showAddForm={false}
+                showActions={false}
               />
             </AdminProtectedRoute>
           }
