@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import Swal from "sweetalert2";
 import { Wallet, Tag, Loader2, CreditCard, CheckCircle } from "lucide-react";
 
 export default function CouponAndWallet({
@@ -24,7 +23,7 @@ export default function CouponAndWallet({
   );
 
   useEffect(() => {
-    if (useWallet) {
+    if (useWallet && walletBalance === 0) {
       fetchWalletBalance();
     }
   }, [useWallet]);
@@ -57,37 +56,13 @@ export default function CouponAndWallet({
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${import.meta.env.VITE_BASE_URL}/api/coupons/validate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            code: couponCode.trim(),
-            orderAmount: totalAmount,
-          }),
-        },
-      );
+      await onCouponApply(couponCode.trim());
 
-      const data = await res.json();
-
-      if (onCouponApply) {
-        await onCouponApply(couponCode.trim());
-      }
-
-      if (data.valid) {
-        setCouponValidated(true);
-        setCouponError("");
-      } else {
-        setCouponValidated(false);
-        setCouponError(data.error || "Invalid coupon code");
-      }
-    } catch (error) {
-      setCouponError("Failed to validate coupon. Please try again.");
+      setCouponValidated(true);
+      setCouponError("");
+    } catch (err) {
+      setCouponValidated(false);
+      setCouponError(err.message || "Invalid coupon code");
     } finally {
       setLoading(false);
     }
@@ -121,14 +96,7 @@ export default function CouponAndWallet({
         onClose: onInstantSuccess,
       });
     } catch (err) {
-      Swal.fire({
-        title: "Payment Failed",
-        text: err.message,
-        icon: "error",
-        background: "#0e1525",
-        color: "#e5e7eb",
-        confirmButtonColor: "#dc2626",
-      });
+      setCouponError(err.message || "Payment failed");
     } finally {
       setLoading(false);
     }
@@ -216,7 +184,6 @@ export default function CouponAndWallet({
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    
                   </span>
                 ) : couponValidated ? (
                   <span className="flex items-center gap-2">

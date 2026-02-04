@@ -13,8 +13,24 @@ const PaymentModal = memo(function PaymentModal({
   if (!open || !priceBreakdown) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-gradient-to-b from-[#0e1525] to-[#151c2f] w-full max-w-md rounded-xl border border-indigo-900/50 shadow-2xl shadow-indigo-900/20 overflow-hidden">
+    <div
+      className="
+  fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm
+  flex items-center justify-center p-4
+  transition-opacity duration-200 ease-out
+"
+    >
+      <div
+        className="
+  bg-gradient-to-b from-[#0e1525] to-[#151c2f]
+  w-full max-w-md rounded-xl
+  border border-indigo-900/50
+  shadow-2xl shadow-indigo-900/20
+  overflow-hidden
+  transform transition-transform duration-200 ease-out
+  scale-100
+"
+      >
         {/* Modal Header */}
         <div className="p-6 border-b border-indigo-900/40 flex items-start justify-between">
           <div className="flex items-center gap-3">

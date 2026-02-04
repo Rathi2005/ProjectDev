@@ -79,7 +79,6 @@ export default function UserOrdersPage() {
 
   const [priceBreakdown, setPriceBreakdown] = useState(null);
   const [priceLoading, setPriceLoading] = useState(false);
-  const [couponData, setCouponData] = useState(null);
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -177,6 +176,7 @@ export default function UserOrdersPage() {
   }, [BASE_URL, statusLoading, accountStatus]);
 
   const handleCouponApply = async (couponCode) => {
+    if (priceLoading) return false;
     try {
       setPriceLoading(true);
 
@@ -197,7 +197,6 @@ export default function UserOrdersPage() {
       if (!res.ok) throw new Error("Invalid coupon");
 
       const data = await res.json();
-      setCouponData(data);
       console.log(data);
 
       if (!data.valid) {
@@ -215,8 +214,6 @@ export default function UserOrdersPage() {
         };
         return updated;
       });
-
-      toast.success("Coupon applied successfully");
       return true;
     } catch (err) {
       toast.error(err.message);
