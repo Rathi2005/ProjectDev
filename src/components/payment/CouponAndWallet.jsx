@@ -82,14 +82,6 @@ export default function CouponAndWallet({
       if (data.valid) {
         setCouponValidated(true);
         setCouponError("");
-        Swal.fire({
-          title: "Coupon Applied!",
-          text: data.message,
-          icon: "success",
-          background: "#0e1525",
-          color: "#e5e7eb",
-          confirmButtonColor: "#6366f1",
-        });
       } else {
         setCouponValidated(false);
         setCouponError(data.error || "Invalid coupon code");
