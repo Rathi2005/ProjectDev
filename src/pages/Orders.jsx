@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import Header from "../components/user/Header";
 import PaymentFlow from "../components/payment/PaymentFlow";
 import CouponAndWallet from "../components/payment/CouponAndWallet";
+import UpgradeModal from "../components/payment/UpgradeModal";
+import PaymentModal from "../components/payment/PaymentModal";
 import Swal from "sweetalert2";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -42,9 +44,9 @@ export default function UserOrdersPage() {
   const [powerLoading, setPowerLoading] = useState({});
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [passwordInputs, setPasswordInputs] = useState({});
-  const [passwordLoading, setPasswordLoading] = useState({});
-  const [protectionState, setProtectionState] = useState({});
-  const [protectionLoading, setProtectionLoading] = useState({});
+  // const [passwordLoading, setPasswordLoading] = useState({});
+  // const [protectionState, setProtectionState] = useState({});
+  // const [protectionLoading, setProtectionLoading] = useState({});
   const [accountStatus, setAccountStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(true);
 
@@ -74,6 +76,10 @@ export default function UserOrdersPage() {
 
   const [retryOrder, setRetryOrder] = useState(null);
   const [showRetryPayment, setShowRetryPayment] = useState(false);
+
+  const [priceBreakdown, setPriceBreakdown] = useState(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [couponData, setCouponData] = useState(null);
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -169,6 +175,56 @@ export default function UserOrdersPage() {
 
     fetchUserOrders();
   }, [BASE_URL, statusLoading, accountStatus]);
+
+  const handleCouponApply = async (couponCode) => {
+    try {
+      setPriceLoading(true);
+
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${BASE_URL}/api/coupons/validate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          orderAmount: priceBreakdown?.originalAmount ?? 0,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Invalid coupon");
+
+      const data = await res.json();
+      setCouponData(data);
+      console.log(data);
+
+      if (!data.valid) {
+        throw new Error("Coupon not valid");
+      }
+
+      // APPLY COUPON HERE
+      setPriceBreakdown((prev) => {
+        const updated = {
+          ...prev,
+          couponCode: data.code,
+          discountAmount: data.discountAmount,
+          payableAmount: data.finalAmount,
+          couponStatus: "APPLIED",
+        };
+        return updated;
+      });
+
+      toast.success("Coupon applied successfully");
+      return true;
+    } catch (err) {
+      toast.error(err.message);
+      return false;
+    } finally {
+      setPriceLoading(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -326,6 +382,54 @@ export default function UserOrdersPage() {
     );
   }, [orders, selectedStatus]);
 
+  const calculateRenewalPrice = async (couponCode = null) => {
+    if (!upgradeVm) return null;
+
+    try {
+      setPriceLoading(true);
+
+      const token = localStorage.getItem("token");
+
+      const payload = {
+        vmId: upgradeVm.id,
+        planType: upgradeVm.planType || "SHARED",
+        cpuPriceId: selectedCpu,
+        ramPriceId: selectedRam,
+        diskPriceId: selectedDisk,
+        bandwidthPriceId: selectedBandwidth,
+        monthsToAdd: addMonths,
+        couponCode,
+      };
+
+      const res = await fetch(
+        `${BASE_URL}/api/billing/price/calculate-renewal`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to calculate price");
+      }
+
+      const data = await res.json();
+      setPriceBreakdown(data);
+
+      return data; // ✅ IMPORTANT
+    } catch (err) {
+      toast.error(err.message);
+      return null;
+    } finally {
+      setPriceLoading(false);
+    }
+  };
+
   // Derived values for pagination
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -348,18 +452,11 @@ export default function UserOrdersPage() {
     }
   }, [expandedRow, orders]);
 
-  const preparePayment = () => {
-    if (!selectedCpu || !selectedRam || !selectedDisk || !selectedBandwidth) {
-      DarkSwal.fire({
-        icon: "error",
-        title: "Incomplete Selection",
-        text: "Please select all resource options.",
-      });
+  const preparePayment = async () => {
+    const result = await calculateRenewalPrice(); // waits
+    if (!result) return;
 
-      return;
-    }
-
-    setShowPaymentFlow(true);
+    setShowPaymentFlow(true); // ✅ open AFTER price exists
   };
 
   const fetchBasicIsos = async (serverId) => {
@@ -790,38 +887,18 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   // Update openUpgradeModal to prepare payment config
   const openUpgradeModal = async (order) => {
+    setUpgradeVm(order);
+    setUpgradeModalOpen(true); // OPEN FIRST
+
     try {
       const token = localStorage.getItem("token");
-
       const res = await fetch(`${BASE_URL}/api/pricing/upgrades/${order.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!res.ok) throw new Error("Failed to load pricing");
-
       const data = await res.json();
-
-      setUpgradeVm(order);
       setPricingOptions(data);
-
-      // Set defaults
-      setSelectedCpu(data.cpuOptions?.[0]?.tier.id ?? null);
-      setSelectedRam(data.ramOptions?.[0]?.tier.id ?? null);
-      setSelectedDisk(data.diskOptions?.[0]?.tier.id ?? null);
-      setSelectedBandwidth(data.bandwidthOptions?.[0]?.tier.id ?? null);
-      setAddMonths(1); // Default to 1 month
-
-      setUpgradeModalOpen(true);
-    } catch (err) {
-      Swal.fire({
-        icon: "error",
-        title: "Unable to Load Upgrade Options",
-        text: err.message,
-        background: "#0e1525",
-        color: "#e5e7eb",
-      });
+    } catch {
+      toast.error("Failed to load pricing");
     }
   };
 
@@ -1642,344 +1719,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                       </tbody>
                     </table>
                   </div>
-
-                  {upgradeModalOpen && pricingOptions && (
-                    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                      <div className="bg-gradient-to-b from-[#0e1525] to-[#151c2f] w-full max-w-2xl rounded-xl border border-indigo-900/50 shadow-2xl shadow-indigo-900/20 overflow-hidden flex flex-col">
-                        {/* Modal Header */}
-                        <div className="p-6 border-b border-indigo-900/40 flex-shrink-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <div className="p-2 bg-indigo-900/30 rounded-lg">
-                              <Zap className="w-5 h-5 text-indigo-400" />
-                            </div>
-                            <div>
-                              <h2 className="text-xl font-bold text-white">
-                                Upgrade / Extend Plan
-                              </h2>
-                              <p className="text-sm text-gray-400">
-                                Customize your server resources
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Modal Content - Compact layout */}
-                        <div className="p-6">
-                          {/* Resource Selection Grid - 2 columns */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            {/* CPU */}
-                            <div className="space-y-2">
-                              <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                <Cpu className="w-4 h-4" />
-                                CPU Cores
-                              </label>
-                              <select
-                                className="w-full bg-[#151c2f] border border-indigo-900/50 rounded-lg p-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all text-sm"
-                                value={selectedCpu}
-                                onChange={(e) =>
-                                  setSelectedCpu(Number(e.target.value))
-                                }
-                              >
-                                {pricingOptions.cpuOptions.map((c) => (
-                                  <option
-                                    key={c.tier.id}
-                                    value={c.tier.id}
-                                    className="bg-[#151c2f] text-white"
-                                  >
-                                    {c.tier.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* RAM */}
-                            <div className="space-y-2">
-                              <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                <MemoryStick className="w-4 h-4" />
-                                RAM
-                              </label>
-                              <select
-                                className="w-full bg-[#151c2f] border border-indigo-900/50 rounded-lg p-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all text-sm"
-                                value={selectedRam}
-                                onChange={(e) =>
-                                  setSelectedRam(Number(e.target.value))
-                                }
-                              >
-                                {pricingOptions.ramOptions.map((r) => (
-                                  <option
-                                    key={r.tier.id}
-                                    value={r.tier.id}
-                                    className="bg-[#151c2f] text-white"
-                                  >
-                                    {r.tier.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* Disk */}
-                            <div className="space-y-2">
-                              <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                <HardDrive className="w-4 h-4" />
-                                Storage
-                              </label>
-                              <select
-                                className="w-full bg-[#151c2f] border border-indigo-900/50 rounded-lg p-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all text-sm"
-                                value={selectedDisk}
-                                onChange={(e) =>
-                                  setSelectedDisk(Number(e.target.value))
-                                }
-                              >
-                                {pricingOptions.diskOptions.map((d) => (
-                                  <option
-                                    key={d.tier.id}
-                                    value={d.tier.id}
-                                    className="bg-[#151c2f] text-white"
-                                  >
-                                    {d.tier.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* Bandwidth */}
-                            <div className="space-y-2">
-                              <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                <Wifi className="w-4 h-4" />
-                                Bandwidth
-                              </label>
-                              <select
-                                className="w-full bg-[#151c2f] border border-indigo-900/50 rounded-lg p-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all text-sm"
-                                value={selectedBandwidth}
-                                onChange={(e) =>
-                                  setSelectedBandwidth(Number(e.target.value))
-                                }
-                              >
-                                {pricingOptions.bandwidthOptions.map((b) => (
-                                  <option
-                                    key={b.tier.id}
-                                    value={b.tier.id}
-                                    className="bg-[#151c2f] text-white"
-                                  >
-                                    {b.tier.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-
-                          {/* Duration Input - Compact */}
-                          <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-300 mb-3">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                <span>Plan Duration</span>
-                              </div>
-                            </label>
-
-                            <div className="flex items-center gap-4">
-                              <div className="flex-1">
-                                <div className="relative">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="12"
-                                    value={addMonths}
-                                    onChange={(e) =>
-                                      setAddMonths(Number(e.target.value))
-                                    }
-                                    className="w-full bg-[#151c2f] border border-indigo-900/50 rounded-lg p-3 pl-10 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all text-sm"
-                                    placeholder="Months (0 = upgrade only)"
-                                  />
-                                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <Calendar className="w-4 h-4" />
-                                  </div>
-                                </div>
-
-                                {/* Quick duration buttons */}
-                                <div className="flex gap-2 mt-2">
-                                  {[0, 1, 3, 6, 12].map((months) => (
-                                    <button
-                                      key={months}
-                                      type="button"
-                                      onClick={() => setAddMonths(months)}
-                                      className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                                        addMonths === months
-                                          ? "border-indigo-500 bg-indigo-900/30 text-white"
-                                          : "border-indigo-900/40 text-gray-400 hover:bg-indigo-900/20"
-                                      }`}
-                                    >
-                                      {months === 0
-                                        ? "Upgrade only"
-                                        : `${months} mo`}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Duration status indicator */}
-                              <div
-                                className={`p-3 rounded-lg border text-sm min-w-[200px] ${
-                                  addMonths === 0
-                                    ? "border-indigo-900/40 bg-indigo-900/10 text-indigo-300"
-                                    : "border-green-900/40 bg-green-900/10 text-green-300"
-                                }`}
-                              >
-                                {addMonths === 0 ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                                    <span>
-                                      <span className="font-semibold">
-                                        Upgrade Only
-                                      </span>{" "}
-                                      - No plan extension
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>
-                                      <span className="font-semibold">
-                                        {addMonths} month
-                                        {addMonths !== 1 ? "s" : ""} extension
-                                      </span>
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex gap-3 mt-8">
-                            <button
-                              onClick={() => setUpgradeModalOpen(false)}
-                              className="flex-1 px-4 py-3 border border-gray-600 hover:bg-gray-800/30 text-gray-300 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                            >
-                              <X className="w-4 h-4" />
-                              Cancel
-                            </button>
-                            <button
-                              onClick={preparePayment}
-                              className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
-                            >
-                              <>
-                                <IndianRupee className="w-4 h-4" />
-                                Continue to Payment
-                              </>
-                            </button>
-                          </div>
-
-                          {/* Security Note */}
-                          <div className="mt-4 pt-4 border-t border-indigo-900/30">
-                            <div className="flex items-center gap-2">
-                              <Shield className="w-4 h-4 text-green-400" />
-                              <p className="text-xs text-gray-400">
-                                <span className="text-green-400 font-medium">
-                                  Secure payment
-                                </span>{" "}
-                                powered by Cashfree
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Payment Modal */}
-                  {showPaymentFlow && upgradeVm && (
-                    <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                      <div className="bg-gradient-to-b from-[#0e1525] to-[#151c2f] w-full max-w-md rounded-xl border border-indigo-900/50 shadow-2xl shadow-indigo-900/20 overflow-hidden">
-                        {/* Modal Header */}
-                        <div className="p-6 border-b border-indigo-900/40 flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-900/30 rounded-lg">
-                              <IndianRupee className="w-5 h-5 text-indigo-400" />
-                            </div>
-                            <div>
-                              <h2 className="text-xl font-bold text-white">
-                                Complete Payment
-                              </h2>
-                              <p className="text-sm text-gray-400">
-                                {upgradeVm?.vmName || `Server-${upgradeVm?.id}`}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* ❌ Close Button */}
-                          <button
-                            onClick={() => {
-                              setShowPaymentFlow(false);
-                              setUpgradeModalOpen(false);
-                            }}
-                            className="text-gray-400 hover:text-white transition text-xl leading-none"
-                            aria-label="Close modal"
-                          >
-                            ✕
-                          </button>
-                        </div>
-
-                        {/* Modal Content */}
-                        <div className="p-6">
-                          {/* Payment Summary */}
-                          <div className="mb-6 p-4 bg-indigo-900/10 border border-indigo-900/30 rounded-lg">
-                            <h4 className="text-sm font-semibold text-indigo-300 mb-2">
-                              Order Summary
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">
-                                  Resource Upgrade:
-                                </span>
-                                <span className="text-white">
-                                  {addMonths === 0 ? "Yes" : "No"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-400">
-                                  Plan Extension:
-                                </span>
-                                <span className="text-white">
-                                  {addMonths > 0
-                                    ? `${addMonths} month${
-                                        addMonths !== 1 ? "s" : ""
-                                      }`
-                                    : "None"}
-                                </span>
-                              </div>
-                              <div className="pt-2 border-t border-indigo-900/30">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-400">Total:</span>
-                                  <span className="text-lg font-bold text-emerald-400">
-                                    {/* You can add price calculation here */}
-                                    Calculate amount
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* PaymentFlow handles everything */}
-                          <div className="p-6">
-                            <CouponAndWallet
-                              totalAmount={0 /* optional for now */}
-                              disabled={false}
-                              onCreateSession={({ useWallet, couponCode }) =>
-                                createUpgradeSession({ useWallet, couponCode })
-                              }
-                              onInstantSuccess={() => {
-                                setShowPaymentFlow(false);
-                                setUpgradeModalOpen(false);
-                                window.location.reload();
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="p-4 sm:p-6 border-t border-indigo-900/30">
@@ -2092,6 +1831,33 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           </>
         )}
       </main>
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        pricingOptions={pricingOptions}
+        selectedCpu={selectedCpu}
+        setSelectedCpu={setSelectedCpu}
+        selectedRam={selectedRam}
+        setSelectedRam={setSelectedRam}
+        selectedDisk={selectedDisk}
+        setSelectedDisk={setSelectedDisk}
+        selectedBandwidth={selectedBandwidth}
+        setSelectedBandwidth={setSelectedBandwidth}
+        addMonths={addMonths}
+        setAddMonths={setAddMonths}
+        onContinue={preparePayment}
+        priceLoading={priceLoading}
+      />
+
+      <PaymentModal
+        open={showPaymentFlow}
+        onClose={() => setShowPaymentFlow(false)}
+        priceBreakdown={priceBreakdown}
+        priceLoading={priceLoading}
+        onCreateSession={createUpgradeSession}
+        onCouponApply={handleCouponApply}
+      />
+
       {showRetryPayment && retryOrder && (
         <div
           className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm

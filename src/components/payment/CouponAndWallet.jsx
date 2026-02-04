@@ -6,6 +6,7 @@ export default function CouponAndWallet({
   totalAmount,
   onCreateSession,
   onInstantSuccess,
+  onCouponApply,
   disabled,
 }) {
   const [useWallet, setUseWallet] = useState(false);
@@ -73,6 +74,10 @@ export default function CouponAndWallet({
       );
 
       const data = await res.json();
+
+      if (onCouponApply) {
+        await onCouponApply(couponCode.trim());
+      }
 
       if (data.valid) {
         setCouponValidated(true);
@@ -146,7 +151,6 @@ export default function CouponAndWallet({
             type="checkbox"
             checked={useWallet}
             onChange={(e) => setUseWallet(e.target.checked)}
-
             disabled={disabled}
             className="w-5 h-5 accent-indigo-600 disabled:opacity-50"
           />
@@ -220,12 +224,11 @@ export default function CouponAndWallet({
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Applying...
+                    
                   </span>
                 ) : couponValidated ? (
                   <span className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
-                    Applied
                   </span>
                 ) : (
                   "Apply"

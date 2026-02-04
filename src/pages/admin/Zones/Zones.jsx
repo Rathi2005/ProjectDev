@@ -229,8 +229,8 @@ export default function ZonesPage() {
   };
 
   // Update Zone Status
-  const handleToggleStatus = async (zone) => {
-    const newStatus = zone.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+  const handleUpdateStatus = async (zone, newStatus) => {
+    if (zone.status === newStatus) return;
 
     const result = await Swal.fire({
       ...swalDarkTheme,
@@ -246,6 +246,7 @@ export default function ZonesPage() {
 
     try {
       const token = localStorage.getItem("adminToken");
+
       const res = await fetch(
         `${BASE_URL}/api/admin/zones/${zone.id}/status?status=${newStatus}`,
         {
@@ -261,15 +262,11 @@ export default function ZonesPage() {
         throw new Error("Failed to update status");
       }
 
-      const updatedZone = await res.json();
-
       setZones((prev) =>
-        prev.map((z) =>
-          z.id === zone.id ? { ...z, status: updatedZone.status } : z,
-        ),
+        prev.map((z) => (z.id === zone.id ? { ...z, status: newStatus } : z)),
       );
 
-      toast.success(`Zone marked as ${updatedZone.status}`);
+      toast.success(`Zone marked as ${newStatus}`);
     } catch (err) {
       toast.error("Failed to update zone status");
     }
@@ -402,9 +399,21 @@ export default function ZonesPage() {
                       <td className="px-4 py-3 sm:px-6 text-gray-200 text-center font-medium">
                         {zone.name || "—"}
                       </td>
-                      <td className="px-4 py-3 sm:px-6 text-gray-200 text-center font-medium">
-                        {zone.status || "—"}
+                      <td className="px-4 py-3 sm:px-6 text-center">
+                        <select
+                          value={zone.status}
+                          onChange={(e) =>
+                            handleUpdateStatus(zone, e.target.value)
+                          }
+                          className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium
+      bg-[#0d1220] border border-indigo-700/50 text-gray-200
+      focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="ACTIVE">ACTIVE</option>
+                          <option value="INACTIVE">INACTIVE</option>
+                        </select>
                       </td>
+
                       <td className="px-4 py-3 sm:px-6 text-center">
                         <div className="flex flex-wrap gap-2 justify-center">
                           <button
@@ -430,16 +439,7 @@ export default function ZonesPage() {
                             className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 py-1.5 rounded-md transition-all duration-300 shadow-sm hover:shadow-blue-600/30"
                           >
                             <Edit className="w-3 h-3" />
-                            Rename
-                          </button>
-                          <button
-                            onClick={() => handleToggleStatus(zone)}
-                            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 hover:shadow-indigo-600/30
-             text-white text-xs sm:text-sm px-3 py-1.5 rounded-md
-             transition-all duration-300 shadow-sm"
-                          >
-                            <ToggleLeft className="w-3 h-3" />
-                            Toggle Status
+                            Edit
                           </button>
                           <button
                             onClick={() =>
