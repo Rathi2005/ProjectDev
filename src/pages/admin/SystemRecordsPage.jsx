@@ -402,7 +402,7 @@ export default function SystemRecordsPage() {
                       vm.status === "ACTIVE" || vm.liveState === "running",
                   ).length || 0,
                 totalSpent: calculateUserSpent(user.vms || []),
-                isLocked, 
+                isLocked,
               };
             }),
           );
@@ -1224,11 +1224,20 @@ export default function SystemRecordsPage() {
                             {col.label}
                           </th>
                         ))}
+
+                        {/* 🔐 Lock Status – users overview only */}
+                        {pageType === "users-overview" && (
+                          <th className="py-3 px-4 text-left text-gray-300 text-sm font-medium w-40">
+                            Lock Status
+                          </th>
+                        )}
+
                         <th className="py-3 px-4 text-left text-gray-300 text-sm font-medium w-32">
                           Actions
                         </th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {filteredRecords.map((record, index) => (
                         <tr
@@ -1240,6 +1249,46 @@ export default function SystemRecordsPage() {
                               {renderCellContent(record, col)}
                             </td>
                           ))}
+
+                          {/* 🔐 Lock Status dropdown – users overview only */}
+{/* 🔐 Lock Status dropdown – users overview only */}
+{pageType === "users-overview" && (
+  <td className="py-3 px-4 align-middle">
+    <div className="relative">
+      <select
+        value={record.isLocked ? "locked" : "unlocked"}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (value === "locked") {
+            lockDownUser(record.id);
+          } else {
+            unlockUser(record.id);
+          }
+        }}
+        className={`
+          w-full px-3 py-2 rounded text-sm font-medium
+          cursor-pointer transition-colors duration-150
+          appearance-none pr-10 border
+          focus:outline-none focus:border-opacity-100
+          ${record.isLocked
+            ? "bg-red-950/40 border-red-700 text-red-200 hover:bg-red-900/40 focus:border-red-500"
+            : "bg-emerald-950/40 border-emerald-700 text-emerald-200 hover:bg-emerald-900/40 focus:border-emerald-500"
+          }
+        `}
+      >
+        <option value="locked" className="bg-gray-900 text-gray-100">Lock</option>
+        <option value="unlocked" className="bg-gray-900 text-gray-100">Unlock</option>
+      </select>
+            
+      {/* Simple dropdown arrow */}
+      <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${record.isLocked ? 'text-red-400' : 'text-emerald-400'}`}>
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
+  </td>
+)}
 
                           <td className="py-3 px-4">
                             <div className="flex flex-col gap-2">
@@ -1276,27 +1325,6 @@ export default function SystemRecordsPage() {
                                 </button>
                               )}
 
-                              {pageType === "users-overview" &&
-                                !record.isLocked && (
-                                  <button
-                                    onClick={() => lockDownUser(record.id)}
-                                    className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 rounded flex items-center gap-1 justify-center"
-                                  >
-                                    <Shield className="w-3 h-3" />
-                                    Lock User
-                                  </button>
-                                )}
-
-                              {pageType === "users-overview" &&
-                                record.isLocked && (
-                                  <button
-                                    onClick={() => unlockUser(record.id)}
-                                    className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded flex items-center gap-1 justify-center"
-                                  >
-                                    <CheckCircle className="w-3 h-3" />
-                                    Unlock User
-                                  </button>
-                                )}
                             </div>
                           </td>
                         </tr>
