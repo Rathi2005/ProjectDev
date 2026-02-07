@@ -1050,7 +1050,7 @@ export default function ManageResourcesPage({
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
                 <span className="ml-3 text-gray-300">Loading...</span>
               </div>
-            ) : existing.length === 0 ? (
+            ) : filteredExisting.length === 0 ? (
               <div className="text-center text-gray-400 py-10 border-2 border-dashed border-gray-700 rounded-xl">
                 No records found.
               </div>
@@ -1060,14 +1060,16 @@ export default function ManageResourcesPage({
                   <table className="min-w-[600px] w-full text-left border-collapse">
                     <thead className="bg-[#151c2f] text-gray-300 uppercase text-xs md:text-sm tracking-wider">
                       <tr>
-                        {Object.keys(displayed[0]).map((key) => (
-                          <th
-                            key={key}
-                            className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/40"
-                          >
-                            {key}
-                          </th>
-                        ))}
+                        {displayed.length > 0 &&
+                          Object.keys(displayed[0]).map((key) => (
+                            <th
+                              key={key}
+                              className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/40"
+                            >
+                              {key}
+                            </th>
+                          ))}
+
                         {showActions && (
                           <th className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/40 text-center">
                             Actions
