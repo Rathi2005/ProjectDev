@@ -130,7 +130,7 @@ export default function ZoneIsosPage() {
     if (!values) return;
 
     try {
-      await fetch(`${BASE_URL}/api/admin/zones/isos/${iso.id}`, {
+      const res = await fetch(`${BASE_URL}/api/admin/zones/isos/${iso.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -142,6 +142,8 @@ export default function ZoneIsosPage() {
           osType: iso.osType,
         }),
       });
+
+      if (!res.ok) throw new Error("Update failed");
 
       toast.success("ISO updated successfully");
       fetchIsos();
@@ -170,10 +172,12 @@ export default function ZoneIsosPage() {
     if (!confirm.isConfirmed) return;
 
     try {
-      await fetch(`${BASE_URL}/api/admin/zones/isos/${iso.id}`, {
+      const res = await fetch(`${BASE_URL}/api/admin/zones/isos/${iso.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (!res.ok) throw new Error("Delete failed");
 
       toast.success("ISO deleted successfully");
       fetchIsos();

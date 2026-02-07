@@ -35,6 +35,7 @@ import {
   X,
   Eye,
   EyeOff,
+  Lock,
 } from "lucide-react";
 
 export default function UserOrdersPage() {
@@ -44,11 +45,9 @@ export default function UserOrdersPage() {
   const [powerLoading, setPowerLoading] = useState({});
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [passwordInputs, setPasswordInputs] = useState({});
-  // const [passwordLoading, setPasswordLoading] = useState({});
-  // const [protectionState, setProtectionState] = useState({});
-  // const [protectionLoading, setProtectionLoading] = useState({});
   const [accountStatus, setAccountStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [vmLockStatus, setVmLockStatus] = useState({});
 
   const navigate = useNavigate();
 
@@ -82,6 +81,40 @@ export default function UserOrdersPage() {
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
+  };
+
+  useEffect(() => {
+    if (!orders.length) return;
+
+    const token = localStorage.getItem("token");
+
+    orders.forEach(async (order) => {
+      const vmId = order.originalData?.vmId || order.id;
+
+      try {
+        const res = await fetch(`${BASE_URL}/api/vms/${vmId}/lock-status`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        setVmLockStatus((prev) => ({
+          ...prev,
+          [vmId]: data,
+        }));
+      } catch (err) {
+        console.error("Failed to fetch lock status", err);
+      }
+    });
+  }, [orders, BASE_URL]);
+
+  const isVmLocked = (order) => {
+    const vmId = order.originalData?.vmId || order.id;
+    return vmLockStatus[vmId]?.isLocked;
   };
 
   useEffect(() => {
@@ -1201,11 +1234,23 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                         setShowRetryPayment(true);
                                       }}
                                       className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700
-             text-white rounded-lg text-xs font-semibold transition"
+        text-white rounded-lg text-xs font-semibold transition"
                                     >
                                       Make Payment
                                     </button>
+                                  ) : isVmLocked(order) ? (
+                                    <div
+                                      title={
+                                        vmLockStatus[
+                                          order.originalData?.vmId || order.id
+                                        ]?.message
+                                      }
+                                      className="p-2 rounded-lg bg-red-900/20 border border-red-900/40"
+                                    >
+                                      <Lock className="w-4 h-4 text-red-400" />
+                                    </div>
                                   ) : (
+                                    /* ⬇️ NORMAL EXPAND */
                                     <button
                                       onClick={() => toggleRow(order.id)}
                                       className="p-1.5 hover:bg-indigo-900/30 rounded-lg transition-colors"

@@ -175,6 +175,7 @@ export default function OrdersPage() {
             serverId: order.serverId,
             vmid: order.proxmoxVmid,
             internalVmid: order.internalVmId,
+            isProtected: order.isProtected ?? false,
 
             monthlyPrice: order.monthlyPrice,
             paidAmount: order.totalAmount,
@@ -1666,7 +1667,6 @@ export default function OrdersPage() {
                                   Unlock
                                 </option>
                               </select>
-                              
                             </td>
 
                             <td className="py-3 px-4 sm:px-6">
@@ -2079,7 +2079,7 @@ export default function OrdersPage() {
                                         !canAction(order.liveState, "start") ||
                                         powerLoading[order.id]
                                       }
-                                      className="flex-1 sm:flex-none px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg font-medium text-sm"
+                                      className="flex-1 sm:flex-none px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600 text-white rounded-lg font-medium text-sm"
                                     >
                                       Start
                                     </button>
@@ -2092,7 +2092,7 @@ export default function OrdersPage() {
                                         !canAction(order.liveState, "stop") ||
                                         powerLoading[order.id]
                                       }
-                                      className="flex-1 sm:flex-none px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white rounded-lg font-medium text-sm"
+                                      className="flex-1 sm:flex-none px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700 text-white rounded-lg font-medium text-sm"
                                     >
                                       Stop
                                     </button>
@@ -2107,7 +2107,7 @@ export default function OrdersPage() {
                                           "hibernate",
                                         ) || powerLoading[order.id]
                                       }
-                                      className="flex-1 sm:flex-none px-3 py-2 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-50 text-indigo-300 rounded-lg font-medium text-sm"
+                                      className="flex-1 sm:flex-none px-3 py-2 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent text-indigo-300 rounded-lg font-medium text-sm"
                                     >
                                       Hibernate
                                     </button>
@@ -2120,7 +2120,7 @@ export default function OrdersPage() {
                                         !canAction(order.liveState, "resume") ||
                                         powerLoading[order.id]
                                       }
-                                      className="flex-1 sm:flex-none px-3 py-2 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-50 text-indigo-300 rounded-lg font-medium text-sm"
+                                      className="flex-1 sm:flex-none px-3 py-2 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent text-indigo-300 rounded-lg font-medium text-sm"
                                     >
                                       Resume
                                     </button>
@@ -2130,7 +2130,7 @@ export default function OrdersPage() {
                                         promptRebuildWithIso(order.id)
                                       }
                                       disabled={adminActionLoading[order.id]}
-                                      className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                      className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent text-red-300 rounded-lg font-medium text-sm"
                                     >
                                       Rebuild
                                     </button>
@@ -2143,7 +2143,7 @@ export default function OrdersPage() {
                                         !canAction(order.liveState, "reboot") ||
                                         powerLoading[order.id]
                                       }
-                                      className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 text-red-300 rounded-lg font-medium text-sm"
+                                      className="flex-1 sm:flex-none px-3 py-2 border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent text-red-300 rounded-lg font-medium text-sm"
                                     >
                                       Hard Reboot
                                     </button>
@@ -2152,8 +2152,8 @@ export default function OrdersPage() {
                                       onClick={() => handleEasyReboot(order.id)}
                                       disabled={adminActionLoading[order.id]}
                                       className="flex-1 sm:flex-none px-3 py-2 border border-yellow-500/30
-                hover:bg-yellow-500/10 disabled:opacity-50
-                text-yellow-300 rounded-lg font-medium text-sm"
+      hover:bg-yellow-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent
+      text-yellow-300 rounded-lg font-medium text-sm"
                                     >
                                       Easy Reboot
                                     </button>
@@ -2165,8 +2165,10 @@ export default function OrdersPage() {
                                           true,
                                         )
                                       }
+                                      disabled={order.isProtected}
                                       className="flex-1 sm:flex-none px-3 py-2 border border-emerald-500/40
-      hover:bg-emerald-500/10 text-emerald-300 rounded-lg font-medium text-sm"
+      hover:bg-emerald-500/10 text-emerald-300 rounded-lg font-medium text-sm
+      disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                                     >
                                       Enable Protection
                                     </button>
@@ -2178,8 +2180,10 @@ export default function OrdersPage() {
                                           false,
                                         )
                                       }
+                                      disabled={!order.isProtected}
                                       className="flex-1 sm:flex-none px-3 py-2 border border-orange-500/40
-      hover:bg-orange-500/10 text-orange-300 rounded-lg font-medium text-sm"
+      hover:bg-orange-500/10 text-orange-300 rounded-lg font-medium text-sm
+      disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                                     >
                                       Disable Protection
                                     </button>
@@ -2188,8 +2192,8 @@ export default function OrdersPage() {
                                       onClick={() => handleDestroy(order.id)}
                                       disabled={adminActionLoading[order.id]}
                                       className="flex-1 sm:flex-none px-3 py-2 border border-red-700/40
-                hover:bg-red-700/20 disabled:opacity-50
-                text-red-400 rounded-lg font-medium text-sm"
+      hover:bg-red-700/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent
+      text-red-400 rounded-lg font-medium text-sm"
                                     >
                                       Destroy
                                     </button>
