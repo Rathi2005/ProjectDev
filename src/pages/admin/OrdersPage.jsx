@@ -37,6 +37,7 @@ import {
   ExternalLink, // Add this import
   Eye, // Add this import
   Edit,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function OrdersPage() {
@@ -942,9 +943,9 @@ export default function OrdersPage() {
     const { value: newVmid } = await DarkSwal.fire({
       title: "Edit VMID",
       input: "number",
-      inputLabel: `Current VMID: ${currentVmid}`,
+      inputLabel: `Current VMID: ${vmid}`,
       inputPlaceholder: "Enter new VMID (e.g., 105)",
-      inputValue: currentVmid,
+      inputValue: vmid,
       showCancelButton: true,
       confirmButtonText: "Update",
       cancelButtonText: "Cancel",
@@ -1638,35 +1639,45 @@ export default function OrdersPage() {
                               </div>
                             </td>
                             <td className="py-3 px-4 sm:px-6">
-                              <select
-                                value={order.isLocked ? "locked" : "unlocked"}
-                                onChange={(e) =>
-                                  handleVmLockToggle(
-                                    order.id,
-                                    e.target.value === "locked",
-                                  )
-                                }
-                                className={`px-2 py-1 rounded text-xs border appearance-none cursor-pointer
-    ${
-      order.isLocked
-        ? "bg-red-950/30 border-red-800 text-red-200 focus:ring-red-600 focus:ring-1 focus:outline-none"
-        : "bg-emerald-950/30 border-emerald-800 text-emerald-200 focus:ring-emerald-600 focus:ring-1 focus:outline-none"
-    }
-  `}
-                              >
-                                <option
-                                  value="locked"
-                                  className="bg-gray-900 text-gray-100"
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={order.isLocked ? "locked" : "unlocked"}
+                                  onChange={(e) =>
+                                    handleVmLockToggle(
+                                      order.id,
+                                      e.target.value === "locked",
+                                    )
+                                  }
+                                  className={`px-2 py-1 rounded text-xs border appearance-none cursor-pointer
+        ${
+          order.isLocked
+            ? "bg-red-950/30 border-red-800 text-red-200 focus:ring-red-600 focus:ring-1 focus:outline-none"
+            : "bg-emerald-950/30 border-emerald-800 text-emerald-200 focus:ring-emerald-600 focus:ring-1 focus:outline-none"
+        }
+      `}
                                 >
-                                  Lock
-                                </option>
-                                <option
-                                  value="unlocked"
-                                  className="bg-gray-900 text-gray-100"
-                                >
-                                  Unlock
-                                </option>
-                              </select>
+                                  <option
+                                    value="locked"
+                                    className="bg-gray-900 text-gray-100"
+                                  >
+                                    Lock
+                                  </option>
+                                  <option
+                                    value="unlocked"
+                                    className="bg-gray-900 text-gray-100"
+                                  >
+                                    Unlock
+                                  </option>
+                                </select>
+
+                                {order.isProtected && (
+                                  <div
+                                    title="Termination Protection Enabled"
+                                  >
+                                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                  </div>
+                                )}
+                              </div>
                             </td>
 
                             <td className="py-3 px-4 sm:px-6">
@@ -1689,14 +1700,17 @@ export default function OrdersPage() {
                             </td>
 
                             <td className="py-3 px-4 sm:px-6">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                  order.status,
-                                )}`}
-                              >
-                                {order.status}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                    order.status,
+                                  )}`}
+                                >
+                                  {order.status}
+                                </span>
+                              </div>
                             </td>
+
                             <td className="py-3 px-4 sm:px-6">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-medium ${getLiveStatusColor(

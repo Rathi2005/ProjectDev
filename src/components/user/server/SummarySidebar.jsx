@@ -42,6 +42,9 @@ const SummarySidebar = ({
   const [couponError, setCouponError] = useState("");
   const [couponData, setCouponData] = useState(null);
 
+  const [vmNameTouched, setVmNameTouched] = useState(false);
+
+
   const canApplyDiscounts = useMemo(() => {
     return (
       selectedResources?.cpuPriceId &&
@@ -55,6 +58,19 @@ const SummarySidebar = ({
   const isCouponBlockingPayment = useMemo(() => {
     return useCoupon && !couponValidated;
   }, [useCoupon, couponValidated]);
+
+  useEffect(() => {
+    if (vmNameTouched) return;
+
+    if (selectedOS?.name && selectedResources?.ram) {
+      const os = selectedOS.name.toLowerCase().replace(/\s+/g, "");
+      const ram = extractDisplayName(selectedResources.ram)
+        .toLowerCase()
+        .replace(/\s+/g, "");
+
+      setVmName(`${os}-${ram}`);
+    }
+  }, [selectedOS, selectedResources, vmNameTouched]);
 
   const disablePayForCoupon = useMemo(() => {
     return useCoupon && !couponValidated;
@@ -112,8 +128,8 @@ const SummarySidebar = ({
   const serverConfig = useMemo(() => {
     return {
       vmName: vmName,
-      zoneId: Number(zoneId),               
-    zoneIsoId: Number(selectedOS?.id), 
+      zoneId: Number(zoneId),
+      zoneIsoId: Number(selectedOS?.id),
       planType: selectedType?.toLowerCase().includes("dedicated")
         ? "DEDICATED"
         : "SHARED",
@@ -141,7 +157,16 @@ const SummarySidebar = ({
 
   // Handle VM name change
   const handleVmNameChange = (e) => {
-    setVmName(e.target.value);
+    const value = e.target.value;
+    setVmName(value);
+
+    // If user types anything → lock manual mode
+    if (value.trim().length > 0) {
+      setVmNameTouched(true);
+    } else {
+      // If user clears input → resume auto naming
+      setVmNameTouched(false);
+    }
   };
 
   // Function to check if token is valid
@@ -742,7 +767,6 @@ const SummarySidebar = ({
                       Coupon Discount: −₹{discountAmount.toFixed(2)}
                     </div>
                   )}
-
                 </div>
               </div>
             </div>
