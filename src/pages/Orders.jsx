@@ -48,6 +48,7 @@ export default function UserOrdersPage() {
   const [accountStatus, setAccountStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [vmLockStatus, setVmLockStatus] = useState({});
+  const [passwordLoading, setPasswordLoading] = useState({});
 
   const navigate = useNavigate();
 
