@@ -176,24 +176,6 @@ export default function App() {
         />
 
         <Route
-          path="/admin/servers/:id/isos"
-          element={
-            <AdminProtectedRoute>
-              <ManageResourcesPage
-                title="Manage ISOs"
-                endpoint="/isos"
-                fields={[
-                  { name: "iso", label: "ISO Name", type: "text" },
-                  { name: "vmid", label: "VM ID", type: "text" },
-                ]}
-                showAddForm={false}
-                showActions={false}
-              />
-            </AdminProtectedRoute>
-          }
-        />
-
-        <Route
           path="/admin/servers/:id/ram"
           element={
             <AdminProtectedRoute>

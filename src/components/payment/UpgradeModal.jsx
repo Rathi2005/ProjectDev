@@ -177,7 +177,7 @@ const UpgradeModal = memo(function UpgradeModal({
 
                 {/* Quick duration buttons */}
                 <div className="flex gap-2 mt-2">
-                  {[1, 3, 6, 12].map((months) => (
+                  {[0, 1, 3, 6, 12].map((months) => (
                     <button
                       key={months}
                       type="button"

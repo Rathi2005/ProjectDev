@@ -62,7 +62,7 @@ export default function LoginPage() {
       localStorage.removeItem("token");
     }
   }, []);
-  
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
@@ -84,14 +84,11 @@ export default function LoginPage() {
         const otpData = await otpRes.json();
 
         if (otpRes.ok) {
-          setSuccess(otpData.message || "OTP sent to your email.");
           toast.success(otpData.message || "OTP sent to your email!");
           setTimeout(() => setShowOtpForm(true), 100);
         } else if (otpRes.status === 404) {
-          setError(otpData.message || "No account found with this email.");
           toast.error(otpData.message || "No account found with this email.");
         } else {
-          setError("Failed to initiate OTP. Please try again.");
           toast.error("Failed to initiate OTP. Please try again.");
         }
       } else {
@@ -109,7 +106,6 @@ export default function LoginPage() {
           localStorage.setItem("token", data.token);
           setTimeout(() => navigate("/dashboard"), 1500);
         } else if (response.status === 401) {
-          setError(data.message || "Incorrect email or password.");
           toast.error(data.message || "Incorrect email or password.");
         } else {
           setError("Login failed. Please try again.");
@@ -117,7 +113,6 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      setError("Network error. Please try again.");
       toast.error("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -126,7 +121,6 @@ export default function LoginPage() {
 
   const handleForgotPassword = async () => {
     if (!formData.email) {
-      setError("Please enter your email first.");
       toast.error("Please enter your email first.");
       return;
     }
@@ -147,16 +141,13 @@ export default function LoginPage() {
       if (text) data = JSON.parse(text);
 
       if (res.ok) {
-        setSuccess(data.message || "OTP has been sent if the account exists.");
         toast.success(data.message || "OTP has been sent!");
-        setResetPasswordMode(true); // show reset password form
-        setResetStep(1); // start with OTP step
+        setResetPasswordMode(true);
+        setResetStep(1); 
       } else {
-        setError(data.message || "Something went wrong. Please try again.");
         toast.error(data.message || "Something went wrong. Please try again.");
       }
     } catch (err) {
-      setError("Network error. Please try again.");
       toast.error("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -244,8 +235,8 @@ export default function LoginPage() {
                     ? "Sending OTP..."
                     : "Logging in..."
                   : loginWithOtp
-                  ? "Send OTP"
-                  : "Login"}
+                    ? "Send OTP"
+                    : "Login"}
               </button>
 
               <p
@@ -269,7 +260,13 @@ export default function LoginPage() {
             </form>
           </div>
         ) : resetPasswordMode ? (
-          <ResetPassword email={formData.email} />
+          <ResetPassword
+            email={formData.email}
+            onSuccess={() => {
+              setResetPasswordMode(false);
+              setFormData({ email: "", password: "" });
+            }}
+          />
         ) : (
           <OtpVerification
             email={formData.email}

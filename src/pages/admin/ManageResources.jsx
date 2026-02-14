@@ -34,15 +34,6 @@ export default function ManageResourcesPage({
     { name: "gateway", label: "Gateway", type: "text" },
   ];
 
-  const ISO_OS_TYPES = [
-    "WINDOWS",
-    "UBUNTU",
-    "UBUNTU_LEGACY",
-    "DEBIAN",
-    "RHEL_NM",
-    "OPENSUSE",
-  ];
-
   const [rows, setRows] = useState([]);
   const [existing, setExisting] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,18 +47,6 @@ export default function ManageResourcesPage({
   const resolvedFields = useMemo(() => {
     if (endpoint === "/ips") {
       return ipMode === "single" ? ipSingleFields : ipRangeFields;
-    }
-    if (endpoint === "/isos") {
-      return [
-        { name: "iso", label: "ISO Name", type: "text" },
-        { name: "vmid", label: "VMID", type: "text" },
-        {
-          name: "osType",
-          label: "OS Type",
-          type: "iso-select",
-          // options: ISO_OS_TYPES,
-        },
-      ];
     }
     return fields;
   }, [endpoint, ipMode, fields]);
@@ -369,35 +348,6 @@ export default function ManageResourcesPage({
           }
         }
       }
-      // ==================== OTHER RESOURCES (ISOs, etc.) ====================
-      else if (endpoint === "/isos") {
-        for (const row of rows) {
-          if (!row.iso || !row.vmid || !row.osType) {
-            toast.error("Please fill ISO, VMID and OS Type");
-            continue;
-          }
-
-          const payload = {
-            iso: row.iso.trim(),
-            vmid: row.vmid.trim(),
-            osType: row.osType,
-          };
-
-          const res = await fetch(`${BASE_URL}/api/admin/servers/${id}/isos`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-          });
-
-          if (!res.ok) {
-            const error = await res.text();
-            throw new Error(`Failed to add ISO: ${error}`);
-          }
-        }
-      }
 
       await reloadData();
       setRows([getEmptyRow()]);
@@ -537,79 +487,6 @@ export default function ManageResourcesPage({
         return;
       }
 
-      // ==================== ISO EDIT ====================
-      if (endpoint === "/isos") {
-        // 1️⃣ ISO NAME
-        const { value: iso } = await Swal.fire({
-          title: "Edit ISO Name",
-          input: "text",
-          inputValue: item.iso,
-          confirmButtonText: "Next",
-          showCancelButton: true,
-          background: "#1e2640",
-          color: "#fff",
-          inputValidator: (value) => {
-            if (!value) return "ISO name is required";
-            return null;
-          },
-        });
-        if (!iso) return;
-
-        // 2️⃣ VMID
-        const { value: vmid } = await Swal.fire({
-          title: "Edit VMID",
-          input: "text",
-          inputValue: item.vmid,
-          confirmButtonText: "Next",
-          showCancelButton: true,
-          background: "#1e2640",
-          color: "#fff",
-          inputValidator: (value) => {
-            if (!value) return "VMID is required";
-            return null;
-          },
-        });
-        if (!vmid) return;
-
-        // 3️⃣ OS TYPE (DROPDOWN)
-        const { value: osType } = await Swal.fire({
-          title: "Select OS Type",
-          input: "select",
-          inputOptions: ISO_OS_TYPES.reduce((acc, os) => {
-            acc[os] = os;
-            return acc;
-          }, {}),
-          inputValue: item.osType || "",
-          confirmButtonText: "Save",
-          showCancelButton: true,
-          background: "#1e2640",
-          color: "#fff",
-          inputValidator: (value) => {
-            if (!value) return "OS Type is required";
-            return null;
-          },
-        });
-        if (!osType) return;
-
-        // 🚀 SAVE
-        await fetch(`${BASE_URL}/api/admin/servers/${id}/isos/${item.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            iso: iso.trim(),
-            vmid: vmid.trim(),
-            osType,
-          }),
-        });
-
-        await reloadData();
-        toast.success("ISO updated successfully!");
-        return;
-      }
-
       // ==================== DISK EDIT ====================
       if (extraForm === "disks") {
         const diskId = item.id || item.ID || item.Id || item.storage_id;
@@ -701,8 +578,6 @@ export default function ManageResourcesPage({
 
       if (endpoint === "/ips") {
         deleteUrl = `${BASE_URL}/api/admin/zones/${id}/ips/${item.id}`;
-      } else if (endpoint === "/isos") {
-        deleteUrl = `${BASE_URL}/api/admin/servers/${id}/isos/${item.id}`;
       } else if (extraForm === "disks") {
         const diskId = item.id || item.ID || item.Id || item.storage_id;
         deleteUrl = `${BASE_URL}/api/admin/servers/${id}/storage/${diskId}`;
@@ -911,23 +786,6 @@ export default function ManageResourcesPage({
                             }
                             className="w-5 h-5 accent-indigo-600"
                           />
-                        ) : f.type === "iso-select" ? (
-                          // ✅ ISO ONLY (MOBILE)
-                          <select
-                            value={row[f.name]}
-                            onChange={(e) =>
-                              handleChange(i, f.name, e.target.value)
-                            }
-                            required={f.name !== "mac"}
-                            className="w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-lg px-3 py-2"
-                          >
-                            <option value="">Select OS Type</option>
-                            {ISO_OS_TYPES.map((os) => (
-                              <option key={os} value={os}>
-                                {os}
-                              </option>
-                            ))}
-                          </select>
                         ) : (
                           <input
                             type={f.type}

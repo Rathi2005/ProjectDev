@@ -715,16 +715,6 @@ export default function ServersPage() {
                         <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
                           <button
                             onClick={() =>
-                              navigate(`/admin/servers/${server.id}/isos`)
-                            }
-                            className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all duration-300"
-                            title="Add ISOs"
-                          >
-                            <File className="w-3 h-3" />
-                            <span className="hidden sm:inline">ISOs</span>
-                          </button>
-                          <button
-                            onClick={() =>
                               navigate(`/admin/servers/${server.id}/disks`)
                             }
                             className="flex items-center gap-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all duration-300"

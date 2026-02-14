@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const RESET_PASSWORD_API = `${BASE_URL}/api/password/reset`; // endpoint /api/password/reset
 
-const ResetPassword = ({ email }) => {
+const ResetPassword = ({ email, onSuccess }) => {
   const [resetStep, setResetStep] = useState(1); // 1=OTP, 2=Password
   const [otp, setOtp] = useState(Array(6).fill(""));
   const [newPassword, setNewPassword] = useState("");
@@ -102,7 +102,9 @@ const ResetPassword = ({ email }) => {
 
         if (res.ok) {
           setSuccess(data.message || "Password reset successfully!");
-          // setTimeout(() => navigate("/login"), 2000);
+          setTimeout(() => {
+            onSuccess(); 
+          }, 1500);
         } else if (res.status === 400) {
           if (data.field === "otp") setError(data.message);
           else if (data.field === "confirmPassword") setError(data.message);
@@ -210,8 +212,8 @@ const ResetPassword = ({ email }) => {
             {loading
               ? "Processing..."
               : resetStep === 1
-              ? "Verify OTP"
-              : "Reset Password"}
+                ? "Verify OTP"
+                : "Reset Password"}
           </button>
         </form>
       </div>
