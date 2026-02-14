@@ -119,7 +119,7 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
 
         {/* Title with info button */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Choose Type</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Choose Type</h1>
         </div>
 
         {/* Description */}

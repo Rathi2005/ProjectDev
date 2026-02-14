@@ -43,7 +43,7 @@ const CreateServerPage = ({
       {/* Left Main Content (no internal scroll) */}
       <div className="flex-1 px-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Create a Server</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Create a Server</h1>
         </div>
 
         <div className="space-y-8">

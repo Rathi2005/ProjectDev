@@ -31,6 +31,7 @@ const CouponManagementPage = () => {
     code: "",
     type: "PERCENTAGE",
     value: "",
+    minOrderAmount: "",
     assignedUserId: null,
     usageLimitType: "UNLIMITED",
     perUserLimit: "",
@@ -113,6 +114,9 @@ const CouponManagementPage = () => {
       code: formData.code,
       type: formData.type,
       value: Number(formData.value),
+      minOrderAmount: formData.minOrderAmount
+        ? Number(formData.minOrderAmount)
+        : null,
       assignedUserId:
         formData.assignedUserId === null
           ? null
@@ -122,7 +126,10 @@ const CouponManagementPage = () => {
         formData.usageLimitType === "FIXED_PER_USER"
           ? Number(formData.perUserLimit)
           : null,
-      validUntil: formData.validUntil ? `${formData.validUntil}:00` : null,
+      validUntil: formData.validUntil
+        ? new Date(formData.validUntil).toISOString().slice(0, 19)
+        : null,
+
       isGlobalVisible:
         formData.assignedUserId === null ? formData.isGlobalVisible : false,
     };
@@ -143,11 +150,12 @@ const CouponManagementPage = () => {
           code: "",
           type: "PERCENTAGE",
           value: "",
+          minOrderAmount: "",
           assignedUserId: null,
           usageLimitType: "UNLIMITED",
           perUserLimit: "",
           validUntil: "",
-          isGlobalVisible: true,
+          globalVisible: true,
         });
         fetchCoupons();
       } else {
@@ -161,35 +169,36 @@ const CouponManagementPage = () => {
   };
 
   const handleFormChange = (field, value) => {
-    setFormData((prev) => ({
+  let updatedValue = value;
+
+  if (field === "code") {
+    updatedValue = value.toUpperCase();
+  }
+
+  if (field === "usageLimitType" && value !== "FIXED_PER_USER") {
+    setFormData(prev => ({
       ...prev,
-      [field]: value,
+      usageLimitType: value,
+      perUserLimit: ""
     }));
+    return;
+  }
 
-    // Auto-uppercase code
-    if (field === "code") {
-      setFormData((prev) => ({
-        ...prev,
-        code: value.toUpperCase(),
-      }));
-    }
+  if (field === "assignedUserId") {
+    setFormData(prev => ({
+      ...prev,
+      assignedUserId: value,
+      isGlobalVisible: value === null
+    }));
+    return;
+  }
 
-    // Reset dependent fields when usageLimitType changes
-    if (field === "usageLimitType" && value !== "FIXED_PER_USER") {
-      setFormData((prev) => ({
-        ...prev,
-        perUserLimit: "",
-      }));
-    }
+  setFormData(prev => ({
+    ...prev,
+    [field]: updatedValue
+  }));
+};
 
-    // Auto-set isGlobalVisible based on assigned user
-    if (field === "assignedUserId") {
-      setFormData((prev) => ({
-        ...prev,
-        isGlobalVisible: value === "" ? prev.isGlobalVisible : false,
-      }));
-    }
-  };
 
   const toggleCouponStatus = async (couponId, currentStatus) => {
     if (
@@ -278,7 +287,9 @@ const CouponManagementPage = () => {
               <Wallet className="w-7 h-7 text-emerald-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Coupon Management</h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                Coupon Management
+              </h1>
               <p className="text-gray-400">
                 Create and manage promotional codes
               </p>
@@ -408,6 +419,26 @@ const CouponManagementPage = () => {
                     min="0"
                     required
                   />
+                </div>
+                {/* Minimum Order Amount */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Minimum Order Amount
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.minOrderAmount}
+                    onChange={(e) =>
+                      handleFormChange("minOrderAmount", e.target.value)
+                    }
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., 1000"
+                    step="0.01"
+                    min="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Coupon will apply only if cart total ≥ this amount
+                  </p>
                 </div>
               </div>
 
@@ -542,11 +573,12 @@ const CouponManagementPage = () => {
                       code: "",
                       type: "PERCENTAGE",
                       value: "",
-                      assignedUserId: "",
+                      minOrderAmount: "",
+                      assignedUserId: null,
                       usageLimitType: "UNLIMITED",
                       perUserLimit: "",
                       validUntil: "",
-                      isGlobalVisible: true,
+                      globalVisible: true,
                     })
                   }
                   className="px-6 py-3 border border-gray-600 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
@@ -593,6 +625,7 @@ const CouponManagementPage = () => {
                     <th className="pb-3 px-2">Usage</th>
                     <th className="pb-3 px-2">Expiry</th>
                     <th className="pb-3 px-2">Status</th>
+                    <th className="pb-3 px-2">Min Order</th>
                     <th className="pb-3 px-2">Actions</th>
                   </tr>
                 </thead>
@@ -648,6 +681,12 @@ const CouponManagementPage = () => {
                               : "Active"}
                         </span>
                       </td>
+                      <td className="py-4 px-2">
+                        {coupon.minOrderAmount
+                          ? `₹${coupon.minOrderAmount}`
+                          : "—"}
+                      </td>
+
                       <td className="py-4 px-2">
                         <div className="flex gap-2">
                           <button
@@ -894,11 +933,12 @@ const CouponManagementPage = () => {
                             code: selectedCoupon.code,
                             type: selectedCoupon.type,
                             value: selectedCoupon.value,
+                            minOrderAmount: selectedCoupon.minOrderAmount,
                             assignedUserId: selectedCoupon.assignedUserId,
                             usageLimitType: selectedCoupon.usageLimitType,
                             perUserLimit: selectedCoupon.perUserLimit,
                             validUntil: selectedCoupon.validUntil,
-                            isGlobalVisible: selectedCoupon.isGlobalVisible,
+                            globalVisible: selectedCoupon.globalVisible,
                           },
                           null,
                           2,

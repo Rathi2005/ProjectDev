@@ -7,6 +7,7 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
   const [loading, setLoading] = useState(false);
   const [error, setSelectedError] = useState("");
   const [osOptions, setOsOptions] = useState([]);
+  const [expandedOS, setExpandedOS] = useState(null);
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
   const IMAGES = `${BASE_URL}/api/users/zones`;
@@ -39,19 +40,25 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
         }
 
         const data = await res.json();
-        const formatted = data.map((iso) => ({
-          id: iso.id,
-          name: iso.osType,
-          version: iso.name,
-        }));
+        const grouped = data.reduce((acc, iso) => {
+          if (!acc[iso.osType]) {
+            acc[iso.osType] = [];
+          }
 
-        setOsOptions(formatted);
+          acc[iso.osType].push({
+            id: iso.id,
+            version: iso.name,
+          });
 
-        // Show success notification
+          return acc;
+        }, {});
+
+        setOsOptions(grouped);
+
         Swal.fire({
           icon: "success",
           title: "Images Loaded",
-          text: `Found ${formatted.length} available operating systems`,
+          text: `Found ${data.length} available images across ${Object.keys(grouped).length} OS types`,
           toast: true,
           position: "top-end",
           showConfirmButton: false,
@@ -65,7 +72,6 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
         setSelectedError(err.message);
         setOsOptions([]);
 
-        // Show error notification
         Swal.fire({
           icon: "error",
           title: "Failed to Load Images",
@@ -87,19 +93,18 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
     fetchISOs();
   }, [zoneId]);
 
-  // Handle OS selection and auto-scroll to next section
+  // Handle OS selection
   const handleOSSelect = (osName, osVersion, osId) => {
     setSelectedOSState(osName);
     setSelectedVersion(osVersion);
+    setExpandedOS(null); // Close dropdown after selection
 
-    // Update parent component immediately with proper structure
     setSelectedOS({
       name: osName,
       version: osVersion,
-      id: osId, // Add ISO ID
+      id: osId,
     });
 
-    // Show selection notification
     Swal.fire({
       icon: "success",
       title: "OS Selected",
@@ -114,7 +119,6 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
       iconColor: "#10b981",
     });
 
-    // Smooth scroll to Server Type section
     setTimeout(() => {
       const typeSection = document.getElementById("server-type");
       if (typeSection) {
@@ -125,9 +129,9 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
 
   return (
     <div className="flex-1 px-8">
-      {/* Back link with icon */}
+      {/* Back link */}
       <div
-        className="flex items-center text-sm text-gray-400 mb-4 cursor-pointer hover:text-gray-300 transition-colors group"
+        className="flex items-center text-sm text-gray-400 mb-4 cursor-pointer hover:text-gray-300 transition-colors group w-fit"
         onClick={() => {
           const locationSection = document.getElementById("create-server");
           if (locationSection) {
@@ -155,46 +159,29 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
         Back to location
       </div>
 
-      {/* Title with info button */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Choose Image</h1>
+      {/* Title */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          Choose Operating System
+        </h1>
       </div>
 
       {/* Description */}
-      <p className="text-gray-400 text-sm mb-6 max-w-3xl leading-relaxed">
-        Select an operating system for your server. You can choose from the
-        latest stable versions of Ubuntu, Fedora, Debian, CentOS, Rocky Linux,
-        and more. Each image is ready to use immediately after deployment.
+      <p className="text-gray-400 text-sm mb-8 max-w-3xl leading-relaxed">
+        Select an operating system for your server. Each image is optimized,
+        secure, and ready to use immediately after deployment.
       </p>
 
       {/* OS Selection Grid */}
       <div className="space-y-8">
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3 text-white"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <h2 className="text-xl font-semibold">Operating System</h2>
-          </div>
-
           {!zoneId ? (
-            <div className="p-6 bg-[#1a2238] rounded-lg border border-gray-700">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-yellow-900/30 flex items-center justify-center">
+            <div className="p-8 bg-gradient-to-br from-[#1a1f2e] to-[#0f1422] rounded-xl border border-indigo-500/20 shadow-xl">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 text-yellow-400"
+                    className="h-6 w-6 text-yellow-400"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -208,47 +195,53 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-gray-300">
-                    Select a zone to view available images.
+                  <p className="text-gray-300 text-lg">Select a zone first</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Choose a location to view available operating systems
                   </p>
                 </div>
               </div>
             </div>
           ) : loading ? (
-            <div className="flex items-center gap-3 p-6 bg-[#1a2238] rounded-lg border border-gray-700">
-              <div className="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center">
-                <svg
-                  className="animate-spin h-4 w-4 text-blue-400"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
+            <div className="p-8 bg-gradient-to-br from-[#1a1f2e] to-[#0f1422] rounded-xl border border-indigo-500/20 shadow-xl">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                  <svg
+                    className="animate-spin h-6 w-6 text-indigo-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-gray-300 text-lg">Loading images...</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Fetching available operating systems for this zone
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-300">
-                Fetching images for this zone...
-              </p>
             </div>
           ) : error ? (
-            <div className="p-6 bg-red-900/10 border border-red-700 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-red-900/30 flex items-center justify-center">
+            <div className="p-8 bg-gradient-to-br from-red-950/30 to-red-900/20 rounded-xl border border-red-500/30 shadow-xl">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 text-red-400"
+                    className="h-6 w-6 text-red-400"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -262,23 +255,23 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-red-400 font-medium">{error}</p>
+                  <p className="text-red-400 text-lg font-medium">{error}</p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="mt-2 text-sm text-gray-300 hover:text-white underline"
+                    className="mt-2 text-sm text-gray-400 hover:text-white underline underline-offset-4 transition-colors"
                   >
                     Try again
                   </button>
                 </div>
               </div>
             </div>
-          ) : osOptions.length === 0 ? (
-            <div className="p-6 bg-[#1a2238] rounded-lg border border-gray-700">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+          ) : Object.keys(osOptions).length === 0 ? (
+            <div className="p-8 bg-gradient-to-br from-[#1a1f2e] to-[#0f1422] rounded-xl border border-gray-700/50 shadow-xl">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gray-700/50 flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 text-gray-400"
+                    className="h-6 w-6 text-gray-400"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -291,52 +284,190 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
                     />
                   </svg>
                 </div>
-                <p className="text-gray-300">
-                  No images found for this zone.
-                </p>
+                <div>
+                  <p className="text-gray-300 text-lg">No images found</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    This zone doesn't have any available operating systems
+                  </p>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {osOptions.map((os) => (
-                <div
-                  key={`${os.name}-${os.version}`}
-                  className={`p-6 rounded-xl border transition-all cursor-pointer duration-200
-                    ${
-                      selectedOS === os.name && selectedVersion === os.version
-                        ? "border-indigo-500 bg-[#1a2238] shadow-lg"
-                        : "border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
-                    }`}
-                  onClick={() => handleOSSelect(os.name, os.version, os.id)}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-lg font-semibold">{os.name}</div>
-                    {selectedOS === os.name && selectedVersion === os.version && (
-                      <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-3 w-3 text-white"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Object.keys(osOptions).map((osType) => {
+                // Generate a consistent gradient based on OS name
+                const gradients = [
+                  "from-indigo-500/20 to-purple-500/20",
+                  "from-blue-500/20 to-cyan-500/20",
+                  "from-emerald-500/20 to-teal-500/20",
+                  "from-orange-500/20 to-red-500/20",
+                  "from-pink-500/20 to-rose-500/20",
+                  "from-violet-500/20 to-fuchsia-500/20",
+                ];
+                const gradientIndex =
+                  osType.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
+                  gradients.length;
+                const gradient = gradients[gradientIndex];
+
+                return (
+                  <div
+                    key={osType}
+                    className="group relative bg-gradient-to-br from-[#1a1f2e] to-[#0f1422] rounded-xl border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300 shadow-lg hover:shadow-indigo-500/10"
+                  >
+                    {/* OS Card Header */}
+                    <div
+                      className="p-5 cursor-pointer"
+                      onClick={() =>
+                        setExpandedOS(expandedOS === osType ? null : osType)
+                      }
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center`}
+                          >
+                            <span className="text-lg font-semibold text-white">
+                              {osType.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-white">
+                              {osType}
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {osOptions[osType].length}{" "}
+                              {osOptions[osType].length === 1
+                                ? "version"
+                                : "versions"}{" "}
+                              available
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {selectedOS === osType && (
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                          )}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`h-5 w-5 text-gray-400 transition-transform duration-300 ${
+                              expandedOS === osType ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Selected version indicator */}
+                      {selectedOS === osType && selectedVersion && (
+                        <div className="mt-3 flex items-center gap-2 text-xs">
+                          <span className="px-2 py-1 rounded-md bg-green-500/20 text-green-400 border border-green-500/30">
+                            Selected: {selectedVersion}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dropdown - Proper dropdown design */}
+                    {expandedOS === osType && (
+                      <div className="absolute z-10 left-0 right-0 mt-1 mx-5 bg-[#1e2436] rounded-lg border border-gray-700 shadow-2xl overflow-hidden animate-fadeIn">
+                        <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                          {osOptions[osType].map((version, index) => (
+                            <button
+                              key={version.id}
+                              onClick={() =>
+                                handleOSSelect(
+                                  osType,
+                                  version.version,
+                                  version.id,
+                                )
+                              }
+                              className={`w-full text-left px-4 py-3 transition-all duration-200 flex items-center justify-between group/item
+                                ${index !== 0 ? "border-t border-gray-700/50" : ""}
+                                ${
+                                  selectedVersion === version.version &&
+                                  selectedOS === osType
+                                    ? "bg-indigo-500/20 text-indigo-400"
+                                    : "text-gray-300 hover:bg-indigo-500/10 hover:text-indigo-400"
+                                }`}
+                            >
+                              <span className="text-sm font-medium">
+                                {version.version}
+                              </span>
+                              {selectedVersion === version.version &&
+                                selectedOS === osType && (
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4 text-indigo-400"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                )}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Dropdown footer with count */}
+                        <div className="px-4 py-2 bg-[#161b2a] border-t border-gray-700 text-xs text-gray-500 flex justify-between items-center">
+                          <span>{osOptions[osType].length} versions</span>
+                          <span className="text-indigo-400">Click to select</span>
+                        </div>
                       </div>
                     )}
                   </div>
-                  <div className="text-gray-400 text-sm">
-                    Version: {os.version}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {/* Custom scrollbar styles */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #1a1f2e;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #4f46e5;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #6366f1;
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

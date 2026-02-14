@@ -397,7 +397,7 @@ const ResourcesSelector = ({
 
         {/* Title with info button */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold">Resources</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Resources</h1>
         </div>
 
         {/* Server Type Info */}
