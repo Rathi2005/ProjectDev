@@ -692,6 +692,12 @@ export default function ServersPage() {
                               >
                                 Maintenance
                               </option>
+                              <option
+                                value="DISABLED"
+                                className="bg-gray-900 text-red-400"
+                              >
+                                Disabled
+                              </option>
                             </select>
                             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
                               <svg
@@ -713,7 +719,7 @@ export default function ServersPage() {
                       </td>
                       <td className="px-4 py-3 sm:px-6 text-center whitespace-nowrap">
                         <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
-                          <button
+                          <button 
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/disks`)
                             }

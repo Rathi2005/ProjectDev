@@ -30,6 +30,7 @@ import ServerRamPage from "./pages/admin/ServerRamPage";
 import OrderDetailsPage from "./components/admin/OrderDetailsPage";
 import CreditPage from "./pages/admin/Credits/CouponsManagementPage";
 import WalletsManagementPage from "./pages/admin/Credits/WalletsManagementPage";
+import LogsPage from "./pages/admin/LogsPage";
 
 export default function App() {
   return (
@@ -180,6 +181,15 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <ServerRamPage/>
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/logs"
+          element={
+            <AdminProtectedRoute>
+              <LogsPage/>
             </AdminProtectedRoute>
           }
         />

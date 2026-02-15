@@ -179,7 +179,7 @@ export default function OrdersPage() {
             isProtected: order.isProtected ?? false,
 
             monthlyPrice: order.monthlyPrice,
-            paidAmount: order.totalAmount,
+            paidAmount: order.paidAmount,
 
             vmName: order.vmName,
             isoName: order.os,
@@ -1696,7 +1696,7 @@ export default function OrdersPage() {
                             </td>
 
                             <td className="py-3 px-4 sm:px-6 text-emerald-300 font-bold">
-                              {formatCurrency(order.totalAmount)}
+                              {formatCurrency(order.paidAmount)}
                             </td>
 
                             <td className="py-3 px-4 sm:px-6">

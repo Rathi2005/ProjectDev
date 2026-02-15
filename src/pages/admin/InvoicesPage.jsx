@@ -4,7 +4,15 @@ import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
 import Pagination from "../../components/Pagination";
 import toast from "react-hot-toast";
-import { FileText, CheckCircle, Clock, XCircle, Download, Search } from "lucide-react";
+import {
+  FileText,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Download,
+  Search,
+  Eye,
+} from "lucide-react";
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
@@ -88,7 +96,7 @@ export default function InvoicesPage() {
         const issueDate = new Date(p.timestamp);
 
         return {
-          recordId: p.recordId, // 🔑 used for invoice download
+          recordId: p.recordId,
           invoiceId: `INV-${p.recordId.toString().padStart(6, "0")}`,
 
           customerName: p.customerName || "N/A",
@@ -113,10 +121,20 @@ export default function InvoicesPage() {
           }).format(p.amount),
 
           rawAmount: p.amount,
+
           paymentMethod: p.gatewayId || "N/A",
           status: p.status?.toUpperCase() || "UNKNOWN",
           transactionId: p.orderTransactionId,
+
+          paymentType: p.paymentType,
+          totalAmount: p.totalAmount,
+          gatewayAmount: p.gatewayAmount,
+          couponDiscount: p.couponDiscount,
+          couponCode: p.couponCode,
           recordType: p.recordType,
+          ipAddress : p.ipAddress || "N/A",
+
+          rawData: p,
         };
       });
 
@@ -128,6 +146,15 @@ export default function InvoicesPage() {
       setLoading(false);
     }
   }, [token, page, size, searchTerm]);
+
+  const showInvoiceDetails = (invoice) => {
+    const cleanData = { ...invoice.rawData };
+
+    // Optional: remove internal fields if needed
+    delete cleanData.recordId;
+
+    showKeyValueModal(`Invoice ${invoice.invoiceId}`, cleanData);
+  };
 
   useEffect(() => {
     fetchInvoices();
@@ -161,7 +188,9 @@ export default function InvoicesPage() {
           if (value === null || value === undefined) {
             return `
             <div style="margin-left:${padding}px">
-              <span class="text-gray-400">${key}:</span>
+<span class="text-gray-400">
+  ${key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}:
+</span>
               <span class="text-gray-300 ml-2">—</span>
             </div>
           `;
@@ -199,11 +228,13 @@ export default function InvoicesPage() {
           }
 
           return `
-          <div style="margin-left:${padding}px">
-            <span class="text-gray-400">${key}:</span>
-            <span class="text-gray-200 ml-2">${value}</span>
-          </div>
-        `;
+  <div style="margin-left:${padding}px">
+    <span class="text-gray-400">
+      ${key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}:
+    </span>
+    <span class="text-gray-200 ml-2">${value}</span>
+  </div>
+`;
         })
         .join("");
     };
@@ -388,7 +419,7 @@ export default function InvoicesPage() {
                 <th className="py-3 px-6 font-medium">VM</th>
                 <th className="py-3 px-6 font-medium">Issue Date</th>
                 <th className="py-3 px-6 font-medium">Amount</th>
-                <th className="py-3 px-6 font-medium">Order ID</th>
+                <th className="py-3 px-6 font-medium">IP Address</th>
                 <th className="py-3 px-6 font-medium">Status</th>
                 <th className="py-3 px-6 font-medium">Actions</th>
               </tr>
@@ -464,7 +495,7 @@ export default function InvoicesPage() {
                     </td>
                     <td className="py-4 px-6">
                       <span className="px-2 py-1 text-xs rounded bg-gray-800/50">
-                        {invoice.paymentMethod}
+                        {invoice.ipAddress}
                       </span>
                     </td>
                     <td className="py-4 px-6">
@@ -480,24 +511,31 @@ export default function InvoicesPage() {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <button
-                        onClick={() => generateInvoice(invoice.recordId)}
-                        disabled={!isPaidStatus(invoice.status)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition
+                      <div className="flex gap-2">
+                        {/* DETAILS BUTTON */}
+                        <button
+                          onClick={() => showInvoiceDetails(invoice)}
+                          className="flex items-center gap-1 px-3 py-2 rounded-md text-xs font-medium bg-indigo-900/40 hover:bg-indigo-800 text-indigo-300 border border-indigo-700/40 transition"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Details
+                        </button>
+
+                        {/* DOWNLOAD BUTTON */}
+                        <button
+                          onClick={() => generateInvoice(invoice.recordId)}
+                          disabled={!isPaidStatus(invoice.status)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition
       ${
         isPaidStatus(invoice.status)
           ? "bg-indigo-600 hover:bg-indigo-700 text-white"
           : "bg-gray-700/50 text-gray-400 cursor-not-allowed"
       }`}
-                        title={
-                          isPaidStatus(invoice.status)
-                            ? "Download Invoice"
-                            : "Invoice available only for paid orders"
-                        }
-                      >
-                        <Download className="w-4 h-4" />
-                        Invoice
-                      </button>
+                        >
+                          <Download className="w-4 h-4" />
+                          Invoice
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

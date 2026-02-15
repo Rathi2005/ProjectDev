@@ -15,6 +15,7 @@ import {
   Map,
   Tags,
   Wallet,
+  ScrollText,
 } from "lucide-react";
 
 import useLogout from "./logout";
@@ -54,6 +55,7 @@ const AdminHeader = () => {
     { href: "/admin/invoices", icon: Receipt, label: "Invoices" },
     // { href: "/admin/servers", icon: FileBarChart, label: "Servers" },
     { href: "/admin/zones", icon: Map, label: "Zones" },
+    { href: "/admin/logs", icon: ScrollText, label: "Logs" },
     {
       label: "Pricing",
       icon: Tags,
