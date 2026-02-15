@@ -19,11 +19,10 @@ import {
   Wifi,
   Calendar,
   IndianRupee,
-  Power,
+  Key,
   Play,
   Square,
   RefreshCw,
-  Moon,
   Zap,
   Copy,
   Terminal,
@@ -191,6 +190,7 @@ export default function UserOrdersPage() {
               cores: order.specs?.cores,
               ramMb: order.specs?.ramMb,
               diskGb: order.specs?.diskGb,
+              osType: order.specs?.osType,
               expiresAt: order.billing?.expiresAt,
               durationMonths: order.billing?.durationMonths,
               // Keep original data for reference
@@ -255,6 +255,16 @@ export default function UserOrdersPage() {
     } finally {
       setPriceLoading(false);
     }
+  };
+
+  const getDefaultUsername = (osType) => {
+    if (!osType) return "root";
+
+    const normalized = osType.toUpperCase();
+
+    if (normalized === "WINDOWS") return "Administrator";
+
+    return "root"; // all Linux types
   };
 
   useEffect(() => {
@@ -1457,9 +1467,15 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                         {/* Connection & Controls Card */}
                                         <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
                                           {/* Server Password Setup */}
+                                          <div className="text-xs text-gray-400 mb-2">
+                                            Default Username:{" "}
+                                            <span className="text-indigo-300 font-semibold">
+                                              {getDefaultUsername(order.osType)}
+                                            </span>
+                                          </div>
                                           <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4">
-                                            <h4 className="text-sm font-semibold text-indigo-300 mb-2">
-                                              🔐 Server Access Password
+                                            <h4 className="flex text-sm font-semibold text-indigo-300 mb-2">
+                                              <Lock className="w-5 h-5 text-red-400 mr-1" /> Server Access Password
                                             </h4>
 
                                             <p className="text-xs text-gray-400 mb-3">
@@ -1501,7 +1517,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                           {/* VM Password Viewer */}
                                           <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-4">
                                             <h4 className="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
-                                              🔑 VM Password
+                                              <Key className="w-5 h-5 text-yellow-400" /> VM Password
                                             </h4>
 
                                             <div className="flex items-center justify-between gap-3">
