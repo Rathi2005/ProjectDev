@@ -337,23 +337,35 @@ export default function AdminLogsPage() {
   };
 
   const handleViewDetails = (log) => {
-    if (activeTab === "errors" && log.stackTrace) {
-      Swal.fire({
-        ...swalDarkTheme,
-        title: "Error Details",
-        html: `
-          <div class="text-left">
-            <p class="text-red-400 mb-2"><strong>Action:</strong> ${log.action}</p>
-            <p class="text-gray-300 mb-4">${log.details}</p>
-            <pre class="bg-[#1e293b] p-4 rounded-lg text-xs text-gray-300 overflow-x-auto">${log.stackTrace}</pre>
-          </div>
-        `,
-        confirmButtonText: "Close",
-        showConfirmButton: true,
-        showCancelButton: false,
-        width: "800px",
-      });
-    }
+    const formattedFields = Object.entries(log)
+      .map(([key, value]) => {
+        const displayValue =
+          value === null || value === undefined || value === ""
+            ? "—"
+            : typeof value === "object"
+              ? JSON.stringify(value, null, 2)
+              : value;
+
+        return `
+        <div style="margin-bottom:10px;">
+          <strong style="color:#93c5fd;">${key}</strong>
+          <span style="color:#e2e8f0;">${displayValue}</span>
+        </div>
+      `;
+      })
+      .join("");
+
+    Swal.fire({
+      ...swalDarkTheme,
+      title: "Log Details",
+      html: `
+      <div style="text-align:left; max-height:400px; overflow-y:auto;">
+        ${formattedFields}
+      </div>
+    `,
+      width: "700px",
+      confirmButtonText: "Close",
+    });
   };
 
   // Helper functions
@@ -499,6 +511,17 @@ export default function AdminLogsPage() {
                 {log.details || "—"}
               </div>
             </td>
+            <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewDetails(log);
+                }}
+                className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border border-indigo-500/30 rounded-lg text-xs transition-all duration-300"
+              >
+                View Details
+              </button>
+            </td>
           </tr>
         );
 
@@ -539,6 +562,17 @@ export default function AdminLogsPage() {
                   {log.details || "—"}
                 </span>
               </div>
+            </td>
+            <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewDetails(log);
+                }}
+                className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border border-indigo-500/30 rounded-lg text-xs transition-all duration-300"
+              >
+                View Details
+              </button>
             </td>
           </tr>
         );
@@ -592,6 +626,17 @@ export default function AdminLogsPage() {
               >
                 {log.details || "—"}
               </span>
+            </td>
+            <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewDetails(log);
+                }}
+                className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border border-indigo-500/30 rounded-lg text-xs transition-all duration-300"
+              >
+                View Details
+              </button>
             </td>
           </tr>
         );
@@ -805,6 +850,7 @@ export default function AdminLogsPage() {
                         <th className="px-4 py-3 sm:px-6">VM ID</th>
                         <th className="px-4 py-3 sm:px-6">Change</th>
                         <th className="px-4 py-3 sm:px-6">Details</th>
+                        <th className="px-4 py-3 sm:px-6">Actions</th>
                       </>
                     ) : activeTab === "errors" ? (
                       <>
@@ -812,6 +858,7 @@ export default function AdminLogsPage() {
                         <th className="px-4 py-3 sm:px-6">User</th>
                         <th className="px-4 py-3 sm:px-6">VM ID</th>
                         <th className="px-4 py-3 sm:px-6">Details</th>
+                        <th className="px-4 py-3 sm:px-6">Actions</th>
                       </>
                     ) : (
                       <>
@@ -820,6 +867,7 @@ export default function AdminLogsPage() {
                         <th className="px-4 py-3 sm:px-6">User</th>
                         <th className="px-4 py-3 sm:px-6">VM</th>
                         <th className="px-4 py-3 sm:px-6">Details</th>
+                        <th className="px-4 py-3 sm:px-6">Actions</th>
                       </>
                     )}
                   </tr>

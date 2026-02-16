@@ -23,10 +23,8 @@ export default function CouponAndWallet({
   );
 
   useEffect(() => {
-    if (useWallet && walletBalance === 0) {
       fetchWalletBalance();
-    }
-  }, [useWallet]);
+  },[]);
 
   const fetchWalletBalance = async () => {
     setWalletLoading(true);
@@ -47,6 +45,7 @@ export default function CouponAndWallet({
       setWalletLoading(false);
     }
   };
+
 
   const validateCoupon = async () => {
     if (!couponCode.trim()) {

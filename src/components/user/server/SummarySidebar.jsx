@@ -44,7 +44,6 @@ const SummarySidebar = ({
 
   const [vmNameTouched, setVmNameTouched] = useState(false);
 
-
   const canApplyDiscounts = useMemo(() => {
     return (
       selectedResources?.cpuPriceId &&
@@ -71,6 +70,10 @@ const SummarySidebar = ({
       setVmName(`${os}-${ram}`);
     }
   }, [selectedOS, selectedResources, vmNameTouched]);
+
+  useEffect(() => {
+      fetchWalletBalance();
+  });
 
   const disablePayForCoupon = useMemo(() => {
     return useCoupon && !couponValidated;
@@ -781,12 +784,7 @@ const SummarySidebar = ({
               checked={useWalletBalance}
               disabled={!canApplyDiscounts || isLoading || walletPaying}
               onChange={(e) => {
-                const checked = e.target.checked;
-                setUseWalletBalance(checked);
-
-                if (checked) {
-                  fetchWalletBalance();
-                }
+                setUseWalletBalance(e.target.checked);
               }}
               className="w-4 h-4 accent-indigo-600 disabled:opacity-50"
             />
