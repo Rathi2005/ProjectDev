@@ -53,7 +53,7 @@ const AdminHeader = () => {
     { href: "/admin/users-overview", icon: Users, label: "Users" },
     { href: "/admin/orders", icon: ShoppingCart, label: "Orders" },
     { href: "/admin/invoices", icon: Receipt, label: "Invoices" },
-    // { href: "/admin/servers", icon: FileBarChart, label: "Servers" },
+    { href: "/admin/settings", icon: Settings, label: "Settings" },
     { href: "/admin/zones", icon: Map, label: "Zones" },
     { href: "/admin/logs", icon: ScrollText, label: "Logs" },
     {

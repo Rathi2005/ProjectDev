@@ -31,6 +31,10 @@ import OrderDetailsPage from "./components/admin/OrderDetailsPage";
 import CreditPage from "./pages/admin/Credits/CouponsManagementPage";
 import WalletsManagementPage from "./pages/admin/Credits/WalletsManagementPage";
 import LogsPage from "./pages/admin/LogsPage";
+import SettingsPage from "./pages/admin/SettingsPage";
+import GeneralSettings from "./components/admin/AllSettings/GeneralSettings";
+import MailSettings from "./components/admin/AllSettings/MailSettings";
+import GatewaySettings from "./components/admin/AllSettings/GatewaySettings";
 
 export default function App() {
   return (
@@ -190,6 +194,42 @@ export default function App() {
           element={
             <AdminProtectedRoute>
               <LogsPage/>
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings"
+          element={
+            <AdminProtectedRoute>
+              <SettingsPage/>
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings/general"
+          element={
+            <AdminProtectedRoute>
+              <GeneralSettings/>
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings/mail"
+          element={
+            <AdminProtectedRoute>
+              <MailSettings/>
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings/payment-gateways"
+          element={
+            <AdminProtectedRoute>
+              <GatewaySettings/>
             </AdminProtectedRoute>
           }
         />
