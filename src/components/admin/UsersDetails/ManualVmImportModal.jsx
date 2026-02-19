@@ -13,6 +13,7 @@ import {
   Settings,
   CheckCircle,
 } from "lucide-react";
+import { useState } from "react";
 
 export default function ManualVmImportModal({
   show,
@@ -47,6 +48,26 @@ export default function ManualVmImportModal({
     form.ramPriceId &&
     form.diskPriceId &&
     form.bandwidthPriceId;
+
+  const [submitting, setSubmitting] = useState(false);
+  const initialForm = {
+    vmName: "",
+    vmid: "",
+    serverId: "",
+    storageId: "",
+    isoId: "",
+    planType: "",
+    cpuPriceId: "",
+    ramPriceId: "",
+    diskPriceId: "",
+    bandwidthPriceId: "",
+    ipAddress: "",
+    macAddress: "",
+    cidr: "",
+    subnetMask: "",
+    gateway: "",
+    expiresAt: "",
+  };
 
   const cidrToSubnetMask = (cidr) => {
     const prefix = Number(cidr?.replace("/", ""));
@@ -723,8 +744,17 @@ export default function ManualVmImportModal({
                 Cancel
               </button>
               <button
-                onClick={submitManualVm}
+                onClick={async () => {
+                  if (submitting) return;
+                  try {
+                    setSubmitting(true);
+                    await submitManualVm();
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
                 disabled={
+                  submitting ||
                   !form.vmName ||
                   !form.vmid ||
                   !form.serverId ||
@@ -737,8 +767,17 @@ export default function ManualVmImportModal({
                 }
                 className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg font-medium transition-all shadow-lg shadow-emerald-900/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 flex-1 sm:flex-none"
               >
-                <Upload className="w-4 h-4" />
-                Import VM
+                {submitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Import VM
+                  </>
+                )}
               </button>
             </div>
           </div>

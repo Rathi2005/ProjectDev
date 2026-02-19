@@ -865,14 +865,12 @@ export default function OrdersPage() {
         color: "text-indigo-400",
       },
       {
-        title: "Failed Orders",
+        title: "Garbage Records",
         value: stats.failedOrders,
         icon: <XCircle className="w-6 h-6 text-red-400" />,
         subtitle: "Payment / Provision failures",
         color: "text-red-400",
         hasLink: true,
-        linkTo: "/admin/garbage-records",
-        linkText: "View Details",
       },
       {
         title: "Total Users",
@@ -881,8 +879,6 @@ export default function OrdersPage() {
         subtitle: "Registered users",
         color: "text-blue-400",
         hasLink: true,
-        linkTo: "/admin/users-overview",
-        linkText: "View All Users",
       },
       {
         title: "Deleted VMs",
@@ -891,8 +887,6 @@ export default function OrdersPage() {
         subtitle: "Permanently removed",
         color: "text-orange-400",
         hasLink: true,
-        linkTo: "/admin/deleted-vms",
-        linkText: "View Details",
       },
     ],
     [stats],
@@ -1336,19 +1330,6 @@ export default function OrdersPage() {
                         )}
                       </div>
 
-                      {/* Add link button if hasLink is true */}
-                      {ins.hasLink && (
-                        <div className="mt-3 pt-3 border-t border-indigo-900/30">
-                          <Link
-                            to={ins.linkTo}
-                            className="inline-flex items-center gap-1 text-xs text-indigo-300 hover:text-indigo-200 transition-colors hover:underline"
-                          >
-                            <Eye className="w-3 h-3" />
-                            {ins.linkText}
-                            <ExternalLink className="w-3 h-3" />
-                          </Link>
-                        </div>
-                      )}
                     </div>
                     <div className="p-2 sm:p-3 bg-[#0e1525] rounded-lg sm:rounded-xl border border-indigo-900/40">
                       {ins.icon}

@@ -15,19 +15,19 @@ export default function Footer() {
 
           {/* Links */}
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs">
-            <Link to="https://hostheaven.in/about-us.php" className="hover:text-[#4f46e5] transition">
+            <Link to="#" className="hover:text-[#4f46e5] transition">
               About Us
             </Link>
-            <Link to="https://hostheaven.in/privacy-policy.php" className="hover:text-[#4f46e5] transition">
+            <Link to="#" className="hover:text-[#4f46e5] transition">
               Privacy Policy
             </Link>
-            <Link to="https://hostheaven.in/terms-and-conditions.php" className="hover:text-[#4f46e5] transition">
+            <Link to="#" className="hover:text-[#4f46e5] transition">
               T&amp;C
             </Link>
-            <Link to="https://hostheaven.in/return-policy.php" className="hover:text-[#4f46e5] transition">
+            <Link to="#" className="hover:text-[#4f46e5] transition">
               Return Policy
             </Link>
-            <Link to="https://hostheaven.in/contact-us.php" className="hover:text-[#4f46e5] transition">
+            <Link to="#" className="hover:text-[#4f46e5] transition">
               Contact Us
             </Link>
           </div>

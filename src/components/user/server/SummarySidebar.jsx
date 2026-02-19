@@ -67,7 +67,7 @@ const SummarySidebar = ({
         .toLowerCase()
         .replace(/\s+/g, "");
 
-      setVmName(`${os}-${ram}`);
+      setVmName(`${os}`);
     }
   }, [selectedOS, selectedResources, vmNameTouched]);
 

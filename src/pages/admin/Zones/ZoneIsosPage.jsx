@@ -164,9 +164,6 @@ export default function ZoneIsosPage() {
       cancelButtonColor: "#4b5563",
       background: "#0e1525",
       color: "#fff",
-      customClass: {
-        popup: "bg-[#0e1525] border border-red-500/20 rounded-xl",
-      },
     });
 
     if (!confirm.isConfirmed) return;
@@ -177,12 +174,35 @@ export default function ZoneIsosPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!res.ok) throw new Error("Delete failed");
+      const data = await res.json();
 
-      toast.success("ISO deleted successfully");
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Delete failed");
+      }
+
+      await Swal.fire({
+        title: "Deleted!",
+        text: "ISO deleted successfully",
+        icon: "success",
+        confirmButtonColor: "#6366f1",
+        background: "#0e1525",
+        color: "#fff",
+      });
+
       fetchIsos();
-    } catch {
-      toast.error("Delete failed");
+    } catch (err) {
+      await Swal.fire({
+        title: "Action Failed",
+        text: err.message,
+        icon: "error",
+        confirmButtonColor: "#ef4444",
+        background: "#0e1525",
+        color: "#fff",
+        customClass: {
+          popup: "bg-[#0e1525] border border-red-500/20 rounded-xl",
+          title: "text-red-400",
+        },
+      });
     }
   };
 

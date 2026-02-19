@@ -64,26 +64,26 @@ export default function SystemRecordsPage() {
   const [showVmModal, setShowVmModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
-  const [form, setForm] = useState({
-    userId: "",
-    serverId: "",
-    zoneId: "",
-    vmid: "",
+  const initialForm = {
     vmName: "",
+    vmid: "",
+    serverId: "",
+    storageId: "",
+    isoId: "",
     planType: "",
     cpuPriceId: "",
     ramPriceId: "",
     diskPriceId: "",
     bandwidthPriceId: "",
-    isoId: "",
-    storageId: "",
     ipAddress: "",
     macAddress: "",
-    cidr: "/24",
-    gateway: "",
+    cidr: "",
     subnetMask: "",
+    gateway: "",
     expiresAt: "",
-  });
+  };
+
+  const [form, setForm] = useState(initialForm);
 
   const [servers, setServers] = useState([]);
   const [cpuOptions, setCpuOptions] = useState([]);
@@ -699,6 +699,7 @@ export default function SystemRecordsPage() {
       }
 
       DarkSwal.fire("Success", "VM Imported Successfully", "success");
+      setForm(initialForm);
       setShowVmModal(false);
       fetchRecords();
     } catch (error) {
@@ -1050,11 +1051,10 @@ export default function SystemRecordsPage() {
           {/* Header */}
           <div className="mb-8">
             <button
-              onClick={() => navigate("/admin/orders")}
-              className="flex items-center gap-2 text-indigo-300 hover:text-indigo-200 mb-4 transition-colors"
+              onClick={() => navigate("/admin/settings")}
+              className="group flex items-center justify-center w-10 h-10 rounded-xl  hover:bg-indigo-600/10 transition-all"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Orders
+              <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
             </button>
 
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1251,44 +1251,69 @@ export default function SystemRecordsPage() {
                           ))}
 
                           {/* 🔐 Lock Status dropdown – users overview only */}
-{/* 🔐 Lock Status dropdown – users overview only */}
-{pageType === "users-overview" && (
-  <td className="py-3 px-4 align-middle">
-    <div className="relative">
-      <select
-        value={record.isLocked ? "locked" : "unlocked"}
-        onChange={(e) => {
-          const value = e.target.value;
-          if (value === "locked") {
-            lockDownUser(record.id);
-          } else {
-            unlockUser(record.id);
-          }
-        }}
-        className={`
+                          {/* 🔐 Lock Status dropdown – users overview only */}
+                          {pageType === "users-overview" && (
+                            <td className="py-3 px-4 align-middle">
+                              <div className="relative">
+                                <select
+                                  value={
+                                    record.isLocked ? "locked" : "unlocked"
+                                  }
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === "locked") {
+                                      lockDownUser(record.id);
+                                    } else {
+                                      unlockUser(record.id);
+                                    }
+                                  }}
+                                  className={`
           w-full px-3 py-2 rounded text-sm font-medium
           cursor-pointer transition-colors duration-150
           appearance-none pr-10 border
           focus:outline-none focus:border-opacity-100
-          ${record.isLocked
-            ? "bg-red-950/40 border-red-700 text-red-200 hover:bg-red-900/40 focus:border-red-500"
-            : "bg-emerald-950/40 border-emerald-700 text-emerald-200 hover:bg-emerald-900/40 focus:border-emerald-500"
+          ${
+            record.isLocked
+              ? "bg-red-950/40 border-red-700 text-red-200 hover:bg-red-900/40 focus:border-red-500"
+              : "bg-emerald-950/40 border-emerald-700 text-emerald-200 hover:bg-emerald-900/40 focus:border-emerald-500"
           }
         `}
-      >
-        <option value="locked" className="bg-gray-900 text-gray-100">Lock</option>
-        <option value="unlocked" className="bg-gray-900 text-gray-100">Unlock</option>
-      </select>
-            
-      {/* Simple dropdown arrow */}
-      <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${record.isLocked ? 'text-red-400' : 'text-emerald-400'}`}>
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
-    </div>
-  </td>
-)}
+                                >
+                                  <option
+                                    value="locked"
+                                    className="bg-gray-900 text-gray-100"
+                                  >
+                                    Lock
+                                  </option>
+                                  <option
+                                    value="unlocked"
+                                    className="bg-gray-900 text-gray-100"
+                                  >
+                                    Unlock
+                                  </option>
+                                </select>
+
+                                {/* Simple dropdown arrow */}
+                                <div
+                                  className={`absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${record.isLocked ? "text-red-400" : "text-emerald-400"}`}
+                                >
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M19 9l-7 7-7-7"
+                                    />
+                                  </svg>
+                                </div>
+                              </div>
+                            </td>
+                          )}
 
                           <td className="py-3 px-4">
                             <div className="flex flex-col gap-2">
@@ -1324,7 +1349,6 @@ export default function SystemRecordsPage() {
                                   Create VM
                                 </button>
                               )}
-
                             </div>
                           </td>
                         </tr>

@@ -619,14 +619,15 @@ export default function AdminLogsPage() {
                 )}
               </div>
             </td>
-            <td className="px-4 py-3 max-w-xs">
-              <span
-                className="text-sm text-gray-400 truncate"
+            <td className="px-4 py-3 w-[28%]">
+              <div
+                className="text-sm text-gray-400 break-words whitespace-pre-wrap line-clamp-2"
                 title={log.details}
               >
                 {log.details || "—"}
-              </span>
+              </div>
             </td>
+
             <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
               <button
                 onClick={(e) => {
@@ -826,7 +827,7 @@ export default function AdminLogsPage() {
             </div>
           ) : (
             <div className="w-full min-w-[1200px]">
-              <table className="w-full text-left border-collapse text-sm">
+              <table className="w-full text-left table-fixed border-collapse text-sm">
                 <thead className="bg-[#151c2f] text-gray-300 uppercase tracking-wider text-xs">
                   <tr>
                     <th

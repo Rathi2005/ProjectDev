@@ -135,9 +135,9 @@ export default function App() {
             </AdminProtectedRoute>
           }
         />
-        <Route path="/admin/deleted-vms" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
-        <Route path="/admin/garbage-records" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
-        <Route path="/admin/users-overview" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
+        <Route path="/admin/settings/deleted-vms" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
+        <Route path="/admin/settings/garbage-records" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
+        <Route path="/admin/settings/users-overview" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
         <Route
           path="/admin/invoices"
           element={

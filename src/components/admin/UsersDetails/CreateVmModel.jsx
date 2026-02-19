@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { RefreshCw, X, Server, Cpu, HardDrive, MemoryStick, Globe, Calendar, Upload } from "lucide-react";
+import {
+  RefreshCw,
+  X,
+  Server,
+  Cpu,
+  HardDrive,
+  MemoryStick,
+  Globe,
+  Calendar,
+  Upload,
+} from "lucide-react";
 
 const DarkSwal = Swal.mixin({
   background: "#1e2640",
@@ -36,6 +46,7 @@ export default function CreateVmModal({
   const [isoOptions, setIsoOptions] = useState([]);
   const [ipOptions, setIpOptions] = useState([]);
   const [loadingPricing, setLoadingPricing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const token = localStorage.getItem("adminToken");
 
@@ -97,6 +108,8 @@ export default function CreateVmModal({
 
   /* ---------------- SUBMIT ---------------- */
   const submitVm = async () => {
+    if (submitting) return;
+
     if (
       !form.vmName ||
       !form.serverId ||
@@ -121,19 +134,18 @@ export default function CreateVmModal({
       serverId: Number(form.serverId),
       vmName: form.vmName,
       planType: form.planType,
-
       cpuPriceId: Number(form.cpuPriceId),
       ramPriceId: Number(form.ramPriceId),
       diskPriceId: Number(form.diskPriceId),
       bandwidthPriceId: Number(form.bandwidthPriceId),
-
       isoId: form.isoId ? Number(form.isoId) : null,
       ipId: Number(form.ipId),
-
       expiryDate: `${form.expiryDate} 23:59:59`,
     };
 
     try {
+      setSubmitting(true); // ✅ START LOADER
+
       const res = await fetch(`${BASE_URL}/api/admin/vms/manual-create`, {
         method: "POST",
         headers: {
@@ -146,10 +158,13 @@ export default function CreateVmModal({
       if (!res.ok) throw new Error("VM creation failed");
 
       DarkSwal.fire("Success", "VM Created Successfully", "success");
+
       onSuccess();
       onClose();
     } catch (e) {
       DarkSwal.fire("Error", e.message, "error");
+    } finally {
+      setSubmitting(false); // ✅ STOP LOADER
     }
   };
 
@@ -161,7 +176,8 @@ export default function CreateVmModal({
           <div>
             <h2 className="text-2xl font-bold text-white">Create New VM</h2>
             <p className="text-gray-400 text-sm mt-1">
-              For user: <span className="text-blue-400 font-medium">{user.email}</span>
+              For user:{" "}
+              <span className="text-blue-400 font-medium">{user.email}</span>
             </p>
           </div>
           <button
@@ -179,9 +195,11 @@ export default function CreateVmModal({
               <div className="p-2 bg-blue-500/10 rounded-lg">
                 <Server className="w-5 h-5 text-blue-500" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Basic Configuration</h3>
+              <h3 className="text-lg font-semibold text-white">
+                Basic Configuration
+              </h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* VM Name */}
               <div>
@@ -207,9 +225,13 @@ export default function CreateVmModal({
                   </div>
                   <select
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 appearance-none transition"
-                    onChange={(e) => setForm({ ...form, serverId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, serverId: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select Server</option>
+                    <option value="" className="bg-gray-900">
+                      Select Server
+                    </option>
                     {servers.map((s) => (
                       <option key={s.id} value={s.id} className="bg-gray-900">
                         {s.name}
@@ -230,11 +252,19 @@ export default function CreateVmModal({
                   </div>
                   <select
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 appearance-none transition"
-                    onChange={(e) => setForm({ ...form, planType: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, planType: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select Plan Type</option>
-                    <option value="DEDICATED" className="bg-gray-900">Dedicated</option>
-                    <option value="SHARED" className="bg-gray-900">Shared</option>
+                    <option value="" className="bg-gray-900">
+                      Select Plan Type
+                    </option>
+                    <option value="DEDICATED" className="bg-gray-900">
+                      Dedicated
+                    </option>
+                    <option value="SHARED" className="bg-gray-900">
+                      Shared
+                    </option>
                   </select>
                 </div>
               </div>
@@ -251,7 +281,9 @@ export default function CreateVmModal({
                   <input
                     type="date"
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                    onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, expiryDate: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -265,12 +297,14 @@ export default function CreateVmModal({
                 <div className="p-2 bg-green-500/10 rounded-lg">
                   <Cpu className="w-5 h-5 text-green-500" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">Resource Configuration</h3>
+                <h3 className="text-lg font-semibold text-white">
+                  Resource Configuration
+                </h3>
                 {loadingPricing && (
                   <RefreshCw className="w-4 h-4 text-gray-400 animate-spin ml-2" />
                 )}
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* CPU */}
                 <div>
@@ -281,9 +315,13 @@ export default function CreateVmModal({
                   <select
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                     value={form.cpuPriceId}
-                    onChange={(e) => setForm({ ...form, cpuPriceId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, cpuPriceId: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select CPU</option>
+                    <option value="" className="bg-gray-900">
+                      Select CPU
+                    </option>
                     {cpuOptions.map((c) => (
                       <option key={c.id} value={c.id} className="bg-gray-900">
                         {c.label}
@@ -301,9 +339,13 @@ export default function CreateVmModal({
                   <select
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                     value={form.ramPriceId}
-                    onChange={(e) => setForm({ ...form, ramPriceId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, ramPriceId: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select RAM</option>
+                    <option value="" className="bg-gray-900">
+                      Select RAM
+                    </option>
                     {ramOptions.map((r) => (
                       <option key={r.id} value={r.id} className="bg-gray-900">
                         {r.label}
@@ -321,9 +363,13 @@ export default function CreateVmModal({
                   <select
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                     value={form.diskPriceId}
-                    onChange={(e) => setForm({ ...form, diskPriceId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, diskPriceId: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select Disk</option>
+                    <option value="" className="bg-gray-900">
+                      Select Disk
+                    </option>
                     {diskOptions.map((d) => (
                       <option key={d.id} value={d.id} className="bg-gray-900">
                         {d.label}
@@ -341,9 +387,13 @@ export default function CreateVmModal({
                   <select
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                     value={form.bandwidthPriceId}
-                    onChange={(e) => setForm({ ...form, bandwidthPriceId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, bandwidthPriceId: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select Bandwidth</option>
+                    <option value="" className="bg-gray-900">
+                      Select Bandwidth
+                    </option>
                     {bandwidthOptions.map((b) => (
                       <option key={b.id} value={b.id} className="bg-gray-900">
                         {b.label}
@@ -361,9 +411,11 @@ export default function CreateVmModal({
               <div className="p-2 bg-purple-500/10 rounded-lg">
                 <Upload className="w-5 h-5 text-purple-500" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Advanced Configuration</h3>
+              <h3 className="text-lg font-semibold text-white">
+                Advanced Configuration
+              </h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* ISO Selection */}
               <div>
@@ -376,9 +428,13 @@ export default function CreateVmModal({
                   </div>
                   <select
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                    onChange={(e) => setForm({ ...form, isoId: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, isoId: e.target.value })
+                    }
                   >
-                    <option value="" className="bg-gray-900">Select ISO</option>
+                    <option value="" className="bg-gray-900">
+                      Select ISO
+                    </option>
                     {isoOptions.map((i) => (
                       <option key={i.id} value={i.id} className="bg-gray-900">
                         {i.iso}
@@ -401,7 +457,9 @@ export default function CreateVmModal({
                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                     onChange={(e) => setForm({ ...form, ipId: e.target.value })}
                   >
-                    <option value="" className="bg-gray-900">Select IP Address</option>
+                    <option value="" className="bg-gray-900">
+                      Select IP Address
+                    </option>
                     {ipOptions.map((ip) => (
                       <option key={ip.id} value={ip.id} className="bg-gray-900">
                         {ip.ip}
@@ -429,9 +487,22 @@ export default function CreateVmModal({
               </button>
               <button
                 onClick={submitVm}
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-900/25"
+                disabled={submitting}
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 
+  hover:from-blue-700 hover:to-blue-800 
+  text-white rounded-lg font-medium transition-all 
+  shadow-lg shadow-blue-900/25 
+  disabled:opacity-50 disabled:cursor-not-allowed 
+  flex items-center gap-2"
               >
-                Create Virtual Machine
+                {submitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Virtual Machine"
+                )}
               </button>
             </div>
           </div>

@@ -97,7 +97,7 @@ export default function InvoicesPage() {
 
         return {
           recordId: p.recordId,
-          invoiceId: `INV-${p.recordId.toString().padStart(6, "0")}`,
+          transactionId: p.orderTransactionId,
 
           customerName: p.customerName || "N/A",
           customerEmail: p.customerEmail || "N/A",
@@ -414,11 +414,12 @@ export default function InvoicesPage() {
           <table className="min-w-full text-left border-collapse">
             <thead className="bg-[#151c2f] text-gray-300 uppercase text-sm">
               <tr>
-                <th className="py-3 px-6 font-medium">Invoice ID</th>
+                <th className="py-3 px-6 font-medium">Transaction ID</th>
                 <th className="py-3 px-6 font-medium">Customer</th>
                 <th className="py-3 px-6 font-medium">VM</th>
                 <th className="py-3 px-6 font-medium">Issue Date</th>
                 <th className="py-3 px-6 font-medium">Amount</th>
+                <th className="py-3 px-6 font-medium">Payment Type</th>
                 <th className="py-3 px-6 font-medium">IP Address</th>
                 <th className="py-3 px-6 font-medium">Status</th>
                 <th className="py-3 px-6 font-medium">Actions</th>
@@ -463,7 +464,7 @@ export default function InvoicesPage() {
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-indigo-400" />
                         <span className="text-indigo-300">
-                          {invoice.invoiceId}
+                          {invoice.transactionId}
                         </span>
                       </div>
                     </td>
@@ -492,6 +493,9 @@ export default function InvoicesPage() {
                     </td>
                     <td className="py-4 px-6 font-semibold">
                       {invoice.amount}
+                    </td>
+                    <td className="py-4 px-6 font-semibold">
+                      {invoice.paymentType || "N/A"}
                     </td>
                     <td className="py-4 px-6">
                       <span className="px-2 py-1 text-xs rounded bg-gray-800/50">

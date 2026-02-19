@@ -93,7 +93,7 @@ const Header = () => {
           </a> */}
 
           <a
-            href="https://www.getwebup.in/aboutus.php"
+            href="#"
             className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
           >
             <Ticket className="w-4 h-4" />

@@ -50,7 +50,6 @@ const AdminHeader = () => {
 
   const navLinks = [
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/admin/users-overview", icon: Users, label: "Users" },
     { href: "/admin/orders", icon: ShoppingCart, label: "Orders" },
     { href: "/admin/invoices", icon: Receipt, label: "Invoices" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },

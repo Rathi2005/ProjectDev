@@ -905,7 +905,7 @@ export default function UserOrdersPage() {
 
   const canShowDropdown = (status) => {
     const s = status?.toUpperCase();
-    return s === "ACTIVE" || s === "STOPPED";
+    return s === "ACTIVE" || s === "STOPPED" || s === "ERROR";
   };
 
   const showDetailsModal = (order) => {
@@ -946,52 +946,80 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
   const createUpgradeSession = async ({ useWallet, couponCode }) => {
     const token = localStorage.getItem("token");
 
-    const res = await fetch(
-      `${BASE_URL}/api/vms/renew/${upgradeVm.id}/upgrade-renew`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/vms/renew/${upgradeVm.id}/upgrade-renew`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            planType: upgradeVm.planType || "DEDICATED",
+            cpuPriceId: selectedCpu,
+            ramPriceId: selectedRam,
+            diskPriceId: selectedDisk,
+            bandwidthPriceId: selectedBandwidth,
+            addMonths,
+            useWalletBalance: useWallet,
+            couponCode,
+          }),
         },
-        body: JSON.stringify({
-          planType: upgradeVm.planType || "DEDICATED",
-          cpuPriceId: selectedCpu,
-          ramPriceId: selectedRam,
-          diskPriceId: selectedDisk,
-          bandwidthPriceId: selectedBandwidth,
-          addMonths,
-          useWalletBalance: useWallet,
-          couponCode,
-        }),
-      },
-    );
+      );
 
-    if (!res.ok) {
-      throw new Error("Upgrade / renewal failed");
+      const data = await res.json();
+
+      if (!res.ok) {
+        // ✅ CLOSE PAYMENT MODAL FIRST
+        setShowPaymentFlow(false);
+
+        // small delay ensures modal unmounts
+        setTimeout(() => {
+          DarkSwal.fire({
+            icon: "error",
+            title: "Payment Failed",
+            text: data.error || data.message || "Upgrade / renewal failed",
+          });
+        }, 150);
+
+        return null;
+      }
+
+      // Wallet instant success
+      if (data.status === "COMPLETED") {
+        setShowPaymentFlow(false);
+
+        setTimeout(() => {
+          DarkSwal.fire({
+            icon: "success",
+            title: "Upgrade Successful",
+            text: data.message,
+          }).then(() => window.location.reload());
+        }, 150);
+
+        return null;
+      }
+
+      // Payment required
+      if (data.paymentSessionId) {
+        return data.paymentSessionId;
+      }
+
+      throw new Error("Unexpected upgrade response");
+    } catch (err) {
+      setShowPaymentFlow(false);
+
+      setTimeout(() => {
+        DarkSwal.fire({
+          icon: "error",
+          title: "Payment Failed",
+          text: err.message,
+        });
+      }, 150);
+
+      return null;
     }
-
-    const data = await res.json();
-
-    // Scenario B: Instant success
-    if (data.status === "COMPLETED") {
-      Swal.fire({
-        icon: "success",
-        title: "Upgrade Successful",
-        text: data.message,
-        background: "#0e1525",
-        color: "#e5e7eb",
-      });
-
-      return null; // VERY IMPORTANT
-    }
-
-    // Scenario A: Payment required
-    if (data.paymentSessionId) {
-      return data.paymentSessionId;
-    }
-
-    throw new Error("Unexpected upgrade response");
   };
 
   return (
@@ -1475,7 +1503,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                           </div>
                                           <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4">
                                             <h4 className="flex text-sm font-semibold text-indigo-300 mb-2">
-                                              <Lock className="w-5 h-5 text-red-400 mr-1" /> Server Access Password
+                                              <Lock className="w-5 h-5 text-red-400 mr-1" />{" "}
+                                              Server Access Password
                                             </h4>
 
                                             <p className="text-xs text-gray-400 mb-3">
@@ -1517,7 +1546,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                           {/* VM Password Viewer */}
                                           <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-4">
                                             <h4 className="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
-                                              <Key className="w-5 h-5 text-yellow-400" /> VM Password
+                                              <Key className="w-5 h-5 text-yellow-400" />{" "}
+                                              VM Password
                                             </h4>
 
                                             <div className="flex items-center justify-between gap-3">
