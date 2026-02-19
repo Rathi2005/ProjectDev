@@ -38,7 +38,7 @@ const ResourcesSelector = ({
 
   const getDisplayType = (type) => {
     if (type === "Dedicated CPU") return "Virtual Dedicated";
-    if (type === "Shared CPU") return "Shared CPU";
+    if (type === "Shared CPU") return "High performance VPS";
     return type;
   };
 

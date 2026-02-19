@@ -6,7 +6,7 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
 
   const types = [
     {
-      label: "Shared CPU",
+      label: "High performance VPS",
       value: "Shared CPU",
       description:
         "Best price/performance ratio. Applications must be able to handle varying levels of CPU assignment. Not suitable for sustained high CPU usage.",

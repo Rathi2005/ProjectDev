@@ -18,6 +18,7 @@ import Swal from "sweetalert2";
 
 const OS_TYPES = [
   "WINDOWS",
+  "WINDOWS-2025",
   "UBUNTU",
   "UBUNTU_LEGACY",
   "DEBIAN",

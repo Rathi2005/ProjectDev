@@ -1512,7 +1512,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               actions and remote access.
                                               <br />
                                               <span className="text-yellow-400">
-                                                • Minimum 8 characters
+                                                • Minimum 8 characters & Do not use special characters (e.g $₹#@)
                                               </span>
                                             </p>
 

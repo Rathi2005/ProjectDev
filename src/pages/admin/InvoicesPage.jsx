@@ -103,7 +103,6 @@ export default function InvoicesPage() {
           customerEmail: p.customerEmail || "N/A",
 
           server: p.vmName || "N/A",
-          ipAddress: p.ipAddress || "N/A",
           specs: p.specs || "N/A",
 
           issueDateRaw: p.timestamp,

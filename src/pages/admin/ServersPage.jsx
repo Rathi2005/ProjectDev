@@ -48,6 +48,7 @@ export default function ServersPage() {
     tokenId: "",
     tokenSecret: "",
     ramAllocatedPercentage: 90,
+    sockets: 1,
   });
 
   const [ramModal, setRamModal] = useState(false);
@@ -154,7 +155,7 @@ export default function ServersPage() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
 
         if (!res.ok) {
@@ -167,7 +168,7 @@ export default function ServersPage() {
           data.map((srv) => ({
             ...srv,
             vmCount: 0,
-          }))
+          })),
         );
 
         data.forEach((srv) => {
@@ -222,14 +223,14 @@ export default function ServersPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!res.ok) {
         setServers((prev) =>
           prev.map((srv) =>
-            srv.id === serverId ? { ...srv, vmCount: 0 } : srv
-          )
+            srv.id === serverId ? { ...srv, vmCount: 0 } : srv,
+          ),
         );
         return;
       }
@@ -239,8 +240,8 @@ export default function ServersPage() {
 
       setServers((prev) =>
         prev.map((srv) =>
-          srv.id === serverId ? { ...srv, vmCount: count } : srv
-        )
+          srv.id === serverId ? { ...srv, vmCount: count } : srv,
+        ),
       );
     } catch (err) {
       toast.error(`Error fetching VM count for server ${serverId}:`, err);
@@ -290,6 +291,7 @@ export default function ServersPage() {
           zoneId: Number(formData.zoneId),
           name: formData.name,
           ip: formData.ip,
+          sockets: Number(formData.sockets) || 1,
           location: formData.location,
           node: formData.node,
           port: Number(formData.port) || 8006,
@@ -323,6 +325,7 @@ export default function ServersPage() {
         tokenId: "",
         tokenSecret: "",
         ramAllocatedPercentage: 90,
+        sockets: 1,
       });
     } catch (err) {
       toast.error("Error adding server");
@@ -439,10 +442,11 @@ export default function ServersPage() {
             port: Number(editFormData.port) || 8006,
             networkBridge: editFormData.networkBridge,
             zoneId: Number(editFormData.zoneId),
+            sockets: Number(editFormData.sockets) || 1,
             ramAllocatedPercentage:
               Number(editFormData.ramAllocatedPercentage) || 90,
           }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -458,8 +462,8 @@ export default function ServersPage() {
         servers.map((server) =>
           server.id === editingServer.id
             ? { ...server, ...editFormData }
-            : server
-        )
+            : server,
+        ),
       );
 
       setEditModal(false);
@@ -517,7 +521,7 @@ export default function ServersPage() {
           body: JSON.stringify({
             status: newStatus,
           }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -531,8 +535,8 @@ export default function ServersPage() {
       // Update the server in local state
       setServers((prev) =>
         prev.map((server) =>
-          server.id === serverId ? { ...server, status: newStatus } : server
-        )
+          server.id === serverId ? { ...server, status: newStatus } : server,
+        ),
       );
 
       toast.success(`Status updated to ${newStatus}`);
@@ -654,8 +658,8 @@ export default function ServersPage() {
                               {server.status === "ACTIVE"
                                 ? "Active"
                                 : server.status === "INACTIVE"
-                                ? "Inactive"
-                                : "Maint."}
+                                  ? "Inactive"
+                                  : "Maint."}
                             </span>
                           </div>
 
@@ -719,7 +723,7 @@ export default function ServersPage() {
                       </td>
                       <td className="px-4 py-3 sm:px-6 text-center whitespace-nowrap">
                         <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
-                          <button 
+                          <button
                             onClick={() =>
                               navigate(`/admin/servers/${server.id}/disks`)
                             }
@@ -878,6 +882,23 @@ export default function ServersPage() {
                         placeholder="8006"
                         value={formData.port}
                         onChange={handleChange}
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
+                    {/* CPU Sockets */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        CPU Sockets *
+                      </label>
+                      <input
+                        type="number"
+                        name="sockets"
+                        min="1"
+                        placeholder="2"
+                        value={formData.sockets}
+                        onChange={handleChange}
+                        required
                         className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
                       />
                     </div>
@@ -1260,6 +1281,23 @@ export default function ServersPage() {
                       </div>
                     </div>
 
+                    {/* Sockets */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-300 mb-2">
+                        CPU Sockets *
+                      </label>
+                      <input
+                        type="number"
+                        name="sockets"
+                        min="1"
+                        placeholder="2"
+                        value={editFormData.sockets}
+                        onChange={handleEditChange}
+                        required
+                        className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 outline-none transition-all duration-200"
+                      />
+                    </div>
+
                     {/* Token ID */}
                     <div>
                       <label className="block text-xs font-medium text-gray-300 mb-2">
@@ -1293,7 +1331,7 @@ export default function ServersPage() {
                           type="button"
                           onClick={() => {
                             const input = document.querySelector(
-                              'input[name="tokenSecret"]'
+                              'input[name="tokenSecret"]',
                             );
                             if (input.type === "password") {
                               input.type = "text";
@@ -1307,6 +1345,7 @@ export default function ServersPage() {
                           👁️
                         </button>
                       </div>
+
                       <p className="text-xs text-gray-500 mt-1">
                         Leave blank to keep existing token secret
                       </p>

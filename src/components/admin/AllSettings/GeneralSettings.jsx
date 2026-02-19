@@ -41,6 +41,7 @@ export default function AdminGeneralSettings() {
     warningDays: 7,
     gracePeriodDays: 3,
     expiryAction: "SUSPEND",
+    terminationDays: 2,
   });
 
   const [initialForm, setInitialForm] = useState({});
@@ -55,7 +56,7 @@ export default function AdminGeneralSettings() {
     }
   }, [form, initialForm]);
 
-  // 🔥 Fetch General Settings
+  // Fetch General Settings
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -85,6 +86,7 @@ export default function AdminGeneralSettings() {
   const handleSave = async () => {
     try {
       setSaving(true);
+      const { id, ...payload } = form;
 
       const res = await fetch(`${BASE_URL}/api/admin/settings/general`, {
         method: "PUT",
@@ -102,7 +104,7 @@ export default function AdminGeneralSettings() {
       setInitialForm(updated);
       setUnsavedChanges(false);
 
-      toast.success("Settings updated successfully 🚀");
+      toast.success("Settings updated successfully");
     } catch (err) {
       toast.error("Failed to update settings");
     } finally {
@@ -147,17 +149,16 @@ export default function AdminGeneralSettings() {
       </div>
 
       <main className="flex-1 mt-[72px] px-6 lg:px-10 py-8 w-full">
-           
         {/* Page Header with Progress */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
           <div>
             <div className="flex items-center gap-3">
-                 <button
-              onClick={() => navigate("/admin/settings")}
-              className="group flex items-center justify-center w-10 h-10 rounded-xl  hover:bg-indigo-600/10 transition-all"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
-            </button>
+              <button
+                onClick={() => navigate("/admin/settings")}
+                className="group flex items-center justify-center w-10 h-10 rounded-xl  hover:bg-indigo-600/10 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
+              </button>
               <div className="bg-gradient-to-br from-indigo-500 to-purple-500 p-3 rounded-xl shadow-lg">
                 <Building2 className="w-6 h-6 text-white" />
               </div>
@@ -292,6 +293,22 @@ export default function AdminGeneralSettings() {
                       />
                     </div>
 
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        label="Termination Days"
+                        value={form.terminationDays}
+                        onChange={(v) =>
+                          handleInputChange("terminationDays", Number(v))
+                        }
+                        icon={Calendar}
+                        min={0}
+                        max={30}
+                        suffix="days"
+                        help="Days after suspension before permanent deletion"
+                      />
+                    </div>
+
                     {/* Expiry Action */}
                     <div>
                       <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
@@ -312,11 +329,16 @@ export default function AdminGeneralSettings() {
                           }
                           className="w-full bg-[#1a2335] border border-indigo-900/40 rounded-xl px-4 py-3 text-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none cursor-pointer"
                         >
+                          <option value="OFF">OFF - Disable automation</option>
+
                           <option value="SUSPEND">
                             SUSPEND - Temporarily disable
                           </option>
                           <option value="TERMINATE">
                             TERMINATE - Permanently remove
+                          </option>
+                          <option value="SUSPEND_THEN_TERMINATE">
+                            SUSPEND_THEN_TERMINATE - Suspend then delete
                           </option>
                         </select>
                         <ChevronDown className="absolute right-3 top-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
