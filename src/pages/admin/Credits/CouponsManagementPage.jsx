@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../../components/admin/adminHeader";
 import Footer from "../../../components/user/Footer";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import {
   Search,
   Filter,
@@ -51,6 +53,7 @@ const CouponManagementPage = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [search, setSearch] = useState("");
   const BASE_API_URL = import.meta.env.VITE_BASE_URL;
+  const navigate = useNavigate();
 
   // Fetch coupons on mount
   useEffect(() => {
@@ -169,36 +172,35 @@ const CouponManagementPage = () => {
   };
 
   const handleFormChange = (field, value) => {
-  let updatedValue = value;
+    let updatedValue = value;
 
-  if (field === "code") {
-    updatedValue = value.toUpperCase();
-  }
+    if (field === "code") {
+      updatedValue = value.toUpperCase();
+    }
 
-  if (field === "usageLimitType" && value !== "FIXED_PER_USER") {
-    setFormData(prev => ({
+    if (field === "usageLimitType" && value !== "FIXED_PER_USER") {
+      setFormData((prev) => ({
+        ...prev,
+        usageLimitType: value,
+        perUserLimit: "",
+      }));
+      return;
+    }
+
+    if (field === "assignedUserId") {
+      setFormData((prev) => ({
+        ...prev,
+        assignedUserId: value,
+        isGlobalVisible: value === null,
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({
       ...prev,
-      usageLimitType: value,
-      perUserLimit: ""
+      [field]: updatedValue,
     }));
-    return;
-  }
-
-  if (field === "assignedUserId") {
-    setFormData(prev => ({
-      ...prev,
-      assignedUserId: value,
-      isGlobalVisible: value === null
-    }));
-    return;
-  }
-
-  setFormData(prev => ({
-    ...prev,
-    [field]: updatedValue
-  }));
-};
-
+  };
 
   const toggleCouponStatus = async (couponId, currentStatus) => {
     if (
@@ -282,17 +284,27 @@ const CouponManagementPage = () => {
       <div className="min-h-screen bg-gray-900 text-white p-6">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/20">
-              <Wallet className="w-7 h-7 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                Coupon Management
-              </h1>
-              <p className="text-gray-400">
-                Create and manage promotional codes
-              </p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate("/admin/settings")}
+                className="group flex items-center justify-center w-10 h-10 rounded-xl hover:bg-emerald-500/10 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-emerald-400 transition-colors" />
+              </button>
+
+              <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                <Wallet className="w-8 h-8 text-emerald-400" />
+              </div>
+
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                  Coupon Management
+                </h1>
+                <p className="text-gray-400 mt-1">
+                  Create and manage promotional codes
+                </p>
+              </div>
             </div>
           </div>
         </div>

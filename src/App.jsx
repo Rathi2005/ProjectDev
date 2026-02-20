@@ -137,7 +137,7 @@ export default function App() {
         />
         <Route path="/admin/settings/deleted-vms" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
         <Route path="/admin/settings/garbage-records" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
-        <Route path="/admin/settings/users-overview" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
+        <Route path="/admin/users-overview" element={<AdminProtectedRoute><SystemRecordsPage /></AdminProtectedRoute>} />
         <Route
           path="/admin/invoices"
           element={
@@ -190,7 +190,7 @@ export default function App() {
         />
 
         <Route
-          path="/admin/logs"
+          path="/admin/settings/logs"
           element={
             <AdminProtectedRoute>
               <LogsPage/>
@@ -275,7 +275,7 @@ export default function App() {
         />
 
         <Route
-          path="/admin/zones"
+          path="/admin/settings/zones"
           element={
             <AdminProtectedRoute>
               <Zones />

@@ -52,25 +52,24 @@ const AdminHeader = () => {
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/orders", icon: ShoppingCart, label: "Orders" },
     { href: "/admin/invoices", icon: Receipt, label: "Invoices" },
+    { href: "/admin/users-overview", icon: Users, label: "Users" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
-    { href: "/admin/zones", icon: Map, label: "Zones" },
-    { href: "/admin/logs", icon: ScrollText, label: "Logs" },
-    {
-      label: "Pricing",
-      icon: Tags,
-      dropdown: [
-        { href: "/admin/pricing/dedicated", label: "Dedicated" },
-        { href: "/admin/pricing/shared", label: "Shared" },
-      ],
-    },
-    {
-      label: "Credits",
-      icon: Wallet,
-      dropdown: [
-        { href: "/admin/credits/coupons", icon: Wallet, label: "Coupons" },
-        { href: "/admin/credits/wallets", icon: Wallet, label: "Wallets" },
-      ],
-    },
+    // {
+    //   label: "Pricing",
+    //   icon: Tags,
+    //   dropdown: [
+    //     { href: "/admin/pricing/dedicated", label: "Dedicated" },
+    //     { href: "/admin/pricing/shared", label: "Shared" },
+    //   ],
+    // },
+    // {
+    //   label: "Credits",
+    //   icon: Wallet,
+    //   dropdown: [
+    //     { href: "/admin/credits/coupons", icon: Wallet, label: "Coupons" },
+    //     { href: "/admin/credits/wallets", icon: Wallet, label: "Wallets" },
+    //   ],
+    // },
   ];
 
   const handleDropdownClick = (label) => {

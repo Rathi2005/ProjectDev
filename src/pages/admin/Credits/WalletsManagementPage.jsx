@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import Header from "../../../components/admin/adminHeader";
 import Footer from "../../../components/user/Footer";
 import AdminUserSearch from "../../../components/admin/UsersDetails/AdminUserSearch";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import {
   Wallet,
   CreditCard,
@@ -37,6 +39,7 @@ const UsersWalletPage = () => {
   });
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
+  const navigate = useNavigate();
 
   const fetchWalletLogs = async (userId) => {
     try {
@@ -166,17 +169,27 @@ const UsersWalletPage = () => {
       <div className="container mx-auto px-6 py-8 min-w-full">
         {/* ===== PAGE HEADER ===== */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
-              <Wallet className="w-8 h-8 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                User Wallet Management
-              </h1>
-              <p className="text-gray-400 mt-1">
-                Manage user wallets, track transactions, and adjust balances
-              </p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate("/admin/settings")}
+                className="group flex items-center justify-center w-10 h-10 rounded-xl hover:bg-emerald-500/10 transition-all"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-emerald-400 transition-colors" />
+              </button>
+
+              <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                <Wallet className="w-8 h-8 text-emerald-400" />
+              </div>
+
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                  User Wallet Management
+                </h1>
+                <p className="text-gray-400 mt-1">
+                  Manage user wallets, track transactions, and adjust balances
+                </p>
+              </div>
             </div>
           </div>
         </div>

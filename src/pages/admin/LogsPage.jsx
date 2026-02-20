@@ -24,6 +24,7 @@ import {
   Zap,
   AlertTriangle,
   CheckCircle,
+  ArrowLeft,
   Info,
   MoreVertical,
   Calendar,
@@ -654,15 +655,25 @@ export default function AdminLogsPage() {
       {/* Main Content */}
       <main className="flex-1 mt-[72px] p-4 sm:p-10 space-y-8">
         {/* Header Section */}
+
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-wide bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-              System Logs
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">
-              View and monitor all system activities, errors, and changes
-            </p>
+            <button
+              onClick={() => navigate("/admin/settings")}
+              className="group flex items-center justify-center w-10 h-10 rounded-xl  hover:bg-indigo-600/10 transition-all"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-wide bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                System Logs
+              </h1>
+              <p className="text-sm text-gray-400 mt-1">
+                View and monitor all system activities, errors, and changes
+              </p>
+            </div>
           </div>
+
           <div className="flex flex-wrap gap-3">
             <button
               onClick={handleRefresh}

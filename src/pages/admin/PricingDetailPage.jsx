@@ -5,6 +5,8 @@ import Footer from "../../components/user/Footer";
 import { useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { toast } from "react-hot-toast";
+import { ArrowLeft, Globe } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function PricingPage() {
   const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -26,6 +28,7 @@ export default function PricingPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState({});
+  const navigate = useNavigate();
 
   // FETCH EXISTING PRICING
   useEffect(() => {
@@ -244,10 +247,6 @@ export default function PricingPage() {
   // ✅ Helper render function
   const renderSection = (title, section, fields) => (
     <div className="bg-[#1d2438] p-6 rounded-xl border border-gray-700 shadow-lg space-y-4">
-      <h2 className="text-xl font-semibold text-indigo-400 mb-4">
-        {title} Pricing
-      </h2>
-
       {/* Existing Prices */}
       <div>
         <h3 className="text-gray-300 mb-2 font-medium">Existing Prices:</h3>
@@ -374,13 +373,22 @@ export default function PricingPage() {
       <AdminHeader />
 
       <main className="flex-1 p-6 w-full space-y-10">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            {type.charAt(0).toUpperCase() + type.slice(1)} Pricing Management
-          </h1>
-          <p className="text-gray-400">
-            Manage resource-based pricing for {type} servers
-          </p>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/admin/settings")}
+            className="group flex items-center justify-center w-10 h-10 rounded-xl hover:bg-indigo-600/10 transition-all"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
+          </button>
+
+          <div>
+            <h1 className="text-3xl font-bold text-white">
+              {type.charAt(0).toUpperCase() + type.slice(1)} Pricing
+            </h1>
+            <p className="text-gray-400 text-sm">
+              Manage resource-based pricing for {type} servers
+            </p>
+          </div>
         </div>
 
         {renderSection("CPU", "cpu", [

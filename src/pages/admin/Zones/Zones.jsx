@@ -10,6 +10,7 @@ import {
   Globe,
   File,
   ToggleLeft,
+  ArrowLeft,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -350,14 +351,26 @@ export default function ZonesPage() {
       {/* Main Content */}
       <main className="flex-1 mt-[72px] p-4 sm:p-10 space-y-8">
         {/* Page Title + Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-wide text-indigo-300">
-            <Globe className="inline-block w-8 h-8 mr-3 mb-1" />
-            Zones
-          </h1>
+        <div className="flex items-center justify-between gap-4">
+          {/* Left Section */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/admin/settings")}
+              className="group flex items-center justify-center w-10 h-10 rounded-xl hover:bg-indigo-600/10 transition-all"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
+            </button>
+
+            <h1 className="text-3xl font-bold tracking-wide text-indigo-300 flex items-center">
+              <Globe className="w-8 h-8 mr-3" />
+              Zones
+            </h1>
+          </div>
+
+          {/* Right Section */}
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-md hover:shadow-indigo-600/30 transition-all duration-300 text-sm sm:text-base"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-md hover:shadow-indigo-600/30 transition-all duration-300 text-sm sm:text-base"
           >
             <PlusCircle className="w-5 h-5" />
             Add Zone

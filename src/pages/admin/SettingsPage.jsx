@@ -50,6 +50,8 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  ScrollText,
+  Wallet,
 } from "lucide-react";
 
 export default function AdminSettingsDashboard() {
@@ -61,25 +63,21 @@ export default function AdminSettingsDashboard() {
   const categories = [
     "All",
     "System",
-    "Apps & Integrations",
-    "User Management",
     "Products & Services",
     "Billing & Payments",
-    "Support",
-    "API & Security",
-    "Reports & Analytics",
+    "Pricing & Coupons",
+    "Infrastructure",
   ];
 
   // Enhanced settings cards with redirect URLs
   const settingsCards = [
-    // System Settings
     {
       title: "General Settings",
       desc: "Company details, lifecycle logic, and expiration policies",
       icon: Building2,
       category: "System",
       url: "/admin/settings/general",
-      color: "from-blue-500 to-indigo-500",
+      color: "from-blue-500 to-indigo-600",
       stats: "Last updated 2 days ago",
     },
     {
@@ -88,8 +86,17 @@ export default function AdminSettingsDashboard() {
       icon: Mail,
       category: "System",
       url: "/admin/settings/mail",
-      color: "from-green-500 to-emerald-500",
+      color: "from-emerald-500 to-teal-600",
       stats: "SMTP configured",
+    },
+    {
+      title: "Logs",
+      desc: "View and manage system logs for debugging and monitoring",
+      icon: ScrollText,
+      category: "System",
+      url: "/admin/settings/logs",
+      color: "from-amber-500 to-orange-600",
+      stats: "System logs available",
     },
     {
       title: "Payment Gateways",
@@ -97,17 +104,8 @@ export default function AdminSettingsDashboard() {
       icon: CreditCard,
       category: "Billing & Payments",
       url: "/admin/settings/payment-gateways",
-      color: "from-purple-500 to-pink-500",
+      color: "from-purple-500 to-pink-600",
       stats: "3 gateways available",
-    },
-    {
-      title: "Users",
-      desc: "Manage user accounts, roles, access control, and activity monitoring",
-      icon: User,
-      category: "User Management",
-      url: "/admin/settings/users-overview",
-      color: "from-blue-600 to-cyan-500",
-      stats: "Manage all users",
     },
     {
       title: "Deleted VMs",
@@ -115,7 +113,7 @@ export default function AdminSettingsDashboard() {
       icon: Trash,
       category: "Products & Services",
       url: "/admin/settings/deleted-vms",
-      color: "from-red-600 to-rose-500",
+      color: "from-rose-500 to-red-600",
       stats: "Removed Virtual Machines",
     },
     {
@@ -124,8 +122,53 @@ export default function AdminSettingsDashboard() {
       icon: HardDrive,
       category: "Products & Services",
       url: "/admin/settings/garbage-records",
-      color: "from-amber-500 to-orange-500",
+      color: "from-yellow-500 to-amber-600",
       stats: "Cleanup & Optimization",
+    },
+    {
+      title: "Coupons",
+      desc: "Manage and configure discount coupons for user promotions",
+      icon: Gift,
+      category: "Pricing & Coupons",
+      url: "/admin/credits/coupons",
+      color: "from-fuchsia-500 to-purple-600",
+      stats: "Active Coupons Available",
+    },
+    {
+      title: "Wallets",
+      desc: "Manage and configure user wallet settings and balances",
+      icon: Wallet,
+      category: "Pricing & Coupons",
+      url: "/admin/credits/wallets",
+      color: "from-cyan-500 to-blue-600",
+      stats: "Active Wallets Available",
+    },
+    {
+      title: "Dedicated Pricing",
+      desc: "Manage and configure dedicated pricing for specific user groups",
+      icon: Wallet,
+      category: "Pricing & Coupons",
+      url: "/admin/pricing/dedicated",
+      color: "from-lime-500 to-green-600",
+      stats: "Active Dedicated Pricing Available",
+    },
+    {
+      title: "Shared Pricing",
+      desc: "Manage and configure shared pricing for specific user groups",
+      icon: Wallet,
+      category: "Pricing & Coupons",
+      url: "/admin/pricing/shared",
+      color: "from-sky-500 to-indigo-500",
+      stats: "Active Shared Pricing Available",
+    },
+    {
+      title: "Zones",
+      desc: "Manage and configure zones for virtual machines and services",
+      icon: Globe,
+      category: "Infrastructure",
+      url: "/admin/settings/zones",
+      color: "from-teal-500 to-cyan-600",
+      stats: "All Available Zones",
     },
   ];
 
