@@ -56,7 +56,7 @@ const LocationSelector = ({ selected, onSelect }) => {
       {locations.map((zone) => (
         <div key={zone.id} className="flex justify-center">
           <button
-            onClick={() => onSelect(zone.id)}
+            onClick={() => onSelect(selected === zone.id ? null : zone.id)}
             className={`
               relative w-full max-w-[320px] min-h-[150px] p-5 rounded-xl 
               border transition-all duration-300 text-left

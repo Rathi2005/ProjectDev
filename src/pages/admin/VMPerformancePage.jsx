@@ -6,6 +6,8 @@ import {
   MemoryStick,
   HardDriveIcon,
   Gauge,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 import MetricChart from "../../components/admin/liveGraphs/MetricChart";
 import toast from "react-hot-toast";
@@ -89,6 +91,23 @@ export default function VMPerformancePage() {
   const getBarColor = (p) =>
     p >= 85 ? "bg-red-500" : p >= 65 ? "bg-yellow-500" : "bg-green-500";
 
+  const prev =
+    metrics.history.length > 1
+      ? metrics.history[metrics.history.length - 2]
+      : null;
+
+  const intervalSeconds = 3;
+
+  const netInRate =
+    latest && prev
+      ? ((latest.netin - prev.netin) * 8) / 1_000_000 / intervalSeconds
+      : 0;
+
+  const netOutRate =
+    latest && prev
+      ? ((latest.netout - prev.netout) * 8) / 1_000_000 / intervalSeconds
+      : 0;
+
   /* ===================== UI ===================== */
   return (
     <div className="min-h-screen bg-[#0e1525] text-gray-100 p-6 space-y-6">
@@ -155,9 +174,17 @@ export default function VMPerformancePage() {
                 <Gauge className="w-4 h-4 text-purple-400" />
                 <span className="text-sm font-medium">Network</span>
               </div>
-              <div className="text-xs text-gray-400">
-                ⬇ {latest?.netin?.toFixed(1) ?? 0} KB/s
-                <br />⬆ {latest?.netout?.toFixed(1) ?? 0} KB/s
+
+              <div className="text-xs text-gray-400 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <ArrowDown className="w-3 h-3 text-blue-400" />
+                  <span>{netInRate.toFixed(2)} Mbit/s </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <ArrowUp className="w-3 h-3 text-green-400" />
+                  <span>{netOutRate.toFixed(2)} Mbit/s </span>
+                </div>
               </div>
             </div>
           </div>
@@ -218,7 +245,7 @@ function MetricBox({
       <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden mb-1">
         <div
           className={`h-full transition-all duration-300 ${getBarColor(
-            percent
+            percent,
           )}`}
           style={{ width: `${percent}%` }}
         />

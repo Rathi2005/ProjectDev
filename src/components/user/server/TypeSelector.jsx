@@ -15,8 +15,19 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
         "Low to medium CPU usage",
       ],
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
       ),
     },
@@ -27,8 +38,19 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
         "Best choice for critical production as well as high CPU usage applications. Delivers predictable performance and response times.",
       tags: ["High traffic applications", "Sustained high CPU usage"],
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 10V3L4 14h7v7l9-11h-7z"
+          />
         </svg>
       ),
     },
@@ -39,42 +61,58 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
     // Prevent selection if no OS is selected
     if (!selectedOS) {
       Swal.fire({
-        icon: 'warning',
-        title: 'Select OS First',
-        text: 'Please select an operating system before choosing a server type',
+        icon: "warning",
+        title: "Select OS First",
+        text: "Please select an operating system before choosing a server type",
         toast: true,
-        position: 'top-end',
+        position: "top-end",
         showConfirmButton: false,
         timer: 3000,
-        timerProgressBar: true,
-        background: '#0e1525',
-        color: '#ffffff',
-        iconColor: '#f59e0b'
+        background: "#0e1525",
+        color: "#ffffff",
+        iconColor: "#f59e0b",
       });
       return;
     }
 
-    setSelectedTypeState(typeName);
+    // 🔥 TOGGLE LOGIC
+    if (selectedType === typeName) {
+      setSelectedTypeState(null);
+      setSelectedType(null);
 
-    // Update parent component immediately
+      Swal.fire({
+        icon: "info",
+        title: "Type Deselected",
+        text: `${typeName} removed`,
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1500,
+        background: "#0e1525",
+        color: "#ffffff",
+        iconColor: "#f59e0b",
+      });
+
+      return;
+    }
+
+    // Normal selection
+    setSelectedTypeState(typeName);
     setSelectedType(typeName);
 
-    // Show selection notification
     Swal.fire({
-      icon: 'success',
-      title: 'Type Selected',
+      icon: "success",
+      title: "Type Selected",
       text: `You've selected ${typeName}`,
       toast: true,
-      position: 'top-end',
+      position: "top-end",
       showConfirmButton: false,
       timer: 2000,
-      timerProgressBar: true,
-      background: '#0e1525',
-      color: '#ffffff',
-      iconColor: '#10b981'
+      background: "#0e1525",
+      color: "#ffffff",
+      iconColor: "#10b981",
     });
 
-    // Smooth scroll to Resources section
     setTimeout(() => {
       const resourcesSection = document.getElementById("server-resources");
       if (resourcesSection) {
@@ -100,18 +138,18 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
             }
           }}
         >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
             className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform"
-            fill="none" 
-            viewBox="0 0 24 24" 
+            fill="none"
+            viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M10 19l-7-7m0 0l7-7m-7 7h18" 
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
           Back to image
@@ -119,7 +157,9 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
 
         {/* Title with info button */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Choose Type</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            Choose Type
+          </h1>
         </div>
 
         {/* Description */}
@@ -134,18 +174,18 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
           <div className="mb-6 p-4 bg-yellow-900/30 border border-yellow-700 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-yellow-900/30 flex items-center justify-center">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-4 w-4 text-yellow-400" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 text-yellow-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.226 16.5c-.77.833.192 2.5 1.732 2.5z" 
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.226 16.5c-.77.833.192 2.5 1.732 2.5z"
                   />
                 </svg>
               </div>
@@ -167,35 +207,37 @@ const TypeSelector = ({ setSelectedType, selectedOS }) => {
                 !selectedOS
                   ? "cursor-not-allowed opacity-50 border-gray-800 bg-[#0d1421]"
                   : selectedType === type.value
-                  ? "cursor-pointer border-indigo-500 bg-[#1a2238] shadow-lg"
-                  : "cursor-pointer border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
+                    ? "cursor-pointer border-indigo-500 bg-[#1a2238] shadow-lg"
+                    : "cursor-pointer border-gray-700 hover:border-gray-600 bg-[#111827] hover:shadow-md"
               }`}
               onClick={() => handleTypeSelect(type.value)}
             >
               {/* Card Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    selectedType === type.value
-                      ? "bg-indigo-900/30" 
-                      : "bg-gray-800"
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      selectedType === type.value
+                        ? "bg-indigo-900/30"
+                        : "bg-gray-800"
+                    }`}
+                  >
                     {type.icon}
                   </div>
                   <h2 className="text-lg font-semibold">{type.label}</h2>
                 </div>
                 {selectedType === type.value && (
                   <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="h-3 w-3 text-white" 
-                      viewBox="0 0 20 20" 
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 text-white"
+                      viewBox="0 0 20 20"
                       fill="currentColor"
                     >
-                      <path 
-                        fillRule="evenodd" 
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                        clipRule="evenodd" 
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
                       />
                     </svg>
                   </div>

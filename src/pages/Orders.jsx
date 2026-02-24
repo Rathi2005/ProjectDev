@@ -35,6 +35,7 @@ import {
   Eye,
   EyeOff,
   Lock,
+  ShieldOff,
 } from "lucide-react";
 
 export default function UserOrdersPage() {
@@ -78,6 +79,8 @@ export default function UserOrdersPage() {
 
   const [priceBreakdown, setPriceBreakdown] = useState(null);
   const [priceLoading, setPriceLoading] = useState(false);
+
+  const [copiedIp, setCopiedIp] = useState(null);
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -177,24 +180,26 @@ export default function UserOrdersPage() {
         const data = await res.json();
         // Transform the data to match our expected structure
         const transformedOrders = Array.isArray(data)
-          ? data.map((order) => ({
-              id: order.vmId,
-              orderId: order.orderId,
-              vmName: order.vmName,
-              status: order.status,
-              liveState: order.liveState,
-              ipAddress: order.ipAddress,
-              createdAt: order.billing?.boughtAt,
-              planType: order.billing?.planType,
-              priceTotal: order.billing?.totalPaidAmount,
-              cores: order.specs?.cores,
-              ramMb: order.specs?.ramMb,
-              diskGb: order.specs?.diskGb,
-              osType: order.specs?.osType,
-              expiresAt: order.billing?.expiresAt,
-              durationMonths: order.billing?.durationMonths,
-              // Keep original data for reference
-              originalData: order,
+          ? data.map((item) => ({
+              id: item.vmId,
+              orderId: item.orderId,
+              vmName: item.vmName,
+              status: item.status,
+              liveState: item.liveState,
+              ipAddress: item.ipAddress,
+              createdAt: item.billing?.boughtAt,
+              planType: item.billing?.planType,
+              priceTotal: item.billing?.monthlyPlan,
+              cores: item.specs?.cores,
+              ramMb: item.specs?.ramMb,
+              diskGb: item.specs?.diskGb,
+              osType: item.specs?.osType,
+              expiresAt: item.billing?.expiresAt,
+              durationMonths: item.billing?.durationMonths,
+              serverLocation: item.serverLocation,
+              isProtected: item.isProtected,
+              originalData: item,
+              isoName: item.specs?.isoName,
             }))
           : [];
 
@@ -785,13 +790,14 @@ export default function UserOrdersPage() {
     }
   };
 
-  const handleCopy = (text) => {
+  const handleCopy = (text, vmId) => {
     navigator.clipboard.writeText(text);
-    DarkSwal.fire({
-      icon: "success",
-      title: "Copied",
-      text: "Copied to clipboard successfully.",
-    });
+
+    setCopiedIp(vmId);
+
+    setTimeout(() => {
+      setCopiedIp(null);
+    }, 2000);
   };
 
   const statusOptions = [
@@ -1381,6 +1387,43 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               </p>
                                             </div>
 
+                                            <div className="grid grid-cols-2 gap-4">
+                                              {/* ISO Name */}
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                  <FileText className="w-4 h-4 text-indigo-400" />
+                                                  <span>ISO</span>
+                                                </div>
+                                                <p className="text-sm font-semibold text-white">
+                                                  {order.isoName || "N/A"}
+                                                </p>
+                                              </div>
+
+                                              {/* Protection Status */}
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                  {order.isProtected ? (
+                                                    <Shield className="w-4 h-4 text-green-400" />
+                                                  ) : (
+                                                    <ShieldOff className="w-4 h-4 text-red-400" />
+                                                  )}
+                                                  <span>Protection</span>
+                                                </div>
+
+                                                <p
+                                                  className={`text-sm font-semibold ${
+                                                    order.isProtected
+                                                      ? "text-green-400"
+                                                      : "text-red-400"
+                                                  }`}
+                                                >
+                                                  {order.isProtected
+                                                    ? "Protected"
+                                                    : "Not Protected"}
+                                                </p>
+                                              </div>
+                                            </div>
+
                                             <div className="pt-4 border-t border-indigo-900/30">
                                               <button
                                                 onClick={() =>
@@ -1479,13 +1522,25 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               </div>
                                             )}
 
-                                            <div className="pt-3 border-t border-indigo-900/30">
+                                            <div className="pt-3 border-t border-indigo-900/30 space-y-3">
+                                              {/* Plan Type */}
                                               <div className="flex items-center justify-between">
                                                 <span className="text-sm text-gray-400">
                                                   Plan Type
                                                 </span>
                                                 <span className="px-3 py-1 bg-indigo-900/30 rounded-full text-sm font-medium">
                                                   {order.planType || "Standard"}
+                                                </span>
+                                              </div>
+
+                                              {/* Server Location */}
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-sm text-gray-400">
+                                                  Server Location
+                                                </span>
+                                                <span className="px-3 py-1 bg-blue-900/30 text-blue-300 rounded-full text-sm font-medium">
+                                                  {order.serverLocation ||
+                                                    "Unknown"}
                                                 </span>
                                               </div>
                                             </div>
@@ -1495,12 +1550,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                         {/* Connection & Controls Card */}
                                         <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
                                           {/* Server Password Setup */}
-                                          <div className="text-xs text-gray-400 mb-2">
-                                            Default Username:{" "}
-                                            <span className="text-indigo-300 font-semibold">
-                                              {getDefaultUsername(order.osType)}
-                                            </span>
-                                          </div>
+
                                           <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4">
                                             <h4 className="flex text-sm font-semibold text-indigo-300 mb-2">
                                               <Lock className="w-5 h-5 text-red-400 mr-1" />{" "}
@@ -1512,7 +1562,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               actions and remote access.
                                               <br />
                                               <span className="text-yellow-400">
-                                                • Minimum 8 characters & Do not use special characters (e.g $₹#@)
+                                                • Minimum 8 characters & Do not
+                                                use special characters (e.g
+                                                $₹#@)
                                               </span>
                                             </p>
 
@@ -1543,8 +1595,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                             </div>
                                           </div>
 
+                                          <div className="text-xs text-gray-400 mt-4">
+                                            Default Username:{" "}
+                                            <span className="text-indigo-300 font-semibold">
+                                              {getDefaultUsername(order.osType)}
+                                            </span>
+                                          </div>
                                           {/* VM Password Viewer */}
-                                          <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-4">
+                                          <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-1">
                                             <h4 className="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
                                               <Key className="w-5 h-5 text-yellow-400" />{" "}
                                               VM Password
@@ -1624,12 +1682,26 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                     onClick={() =>
                                                       handleCopy(
                                                         order.ipAddress,
+                                                        order.id,
                                                       )
                                                     }
-                                                    className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                                                    className="text-sm flex items-center gap-1 transition-all"
                                                   >
-                                                    <Copy className="w-4 h-4" />
-                                                    Copy
+                                                    {copiedIp === order.id ? (
+                                                      <>
+                                                        <Copy className="w-4 h-4 text-indigo-400" />
+                                                        <span className="text-indigo-400 font-medium">
+                                                          Copied
+                                                        </span>
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <Copy className="w-4 h-4 text-indigo-400" />
+                                                        <span className="text-indigo-400 hover:text-indigo-300">
+                                                          Copy
+                                                        </span>
+                                                      </>
+                                                    )}
                                                   </button>
                                                 </div>
                                                 <code className="text-base font-mono text-white break-all">

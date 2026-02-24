@@ -12,6 +12,16 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
   const BASE_URL = import.meta.env.VITE_BASE_URL;
   const IMAGES = `${BASE_URL}/api/users/zones`;
 
+  const OS_IMAGES = {
+    WINDOWS: "/images/os/windows.png",
+    "WINDOWS-2025": "/images/os/windows.png",
+    UBUNTU: "/images/os/ubuntu.png",
+    DEBIAN: "/images/os/debian.png",
+    CENTOS: "/images/os/centos.png",
+  };
+
+  const DEFAULT_OS_IMAGE = "/images/os/default.png";
+
   useEffect(() => {
     if (!zoneId) return;
     if (osOptions.length > 0) return;
@@ -95,9 +105,34 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
 
   // Handle OS selection
   const handleOSSelect = (osName, osVersion, osId) => {
+    // If already selected → deselect
+    if (selectedOS === osName && selectedVersion === osVersion) {
+      setSelectedOSState("");
+      setSelectedVersion("");
+      setExpandedOS(null);
+
+      setSelectedOS(null);
+
+      Swal.fire({
+        icon: "info",
+        title: "OS Deselected",
+        text: `${osName} ${osVersion} removed`,
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1500,
+        background: "#0e1525",
+        color: "#ffffff",
+        iconColor: "#f59e0b",
+      });
+
+      return;
+    }
+
+    // Otherwise select normally
     setSelectedOSState(osName);
     setSelectedVersion(osVersion);
-    setExpandedOS(null); // Close dropdown after selection
+    setExpandedOS(null);
 
     setSelectedOS({
       name: osName,
@@ -113,7 +148,6 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
       position: "top-end",
       showConfirmButton: false,
       timer: 2000,
-      timerProgressBar: true,
       background: "#0e1525",
       color: "#ffffff",
       iconColor: "#10b981",
@@ -305,7 +339,9 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
                   "from-violet-500/20 to-fuchsia-500/20",
                 ];
                 const gradientIndex =
-                  osType.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
+                  osType
+                    .split("")
+                    .reduce((acc, char) => acc + char.charCodeAt(0), 0) %
                   gradients.length;
                 const gradient = gradients[gradientIndex];
 
@@ -426,7 +462,9 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
                         {/* Dropdown footer with count */}
                         <div className="px-4 py-2 bg-[#161b2a] border-t border-gray-700 text-xs text-gray-500 flex justify-between items-center">
                           <span>{osOptions[osType].length} versions</span>
-                          <span className="text-indigo-400">Click to select</span>
+                          <span className="text-indigo-400">
+                            Click to select
+                          </span>
                         </div>
                       </div>
                     )}

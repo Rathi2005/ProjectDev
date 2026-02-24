@@ -129,8 +129,6 @@ export default function Dashboard() {
   }, [location.state]);
 
   useEffect(() => {
-    if (!zoneId) return;
-
     setSelectedOS(null);
     setSelectedType(null);
     setSelectedResources({});

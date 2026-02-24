@@ -92,13 +92,13 @@ const Header = () => {
             <span>Credits</span>
           </a> */}
 
-          <a
+          {/* <a
             href="#"
             className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
           >
             <Ticket className="w-4 h-4" />
             <span>About Us</span>
-          </a>
+          </a> */}
         </nav>
 
         {/* Right Section */}

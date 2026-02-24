@@ -2,7 +2,16 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
-import { PlusCircle, Loader2, Search } from "lucide-react";
+import {
+  PlusCircle,
+  Loader2,
+  Search,
+  Filter,
+  CheckCircle2,
+  X,
+  Layers,
+  ChevronDown,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 import Swal from "sweetalert2";
 
@@ -42,6 +51,7 @@ export default function ManageResourcesPage({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [searchQuery, setSearchQuery] = useState("");
+  const [inUseFilter, setInUseFilter] = useState("all");
 
   // 🔄 RESOLVE FIELDS BASED ON ENDPOINT AND MODE
   const resolvedFields = useMemo(() => {
@@ -596,15 +606,41 @@ export default function ManageResourcesPage({
   };
 
   const filteredExisting = useMemo(() => {
-    if (!searchQuery.trim()) return existing;
+    let data = Array.isArray(existing) ? [...existing] : [];
 
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
 
-    return existing.filter((item) =>
-      Object.values(item).some((val) => String(val).toLowerCase().includes(q)),
-    );
-  }, [existing, searchQuery]);
+    // 🔍 SEARCH FILTER
+    if (q) {
+      data = data.filter((item) =>
+        Object.entries(item || {}).some(([key, val]) => {
+          if (val === null || val === undefined) return false;
 
+          // Convert boolean to Yes/No for search
+          if (typeof val === "boolean") {
+            return (val ? "yes" : "no").includes(q);
+          }
+
+          // Convert everything else safely
+          return String(val).toLowerCase().includes(q);
+        }),
+      );
+    }
+
+    // ✅ InUse filter
+    if (endpoint === "/ips" && inUseFilter !== "all") {
+      data = data.filter((item) => {
+        if (inUseFilter === "yes") return item.inUse === true;
+        if (inUseFilter === "no") return item.inUse === false;
+        return true;
+      });
+    }
+
+    return data;
+  }, [existing, searchQuery, inUseFilter, endpoint]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, inUseFilter]);
   // UI RENDERING
   const totalPages = Math.ceil(filteredExisting.length / itemsPerPage);
   const displayed = filteredExisting.slice(
@@ -882,25 +918,133 @@ export default function ManageResourcesPage({
                 ({filteredExisting.length} results)
               </span>
             </h2>
-            <div className="bg-[#151c2f] border border-indigo-900/30 rounded-xl p-4 mb-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <div className="bg-gradient-to-br from-[#151c2f] to-[#1a2138] border border-indigo-900/40 rounded-2xl p-5 mb-8 shadow-xl">
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                {/* Search Input - Enhanced */}
+                <div className="flex-1 relative group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400/60 group-focus-within:text-indigo-400 transition-colors duration-200" />
                   <input
                     type="text"
-                    placeholder="Search entries..."
+                    placeholder="Search by IP, hostname, or description..."
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
                       setCurrentPage(1);
                     }}
-                    className="w-full pl-10 pr-4 py-2 bg-[#0e1525]
-                   border border-indigo-900/50 rounded-lg
-                   focus:outline-none focus:ring-2 focus:ring-indigo-500
-                   text-gray-200 placeholder-gray-400"
+                    className="w-full pl-12 pr-4 py-3 
+          bg-[#0e1525]/80 backdrop-blur-sm
+          border border-indigo-900/50 
+          rounded-xl
+          focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
+          text-gray-200 placeholder:text-gray-500
+          transition-all duration-200
+          group-hover:border-indigo-800"
                   />
+
+                  {/* Optional: Clear button when search has value */}
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-indigo-900/30 transition-colors"
+                    >
+                      <X className="w-4 h-4 text-gray-400 hover:text-gray-300" />
+                    </button>
+                  )}
                 </div>
+
+                {/* ✅ ONLY SHOW FOR IPS - Enhanced Select */}
+                {endpoint === "/ips" && (
+                  <div className="relative w-full md:w-72 group">
+                    {/* Background decoration */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/5 to-purple-600/5 rounded-xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-50 group-hover:opacity-75"></div>
+
+                    {/* Icon */}
+                    <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400 z-10" />
+
+                    {/* Custom Chevron */}
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400/60 group-hover:text-indigo-400 transition-colors duration-200 z-10" />
+
+                    <select
+                      value={inUseFilter}
+                      onChange={(e) => {
+                        setInUseFilter(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="appearance-none w-full pl-11 pr-11 py-3
+            bg-[#0e1525]/90 backdrop-blur-sm
+            border border-indigo-900/50
+            rounded-xl
+            text-gray-200 font-medium
+            cursor-pointer
+            focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500
+            transition-all duration-200
+            group-hover:border-indigo-700
+            shadow-lg"
+                    >
+                      <option
+                        value="all"
+                        className="bg-[#151c2f] text-gray-200"
+                      >
+                        All
+                      </option>
+                      <option
+                        value="yes"
+                        className="bg-[#151c2f] text-gray-200"
+                      >
+                        In Use
+                      </option>
+                      <option value="no" className="bg-[#151c2f] text-gray-200">
+                        Available
+                      </option>
+                    </select>
+                  </div>
+                )}
               </div>
+
+              {/* Optional: Quick filter chips for mobile */}
+              {endpoint === "/ips" && (
+                <div className="flex md:hidden gap-2 mt-4 pt-2 border-t border-indigo-900/30">
+                  <button
+                    onClick={() => {
+                      setInUseFilter("all");
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      inUseFilter === "all"
+                        ? "bg-indigo-600 text-white"
+                        : "bg-[#0e1525] text-gray-400 hover:text-gray-300 border border-indigo-900/30"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInUseFilter("yes");
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      inUseFilter === "yes"
+                        ? "bg-green-600 text-white"
+                        : "bg-[#0e1525] text-gray-400 hover:text-gray-300 border border-indigo-900/30"
+                    }`}
+                  >
+                    In Use
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInUseFilter("no");
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      inUseFilter === "no"
+                        ? "bg-gray-600 text-white"
+                        : "bg-[#0e1525] text-gray-400 hover:text-gray-300 border border-indigo-900/30"
+                    }`}
+                  >
+                    Available
+                  </button>
+                </div>
+              )}
             </div>
 
             {loading ? (
@@ -1029,7 +1173,7 @@ export default function ManageResourcesPage({
                   </table>
                 </div>
 
-                {existing.length > itemsPerPage && (
+                {filteredExisting.length > itemsPerPage && (
                   <div className="flex justify-center mt-6 space-x-2">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
