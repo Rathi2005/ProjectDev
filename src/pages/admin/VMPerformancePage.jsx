@@ -100,14 +100,19 @@ export default function VMPerformancePage() {
 
   const netInRate =
     latest && prev
-      ? ((latest.netin - prev.netin) * 8) / 1_000_000 / intervalSeconds
+      ? Math.max(
+          ((latest.netin - prev.netin) * 8) / 1_000_000 / intervalSeconds,
+          0,
+        )
       : 0;
 
   const netOutRate =
     latest && prev
-      ? ((latest.netout - prev.netout) * 8) / 1_000_000 / intervalSeconds
+      ? Math.max(
+          ((latest.netout - prev.netout) * 8) / 1_000_000 / intervalSeconds,
+          0,
+        )
       : 0;
-
   /* ===================== UI ===================== */
   return (
     <div className="min-h-screen bg-[#0e1525] text-gray-100 p-6 space-y-6">

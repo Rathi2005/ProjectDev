@@ -64,10 +64,9 @@ export default function VMPerformance({
   }, [apiUrl, tokenKey]);
 
   const latest =
-    metrics.current ||
-    (metrics.history.length > 0
+    metrics.history.length > 0
       ? metrics.history[metrics.history.length - 1]
-      : null);
+      : null;
 
   // CPU
   const cpuPercent = latest ? Math.round(latest.cpu * 100) : 0;
@@ -96,6 +95,28 @@ export default function VMPerformance({
     );
   }
 
+  const prev =
+    metrics.history.length > 1
+      ? metrics.history[metrics.history.length - 2]
+      : null;
+
+  const intervalSeconds = 3;
+
+  const netInRate =
+    latest && prev
+      ? Math.max(
+          ((latest.netin - prev.netin) * 8) / 1_000_000 / intervalSeconds,
+          0,
+        )
+      : 0;
+
+  const netOutRate =
+    latest && prev
+      ? Math.max(
+          ((latest.netout - prev.netout) * 8) / 1_000_000 / intervalSeconds,
+          0,
+        )
+      : 0;
   return (
     <div className="min-h-screen bg-[#0e1525] text-gray-100 p-6 space-y-6">
       {/* Header */}
@@ -147,8 +168,7 @@ export default function VMPerformance({
         <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
           <Gauge className="w-4 h-4 text-purple-400 mb-1" />
           <div className="text-xs text-gray-400">
-            ⬇ {latest?.netin?.toFixed(1)} KB/s
-            <br />⬆ {latest?.netout?.toFixed(1)} KB/s
+            ⬇ {netInRate.toFixed(2)} Mbit/s ⬆ {netOutRate.toFixed(2)} Mbit/s
           </div>
         </div>
       </div>

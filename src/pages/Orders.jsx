@@ -853,8 +853,7 @@ export default function UserOrdersPage() {
     const vmId = order.originalData?.vmId || order.id;
 
     const strongPasswordPattern =
-      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-
+      /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
     if (!password) {
       toast.error("Password is required.");
       return;
@@ -862,7 +861,7 @@ export default function UserOrdersPage() {
 
     if (!strongPasswordPattern.test(password)) {
       toast.error(
-        "Password must be at least 8 characters long and include one uppercase letter, one lowercase letter, and one number.",
+        "Password must be at least 8 characters long and include uppercase, lowercase, special character and number.",
       );
       return;
     }
@@ -1185,7 +1184,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                             IP Address
                           </th>
                           <th className="py-3 px-4 sm:px-6 font-medium">
-                            Created
+                            Expire On
                           </th>
                           <th className="py-3 px-4 sm:px-6 font-medium">
                             Status
@@ -1250,7 +1249,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                 )}
                               </td>
                               <td className="py-3 px-4 sm:px-6 text-xs">
-                                {formatDateShort(order.createdAt)}
+                                {formatDateShort(order.expiresAt)}
                               </td>
                               <td className="py-3 px-4 sm:px-6">
                                 <span
@@ -1387,7 +1386,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               </p>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div
+                                              className={`grid gap-4 ${
+                                                order.isProtected
+                                                  ? "grid-cols-2"
+                                                  : "grid-cols-1"
+                                              }`}
+                                            >
+                                              {" "}
                                               {/* ISO Name */}
                                               <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                                 <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
@@ -1398,30 +1404,19 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   {order.isoName || "N/A"}
                                                 </p>
                                               </div>
-
                                               {/* Protection Status */}
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                  {order.isProtected ? (
+                                              {order.isProtected && (
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
                                                     <Shield className="w-4 h-4 text-green-400" />
-                                                  ) : (
-                                                    <ShieldOff className="w-4 h-4 text-red-400" />
-                                                  )}
-                                                  <span>Protection</span>
-                                                </div>
+                                                    <span>Protection</span>
+                                                  </div>
 
-                                                <p
-                                                  className={`text-sm font-semibold ${
-                                                    order.isProtected
-                                                      ? "text-green-400"
-                                                      : "text-red-400"
-                                                  }`}
-                                                >
-                                                  {order.isProtected
-                                                    ? "Protected"
-                                                    : "Not Protected"}
-                                                </p>
-                                              </div>
+                                                  <p className="text-sm font-semibold text-green-400">
+                                                    Protected
+                                                  </p>
+                                                </div>
+                                              )}
                                             </div>
 
                                             <div className="pt-4 border-t border-indigo-900/30">
@@ -1561,11 +1556,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               Set a password to enable VM
                                               actions and remote access.
                                               <br />
-                                              <span className="text-yellow-400">
-                                                • Minimum 8 characters & Do not
-                                                use special characters (e.g
-                                                $₹#@)
-                                              </span>
                                             </p>
 
                                             <div className="flex gap-2">
@@ -1595,69 +1585,93 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                             </div>
                                           </div>
 
-                                          <div className="text-xs text-gray-400 mt-4">
-                                            Default Username:{" "}
-                                            <span className="text-indigo-300 font-semibold">
-                                              {getDefaultUsername(order.osType)}
-                                            </span>
-                                          </div>
                                           {/* VM Password Viewer */}
                                           <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-1">
-                                            <h4 className="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
-                                              <Key className="w-5 h-5 text-yellow-400" />{" "}
-                                              VM Password
+                                            <h4 className="text-sm font-semibold text-indigo-300 mb-3 flex items-center gap-2">
+                                              <Key className="w-5 h-5 text-yellow-400" />
+                                              VM Details
                                             </h4>
 
-                                            <div className="flex items-center justify-between gap-3">
-                                              <div className="flex-1">
-                                                {(() => {
-                                                  const vmId =
-                                                    order.originalData?.vmId ||
-                                                    order.id;
-                                                  return passwordFetching[
-                                                    vmId
-                                                  ] ? (
-                                                    <span className="text-gray-400 text-sm">
-                                                      Loading...
-                                                    </span>
-                                                  ) : vmPasswords[vmId] ? (
-                                                    <code className="text-sm bg-[#151c2f] px-3 py-1.5 rounded font-mono text-white">
-                                                      {passwordVisible[vmId]
-                                                        ? vmPasswords[vmId]
-                                                        : "••••••••"}
-                                                    </code>
-                                                  ) : (
-                                                    <span className="text-sm text-red-400">
-                                                      Password not set
-                                                    </span>
-                                                  );
-                                                })()}
+                                            <div className="space-y-3 text-sm">
+                                              {/* Username */}
+                                              <div className="flex items-center">
+                                                <span className="text-gray-400">
+                                                  Username
+                                                </span>
+                                                <span className="font-semibold text-white ml-2">
+                                                  {getDefaultUsername(
+                                                    order.osType,
+                                                  )}
+                                                </span>
                                               </div>
 
-                                              {(() => {
-                                                const vmId =
-                                                  order.originalData?.vmId ||
-                                                  order.id;
-                                                return (
-                                                  <button
-                                                    onClick={() =>
-                                                      canViewPassword(order) &&
-                                                      togglePasswordView(order)
-                                                    }
-                                                    disabled={
-                                                      !canViewPassword(order)
-                                                    }
-                                                    className={`p-2 rounded-lg transition
-                                                      ${
-                                                        canViewPassword(order)
-                                                          ? "hover:bg-indigo-900/30"
-                                                          : "opacity-40 cursor-not-allowed"
-                                                      }`}
-                                                  >
-                                                    <Eye className="w-4 h-4 text-indigo-400" />
-                                                  </button>
-                                                );
-                                              })()}
+                                              {/* Password */}
+                                              <div className="flex items-center">
+                                                <span className="text-gray-400">
+                                                  Password
+                                                </span>
+
+                                                <div className="flex items-center justify-between ml-2 w-full">
+                                                  {/* Password / Status */}
+                                                  <div>
+                                                    {(() => {
+                                                      const vmId =
+                                                        order.originalData
+                                                          ?.vmId || order.id;
+
+                                                      return passwordFetching[
+                                                        vmId
+                                                      ] ? (
+                                                        <span className="text-gray-400 text-sm">
+                                                          Loading...
+                                                        </span>
+                                                      ) : vmPasswords[vmId] ? (
+                                                        <code className="bg-[#151c2f] px-1 py-1 rounded font-mono text-white">
+                                                          {passwordVisible[vmId]
+                                                            ? vmPasswords[vmId]
+                                                            : "••••••••"}
+                                                        </code>
+                                                      ) : (
+                                                        <span className="text-sm text-red-400">
+                                                          Password not set
+                                                        </span>
+                                                      );
+                                                    })()}
+                                                  </div>
+
+                                                  {/* Eye Button */}
+                                                  {(() => {
+                                                    const vmId =
+                                                      order.originalData
+                                                        ?.vmId || order.id;
+                                                    return (
+                                                      <button
+                                                        onClick={() =>
+                                                          canViewPassword(
+                                                            order,
+                                                          ) &&
+                                                          togglePasswordView(
+                                                            order,
+                                                          )
+                                                        }
+                                                        disabled={
+                                                          !canViewPassword(
+                                                            order,
+                                                          )
+                                                        }
+                                                        className={`p-1.5 rounded transition
+          ${
+            canViewPassword(order)
+              ? "hover:bg-indigo-900/30"
+              : "opacity-40 cursor-not-allowed"
+          }`}
+                                                      >
+                                                        <Eye className="w-4 h-4 text-indigo-400" />
+                                                      </button>
+                                                    );
+                                                  })()}
+                                                </div>
+                                              </div>
                                             </div>
                                           </div>
 

@@ -1411,7 +1411,7 @@ export default function OrdersPage() {
                         <th className="py-3 px-4 sm:px-6">OS</th>
                         <th className="py-3 px-4 sm:px-6">Lock Status</th>
                         <th className="py-3 px-4 sm:px-6">IP</th>
-                        <th className="py-3 px-4 sm:px-6">Created</th>
+                        <th className="py-3 px-4 sm:px-6">EXPIRE ON</th>
                         <th className="py-3 px-4 sm:px-6">Monthly Price</th>
                         <th className="py-3 px-4 sm:px-6">Paid Amount</th>
 
@@ -1519,7 +1519,7 @@ export default function OrdersPage() {
                               </div>
                             </td>
                             <td className="py-3 px-4 sm:px-6 text-xs sm:text-sm">
-                              {order.createdAt?.split("T")[0]}
+                              {order.expiresAt?.split("T")[0]}
                             </td>
                             <td className="py-3 px-4 sm:px-6 text-indigo-300 font-semibold">
                               {formatCurrency(order.monthlyPrice || 0)}

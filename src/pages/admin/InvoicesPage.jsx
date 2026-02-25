@@ -123,8 +123,6 @@ export default function InvoicesPage() {
 
           paymentMethod: p.gatewayId || "N/A",
           status: p.status?.toUpperCase() || "UNKNOWN",
-          transactionId: p.orderTransactionId,
-
           paymentType: p.paymentType,
           totalAmount: p.totalAmount,
           gatewayAmount: p.gatewayAmount,

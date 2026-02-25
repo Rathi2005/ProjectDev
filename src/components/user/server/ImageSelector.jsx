@@ -13,14 +13,14 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
   const IMAGES = `${BASE_URL}/api/users/zones`;
 
   const OS_IMAGES = {
-    WINDOWS: "/images/os/windows.png",
-    "WINDOWS-2025": "/images/os/windows.png",
-    UBUNTU: "/images/os/ubuntu.png",
-    DEBIAN: "/images/os/debian.png",
-    CENTOS: "/images/os/centos.png",
+    WINDOWS: "/Images/os/windows.svg",
+    "WINDOWS-2025": "/Images/os/windows.svg",
+    UBUNTU: "/Images/os/Ubuntu.svg",
+    DEBIAN: "/Images/os/Debian.svg",
+    CENTOS: "/Images/os/CentOS.svg",
   };
 
-  const DEFAULT_OS_IMAGE = "/images/os/default.png";
+  const DEFAULT_OS_IMAGE = "/Images/os/default.png";
 
   useEffect(() => {
     if (!zoneId) return;
@@ -51,11 +51,19 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
 
         const data = await res.json();
         const grouped = data.reduce((acc, iso) => {
-          if (!acc[iso.osType]) {
-            acc[iso.osType] = [];
+          // Normalize OS Type
+          let normalizedType = iso.osType;
+
+          // Merge Windows variants
+          if (iso.osType.startsWith("WINDOWS")) {
+            normalizedType = "WINDOWS";
           }
 
-          acc[iso.osType].push({
+          if (!acc[normalizedType]) {
+            acc[normalizedType] = [];
+          }
+
+          acc[normalizedType].push({
             id: iso.id,
             version: iso.name,
           });
@@ -360,11 +368,13 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-10 h-10 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center`}
+                            className={`w-10 h-10 rounded-lg  flex items-center justify-center`}
                           >
-                            <span className="text-lg font-semibold text-white">
-                              {osType.charAt(0)}
-                            </span>
+                            <img
+                              src={OS_IMAGES[osType] || DEFAULT_OS_IMAGE}
+                              alt={osType}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
                           </div>
                           <div>
                             <h3 className="text-lg font-semibold text-white">
