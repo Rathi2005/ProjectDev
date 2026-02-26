@@ -5,6 +5,8 @@ import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
 import Pagination from "../../components/Pagination";
 import { useNavigate } from "react-router-dom";
+import SortIcon from "../../components/SortIcon";
+import useSortableData from "../../hooks/useSortableData";
 import toast from "react-hot-toast";
 import {
   Package,
@@ -42,6 +44,7 @@ import {
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
+  const { sortedItems, requestSort, sortConfig } = useSortableData(orders);
   const [loading, setLoading] = useState(true);
   const [expandedRow, setExpandedRow] = useState(null);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
@@ -100,6 +103,11 @@ export default function OrdersPage() {
 
   const refreshOrdersWithDelay = async () => {
     setTimeout(fetchOrders, 1000);
+  };
+
+  const sortConfigObj = {
+    key: sortConfig?.key,
+    direction: sortConfig?.direction,
   };
 
   async function fetchOrders() {
@@ -1329,7 +1337,6 @@ export default function OrdersPage() {
                           </div>
                         )}
                       </div>
-
                     </div>
                     <div className="p-2 sm:p-3 bg-[#0e1525] rounded-lg sm:rounded-xl border border-indigo-900/40">
                       {ins.icon}
@@ -1405,15 +1412,59 @@ export default function OrdersPage() {
                   <table className="w-full min-w-[1200px] text-left">
                     <thead className="bg-[#1a2337] text-gray-300 uppercase text-xs sm:text-sm">
                       <tr>
-                        <th className="py-3 px-4 sm:px-6">Order ID</th>
+                        <th
+                          onClick={() => requestSort("dbOrderId")}
+                          className="py-3 px-6 cursor-pointer select-none hover:text-indigo-400"
+                        >
+                          <div className="flex items-center">
+                            Order ID
+                            <SortIcon
+                              columnKey="dbOrderId"
+                              sortConfig={sortConfig}
+                            />
+                          </div>
+                        </th>
                         <th className="py-3 px-4 sm:px-6">Customer</th>
                         <th className="py-3 px-4 sm:px-6">Server</th>
                         <th className="py-3 px-4 sm:px-6">OS</th>
                         <th className="py-3 px-4 sm:px-6">Lock Status</th>
                         <th className="py-3 px-4 sm:px-6">IP</th>
-                        <th className="py-3 px-4 sm:px-6">EXPIRE ON</th>
-                        <th className="py-3 px-4 sm:px-6">Monthly Price</th>
-                        <th className="py-3 px-4 sm:px-6">Paid Amount</th>
+                        <th
+                          onClick={() => requestSort("expiresAt")}
+                          className="py-3 px-6 cursor-pointer select-none hover:text-indigo-400"
+                        >
+                          <div className="flex items-center">
+                            EXPIRE ON
+                            <SortIcon
+                              columnKey="expiresAt"
+                             sortConfig={sortConfig}
+                            />
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => requestSort("monthlyPrice")}
+                          className="py-3 px-6 cursor-pointer select-none hover:text-indigo-400"
+                        >
+                          <div className="flex items-center">
+                            Monthly Price
+                            <SortIcon
+                              columnKey="monthlyPrice"
+                              sortConfig={sortConfig}
+                            />
+                          </div>
+                        </th>
+                        <th
+                          onClick={() => requestSort("paidAmount")}
+                          className="py-3 px-6 cursor-pointer select-none hover:text-indigo-400"
+                        >
+                          <div className="flex items-center">
+                            Paid Amount
+                            <SortIcon
+                              columnKey="paidAmount"
+                              sortConfig={sortConfig}
+                            />
+                          </div>
+                        </th>
 
                         <th className="py-3 px-4 sm:px-6">Status</th>
                         <th className="py-3 px-4 sm:px-6">Live Status</th>
@@ -1422,7 +1473,7 @@ export default function OrdersPage() {
                     </thead>
 
                     <tbody>
-                      {orders.map((order) => (
+                      {sortedItems.map((order) => (
                         <React.Fragment key={order.dbOrderId}>
                           {/* CLICKABLE MAIN ROW */}
                           <tr
@@ -1501,9 +1552,7 @@ export default function OrdersPage() {
                                 </select>
 
                                 {order.isProtected && (
-                                  <div
-                                    title="Termination Protection Enabled"
-                                  >
+                                  <div title="Termination Protection Enabled">
                                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
                                   </div>
                                 )}
@@ -2055,7 +2104,7 @@ export default function OrdersPage() {
                 {/* Mobile View */}
                 <div className="lg:hidden">
                   <div className="space-y-4 p-4">
-                    {orders.map((order) => (
+                    {sortedItems.map((order) => (
                       <div
                         key={order.dbOrderId}
                         className="bg-[#1a2337] border border-indigo-900/30 rounded-lg p-4"

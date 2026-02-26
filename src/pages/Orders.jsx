@@ -4,9 +4,13 @@ import PaymentFlow from "../components/payment/PaymentFlow";
 import CouponAndWallet from "../components/payment/CouponAndWallet";
 import UpgradeModal from "../components/payment/UpgradeModal";
 import PaymentModal from "../components/payment/PaymentModal";
+import SortIcon from "../components/SortIcon";
 import Swal from "sweetalert2";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+
+// hooks
+import useSortableData from "../hooks/useSortableData";
 
 import {
   Cpu,
@@ -214,6 +218,17 @@ export default function UserOrdersPage() {
     fetchUserOrders();
   }, [BASE_URL, statusLoading, accountStatus]);
 
+  // Filter orders based on selected status
+  const filteredOrders = useMemo(() => {
+    if (selectedStatus === "ALL") return orders;
+    return orders.filter(
+      (order) => order.status?.toUpperCase() === selectedStatus.toUpperCase(),
+    );
+  }, [orders, selectedStatus]);
+
+  const { sortedItems, requestSort, sortConfig } =
+    useSortableData(filteredOrders);
+
   const handleCouponApply = async (couponCode) => {
     if (priceLoading) return false;
     try {
@@ -270,6 +285,20 @@ export default function UserOrdersPage() {
     if (normalized === "WINDOWS") return "Administrator";
 
     return "root"; // all Linux types
+  };
+
+  const renderSortIcon = (columnKey) => {
+    // Not currently sorted column
+    if (sortConfig.key !== columnKey) {
+      return <ChevronUp className="w-3 h-3 ml-1 text-gray-600 opacity-40" />;
+    }
+
+    // Active sorted column
+    return sortConfig.direction === "asc" ? (
+      <ChevronUp className="w-3 h-3 ml-1 text-indigo-600" />
+    ) : (
+      <ChevronDown className="w-3 h-3 ml-1 text-indigo-600" />
+    );
   };
 
   useEffect(() => {
@@ -392,6 +421,10 @@ export default function UserOrdersPage() {
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig]);
+
   const createRetryPaymentSession = async (order) => {
     const token = localStorage.getItem("token");
     const paymentOrderId = order.orderId ?? order.originalData?.orderId;
@@ -419,14 +452,6 @@ export default function UserOrdersPage() {
 
     return data.paymentSessionId; // ✅ IMPORTANT
   };
-
-  // Filter orders based on selected status
-  const filteredOrders = useMemo(() => {
-    if (selectedStatus === "ALL") return orders;
-    return orders.filter(
-      (order) => order.status?.toUpperCase() === selectedStatus.toUpperCase(),
-    );
-  }, [orders, selectedStatus]);
 
   const calculateRenewalPrice = async (couponCode = null) => {
     if (!upgradeVm) return null;
@@ -477,9 +502,11 @@ export default function UserOrdersPage() {
   };
 
   // Derived values for pagination
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
+
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentOrders = filteredOrders.slice(
+
+  const currentOrders = sortedItems.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -1144,8 +1171,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                       Virtual Machines
                     </h2>
                     <p className="text-xs sm:text-sm text-gray-400 mt-1">
-                      {filteredOrders.length} server
-                      {filteredOrders.length !== 1 ? "s" : ""} •
+                      {sortedItems.length} server
+                      {sortedItems.length !== 1 ? "s" : ""} •
                       {
                         filteredOrders.filter(
                           (o) => o.status?.toUpperCase() === "ACTIVE",
@@ -1161,21 +1188,30 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                     </p>
                   </div>
                   <div className="text-xs text-gray-400">
-                    Showing {Math.min(startIndex + 1, filteredOrders.length)}-
-                    {Math.min(startIndex + itemsPerPage, filteredOrders.length)}{" "}
-                    of {filteredOrders.length}
+                    Showing {Math.min(startIndex + 1, sortedItems.length)}-
+                    {Math.min(startIndex + itemsPerPage, sortedItems.length)}
+                    of {sortedItems.length}
                   </div>
                 </div>
               </div>
 
-              {filteredOrders.length > 0 ? (
+              {sortedItems.length > 0 ? (
                 <>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[800px] text-left">
                       <thead className="bg-[#1a2337] text-gray-300 uppercase text-xs">
                         <tr>
-                          <th className="py-3 px-4 sm:px-6 font-medium">
-                            Server Name
+                          <th
+                            onClick={() => requestSort("vmName")}
+                            className="py-3 px-4 cursor-pointer select-none hover:text-indigo-400"
+                          >
+                            <div className="flex items-center">
+                              Server Name
+                              <SortIcon
+                                columnKey="vmName"
+                                sortConfig={sortConfig}
+                              />
+                            </div>
                           </th>
                           <th className="py-3 px-4 sm:px-6 font-medium">
                             Resources
@@ -1183,8 +1219,17 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                           <th className="py-3 px-4 sm:px-6 font-medium">
                             IP Address
                           </th>
-                          <th className="py-3 px-4 sm:px-6 font-medium">
-                            Expire On
+                          <th
+                            onClick={() => requestSort("expiresAt")}
+                            className="py-3 px-4 cursor-pointer select-none hover:text-indigo-400"
+                          >
+                            <div className="flex items-center">
+                              Expire On
+                              <SortIcon
+                                columnKey="expiresAt"
+                                sortConfig={sortConfig}
+                              />
+                            </div>
                           </th>
                           <th className="py-3 px-4 sm:px-6 font-medium">
                             Status
@@ -1902,9 +1947,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                           Showing {startIndex + 1} to{" "}
                           {Math.min(
                             startIndex + itemsPerPage,
-                            filteredOrders.length,
+                            sortedItems.length,
                           )}{" "}
-                          of {filteredOrders.length} servers
+                          of {sortedItems.length} servers
                         </p>
 
                         <div className="flex items-center gap-2">

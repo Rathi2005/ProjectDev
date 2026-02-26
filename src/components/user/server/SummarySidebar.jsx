@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Swal from "sweetalert2";
+import toast from "react-hot-toast";
 import {
   CheckCircle,
   AlertCircle,
@@ -272,9 +273,7 @@ const SummarySidebar = ({
   // Handle server creation
   const handleCreateServer = async () => {
     if (!isConfigurationComplete()) {
-      alert(
-        "⚠️ Please complete all server configuration steps before creating the server.",
-      );
+      toast.error("Please complete all server configuration steps before creating the server.");
       return;
     }
 
@@ -358,7 +357,7 @@ const SummarySidebar = ({
         errorMessage = "Please log in to create a server.";
       }
 
-      alert(`Server creation failed: ${errorMessage}`);
+      toast.error("Server Creation Failed!");
     } finally {
       setIsLoading(false);
       setWalletPaying(false);

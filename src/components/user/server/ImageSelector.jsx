@@ -20,7 +20,7 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
     CENTOS: "/Images/os/CentOS.svg",
   };
 
-  const DEFAULT_OS_IMAGE = "/Images/os/default.png";
+  const DEFAULT_OS_IMAGE = "/Images/os/windows.svg";
 
   useEffect(() => {
     if (!zoneId) return;
@@ -467,14 +467,6 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
                                 )}
                             </button>
                           ))}
-                        </div>
-
-                        {/* Dropdown footer with count */}
-                        <div className="px-4 py-2 bg-[#161b2a] border-t border-gray-700 text-xs text-gray-500 flex justify-between items-center">
-                          <span>{osOptions[osType].length} versions</span>
-                          <span className="text-indigo-400">
-                            Click to select
-                          </span>
                         </div>
                       </div>
                     )}

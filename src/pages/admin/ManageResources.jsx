@@ -11,6 +11,14 @@ import {
   X,
   Layers,
   ChevronDown,
+  Globe,
+  Network,
+  Settings,
+  CheckCircle,
+  HardDrive,
+  Server,
+  Database,
+  
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -52,6 +60,8 @@ export default function ManageResourcesPage({
   const itemsPerPage = 10;
   const [searchQuery, setSearchQuery] = useState("");
   const [inUseFilter, setInUseFilter] = useState("all");
+  const [editingItem, setEditingItem] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
 
   // 🔄 RESOLVE FIELDS BASED ON ENDPOINT AND MODE
   const resolvedFields = useMemo(() => {
@@ -370,192 +380,49 @@ export default function ManageResourcesPage({
     }
   };
 
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    setEditFormData({ ...item });
+  };
+
   // ✏️ EDIT HANDLER FOR ALL RESOURCE TYPES
-  const handleEdit = async (item) => {
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+
     const token = localStorage.getItem("adminToken");
-    if (!token) {
-      toast.error("No admin token found.");
-      return;
-    }
+    if (!token || !editingItem) return;
 
     try {
-      // ==================== IP EDIT ====================
+      let url = "";
+      let method = "PUT";
+
       if (endpoint === "/ips") {
-        // 1️⃣ IP
-        const { value: ip } = await Swal.fire({
-          title: "Edit IP Address",
-          input: "text",
-          inputValue: item.ip,
-          confirmButtonText: "Next",
-          showCancelButton: true,
-          inputValidator: (value) => {
-            if (!value) return "IP is required";
-            if (!validateIp(value)) return "Invalid IP address";
-            return null;
-          },
-          background: "#1e2640",
-          color: "#fff",
-        });
-        if (!ip) return;
+        url = `${BASE_URL}/api/admin/zones/${id}/ips/${editingItem.id}`;
+      } else if (extraForm === "disks") {
+        const diskId =
+          editingItem.id ||
+          editingItem.ID ||
+          editingItem.Id ||
+          editingItem.storage_id;
 
-        // 2️⃣ CIDR
-        const { value: cidr } = await Swal.fire({
-          title: "Edit CIDR",
-          input: "text",
-          inputValue: item.cidr || "/24",
-          confirmButtonText: "Next",
-          showCancelButton: true,
-          inputValidator: (value) => {
-            if (!/^\/\d{1,2}$/.test(value)) return "Invalid CIDR format";
-            return null;
-          },
-          background: "#1e2640",
-          color: "#fff",
-        });
-        if (!cidr) return;
-
-        // 3️⃣ Subnet Mask
-        const { value: subnetMask } = await Swal.fire({
-          title: "Edit Subnet Mask",
-          input: "text",
-          inputValue: item.subnetMask || cidrToSubnet(cidr),
-          confirmButtonText: "Next",
-          showCancelButton: true,
-          inputValidator: (value) => {
-            if (!validateIp(value)) return "Invalid subnet mask";
-            return null;
-          },
-          background: "#1e2640",
-          color: "#fff",
-        });
-        if (!subnetMask) return;
-
-        // 4️⃣ Gateway
-        const { value: gateway } = await Swal.fire({
-          title: "Edit Gateway",
-          input: "text",
-          inputValue: item.gateway,
-          confirmButtonText: "Next",
-          showCancelButton: true,
-          inputValidator: (value) => {
-            if (!validateIp(value)) return "Invalid gateway IP";
-            return null;
-          },
-          background: "#1e2640",
-          color: "#fff",
-        });
-        if (!gateway) return;
-
-        // 5️⃣ MAC
-        const { value: mac } = await Swal.fire({
-          title: "Edit MAC Address",
-          input: "text",
-          inputValue: item.mac || "",
-          inputPlaceholder: "Optional",
-          confirmButtonText: "Next",
-          showCancelButton: true,
-          background: "#1e2640",
-          color: "#fff",
-        });
-        if (mac === undefined) return;
-
-        // 6️⃣ In Use (FINAL STEP)
-        const { value: inUse } = await Swal.fire({
-          title: "Mark as In Use?",
-          input: "select",
-          inputOptions: {
-            true: "Yes - In Use",
-            false: "No - Available",
-          },
-          inputValue: item.inUse ? "true" : "false",
-          confirmButtonText: "Save", // ✅ FINAL BUTTON
-          showCancelButton: true,
-          background: "#1e2640",
-          color: "#fff",
-        });
-        if (inUse === null) return;
-
-        // 🚀 SAVE
-        await fetch(`${BASE_URL}/api/admin/zones/${id}/ips/${item.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ip: ip.trim(),
-            cidr,
-            subnetMask,
-            gateway,
-            mac: mac?.trim() || null,
-            inUse: inUse === "true",
-          }),
-        });
-
-        await reloadData();
-        toast.success("IP updated successfully!");
-        return;
+        url = `${BASE_URL}/api/admin/servers/${id}/storage/${diskId}`;
+        method = "PATCH";
+      } else {
+        url = `${BASE_URL}/api/admin/servers/${id}${endpoint}/${editingItem.id}`;
       }
 
-      // ==================== DISK EDIT ====================
-      if (extraForm === "disks") {
-        const diskId = item.id || item.ID || item.Id || item.storage_id;
-        if (!diskId) {
-          toast.error("Disk ID not found");
-          return;
-        }
+      await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editFormData),
+      });
 
-        const { value: type } = await Swal.fire({
-          title: "What do you want to edit?",
-          input: "select",
-          inputOptions: {
-            vms: "Max VMs",
-            percentage: "Usable Percentage",
-          },
-          inputPlaceholder: "Select field",
-          confirmButtonText: "Next",
-          showCancelButton: true,
-          background: "#1e2640",
-          color: "#fff",
-        });
-
-        if (!type) return;
-
-        const { value: newVal } = await Swal.fire({
-          title: "Enter new value",
-          input: "number",
-          confirmButtonText: "Save",
-          showCancelButton: true,
-          background: "#1e2640",
-          color: "#fff",
-        });
-
-        if (newVal === null) return;
-
-        let url = "";
-        let body = {};
-
-        if (type === "vms") {
-          url = `${BASE_URL}/api/admin/servers/${id}/storage/${diskId}/max-vms`;
-          body = { maxVms: Number(newVal) };
-        } else {
-          url = `${BASE_URL}/api/admin/servers/${id}/storage/${diskId}/percentage`;
-          body = { usableDiskPercentage: Number(newVal) };
-        }
-
-        await fetch(url, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(body),
-        });
-
-        await reloadData();
-        toast.success("Disk updated successfully!");
-        return;
-      }
+      toast.success("Updated successfully");
+      setEditingItem(null);
+      await reloadData();
     } catch (err) {
       toast.error("Update failed");
     }
@@ -1215,6 +1082,264 @@ export default function ManageResourcesPage({
       </main>
 
       <Footer />
+      {editingItem && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-[#151c2f] to-[#1a2138] w-full max-w-3xl rounded-2xl border border-indigo-900/50 shadow-2xl overflow-hidden">
+            {/* Header with gradient and decorative elements */}
+            <div className="relative px-6 py-5 border-b border-indigo-900/30 bg-gradient-to-r from-[#151c2f] via-[#1a2138] to-[#1e2640] overflow-hidden">
+              {/* Decorative background elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-600/5 rounded-full blur-3xl -ml-20 -mb-20"></div>
+
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2.5 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg shadow-indigo-600/30">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      Edit {title}
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
+                      Update the details below
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingItem(null)}
+                  className="p-2 hover:bg-indigo-500/10 rounded-lg transition-colors group"
+                >
+                  <X className="w-5 h-5 text-gray-400 group-hover:text-gray-300 group-hover:rotate-90 transition-all duration-300" />
+                </button>
+              </div>
+            </div>
+
+            {/* Form with beautiful grid layout */}
+            <form
+              onSubmit={handleEditSubmit}
+              className="p-6 max-h-[70vh] overflow-y-auto"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {resolvedFields.map((field, index) => {
+                  const value = editFormData[field.name];
+                  const isRequired =
+                    field.name !== "mac" && field.name !== "inUse";
+
+                  // Define icons and colors for each field type
+                  const getFieldIcon = (fieldName) => {
+                    const icons = {
+                      ip: <Globe className="w-4 h-4" />,
+                      cidr: <Network className="w-4 h-4" />,
+                      gateway: <Settings className="w-4 h-4" />,
+                      mac: <Network className="w-4 h-4" />,
+                      inUse: <CheckCircle className="w-4 h-4" />,
+                      startIp: <Globe className="w-4 h-4" />,
+                      endIp: <Globe className="w-4 h-4" />,
+                      diskName: <HardDrive className="w-4 h-4" />,
+                      maxVms: <Server className="w-4 h-4" />,
+                      usableDiskPercentage: <Database className="w-4 h-4" />,
+                    };
+                    return (
+                      icons[fieldName] || (
+                        <div className="w-4 h-4 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full"></div>
+                      )
+                    );
+                  };
+
+                  const getFieldColor = (fieldName) => {
+                    const colors = {
+                      ip: "from-blue-500 to-cyan-500",
+                      cidr: "from-purple-500 to-pink-500",
+                      gateway: "from-amber-500 to-orange-500",
+                      mac: "from-emerald-500 to-teal-500",
+                      inUse: "from-green-500 to-emerald-500",
+                      startIp: "from-blue-500 to-indigo-500",
+                      endIp: "from-indigo-500 to-purple-500",
+                      diskName: "from-cyan-500 to-blue-500",
+                      maxVms: "from-violet-500 to-purple-500",
+                      usableDiskPercentage: "from-rose-500 to-pink-500",
+                    };
+                    return colors[fieldName] || "from-gray-500 to-gray-600";
+                  };
+
+                  // Special handling for inUse field to span full width on mobile
+                  const fieldClassName =
+                    field.name === "inUse" ? "md:col-span-2" : "";
+
+                  return (
+                    <div
+                      key={field.name}
+                      className={`group ${fieldClassName} transition-all duration-300 hover:translate-y-[-1px]`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div
+                          className={`p-1.5 rounded-lg bg-gradient-to-br ${getFieldColor(field.name)} bg-opacity-10 shadow-sm`}
+                        >
+                          <div className="text-white">
+                            {getFieldIcon(field.name)}
+                          </div>
+                        </div>
+                        <label className="text-sm font-medium text-gray-300 group-hover:text-indigo-400 transition-colors duration-200">
+                          {field.label}
+                          {isRequired && (
+                            <span className="text-red-400 ml-1">*</span>
+                          )}
+                        </label>
+
+                        {/* Status badge for inUse field */}
+                        {field.name === "inUse" && (
+                          <div className="ml-auto">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                                value
+                                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                  : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${value ? "bg-green-400 animate-pulse" : "bg-gray-400"}`}
+                              ></span>
+                              {value ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {field.type === "checkbox" ? (
+                        <div className="flex items-center gap-3 p-3 bg-[#0e1525] border border-indigo-900/30 rounded-xl hover:border-indigo-700 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-indigo-600/10">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditFormData({
+                                ...editFormData,
+                                [field.name]: !value,
+                              })
+                            }
+                            className={`relative w-14 h-7 rounded-full transition-all duration-300 ease-in-out ${
+                              value
+                                ? "bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg shadow-green-600/30"
+                                : "bg-gray-700"
+                            }`}
+                          >
+                            <span
+                              className={`absolute left-1 top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ease-in-out ${
+                                value ? "transform translate-x-7" : ""
+                              }`}
+                            />
+                          </button>
+                          <div className="flex flex-col">
+                            <span className="text-sm text-gray-300">
+                              {value
+                                ? "Resource is in use"
+                                : "Resource is available"}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Toggle to change status
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative group/input">
+                          {/* Decorative background gradient */}
+                          <div
+                            className={`absolute -inset-0.5 bg-gradient-to-r ${getFieldColor(field.name)} rounded-xl opacity-0 group-hover/input:opacity-20 blur transition-opacity duration-300`}
+                          ></div>
+
+                          {/* Colored left accent with gradient */}
+                          <div
+                            className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-gradient-to-b ${getFieldColor(field.name)}`}
+                          ></div>
+
+                          <input
+                            type={field.type}
+                            value={value ?? ""}
+                            onChange={(e) =>
+                              setEditFormData({
+                                ...editFormData,
+                                [field.name]: e.target.value,
+                              })
+                            }
+                            className="relative w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-xl pl-5 pr-20 py-3 text-sm 
+                               focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 
+                               placeholder:text-gray-600 transition-all duration-200
+                               group-hover/input:border-indigo-800"
+                            placeholder={`Enter ${field.label.toLowerCase()}`}
+                            required={isRequired}
+                          />
+
+                          {/* Optional field indicator with icon */}
+                          {!isRequired && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs">
+                              <span className="px-2 py-0.5 bg-gray-800/80 rounded-full text-gray-400 border border-gray-700">
+                                optional
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer with gradient and actions */}
+              <div className="flex items-center justify-between gap-3 mt-8 pt-5 border-t border-indigo-900/30 bg-gradient-to-r from-transparent via-indigo-900/5 to-transparent">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                  <span className="text-xs text-gray-400">
+                    All changes are saved automatically
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem(null)}
+                    className="px-5 py-2.5 text-sm bg-[#252e42] hover:bg-[#2f3a52] text-gray-300 rounded-xl transition-all duration-300 font-medium flex items-center gap-2 border border-gray-700/50 hover:border-gray-600 group"
+                  >
+                    <X className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 font-medium shadow-lg shadow-indigo-600/30 flex items-center gap-2 transform hover:scale-[1.02] active:scale-[0.98] group"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 group-hover:rotate-12 transition-transform duration-300"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
