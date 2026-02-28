@@ -82,7 +82,7 @@ export default function AdminGeneralSettings() {
     }
   };
 
-  // 🔥 Update Settings
+  // Update Settings
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -140,6 +140,11 @@ export default function AdminGeneralSettings() {
     { id: "general", label: "Company Details", icon: Building2 },
     { id: "lifecycle", label: "Lifecycle Rules", icon: Clock },
   ];
+
+  const isOff = form.expiryAction === "OFF";
+  const isSuspend = form.expiryAction === "SUSPEND";
+  const isTerminate = form.expiryAction === "TERMINATE";
+  const isSuspendThenTerminate = form.expiryAction === "SUSPEND_THEN_TERMINATE";
 
   return (
     <div className="bg-[#0a0f1e] text-gray-100 min-h-screen flex flex-col">
@@ -273,7 +278,6 @@ export default function AdminGeneralSettings() {
                         min={1}
                         max={30}
                         suffix="days"
-                        help="Days before expiry to send warning"
                       />
                     </div>
 
@@ -289,7 +293,7 @@ export default function AdminGeneralSettings() {
                         min={0}
                         max={15}
                         suffix="days"
-                        help="Days after expiry before action"
+                        disabled={isOff || isTerminate}
                       />
                     </div>
 
@@ -305,7 +309,7 @@ export default function AdminGeneralSettings() {
                         min={0}
                         max={30}
                         suffix="days"
-                        help="Days after suspension before permanent deletion"
+                        disabled={isOff || isSuspend}
                       />
                     </div>
 
@@ -400,6 +404,7 @@ function Input({
   max,
   suffix,
   help,
+  disabled = false,
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -423,16 +428,19 @@ function Input({
           type={type}
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
+          onFocus={() => !disabled && setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={placeholder}
           min={min}
           max={max}
           required={required}
+          disabled={disabled} // ✅ IMPORTANT
           className={`w-full bg-[#1a2335] border rounded-xl px-4 py-3 text-gray-200 outline-none transition-all ${
-            focused
-              ? "border-indigo-500 ring-2 ring-indigo-500/20"
-              : "border-indigo-900/40 hover:border-indigo-500/50"
+            disabled
+              ? "opacity-50 cursor-not-allowed border-gray-700"
+              : focused
+                ? "border-indigo-500 ring-2 ring-indigo-500/20"
+                : "border-indigo-900/40 hover:border-indigo-500/50"
           }`}
         />
         {suffix && (

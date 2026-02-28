@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom"; // Add this import
+import { Link } from "react-router-dom";
+import { useAdminOrders } from "../../hooks/useAdminOrders";
+import { useAdminStats } from "../../hooks/useAdminStats";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
@@ -10,12 +12,10 @@ import useSortableData from "../../hooks/useSortableData";
 import toast from "react-hot-toast";
 import {
   Package,
-  CheckCircle,
   Clock,
   XCircle,
   Cpu,
   MemoryStick,
-  HardDrive,
   Globe,
   Calendar,
   IndianRupee,
@@ -23,7 +23,6 @@ import {
   Mail,
   MapPin,
   Server,
-  Info,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -32,11 +31,7 @@ import {
   Wifi,
   HardDriveIcon,
   Trash2,
-  Database,
-  TrendingUp,
-  BarChart3,
   Users, // Add this import
-  ExternalLink, // Add this import
   Eye, // Add this import
   Edit,
   ShieldCheck,
@@ -44,11 +39,90 @@ import {
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [ipChangeLoading, setIpChangeLoading] = useState({});
+  const navigate = useNavigate();
+
+  const [page, setPage] = useState(0); // 0-based
+  const [size, setSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const {
+    data: ordersData,
+    isLoading: ordersLoading,
+    isFetching: tableLoading,
+    refetch: refetchOrders,
+  } = useAdminOrders({
+    page,
+    size,
+    statusFilter,
+    search: debouncedSearch,
+  });
+
+  useEffect(() => {
+    if (!ordersData) return;
+
+    const vmList = ordersData.vms || [];
+
+    const transformedOrders = vmList.map((order) => ({
+      id: order.dbOrderId,
+      dbOrderId: order.dbOrderId,
+      serverId: order.serverId,
+      vmid: order.proxmoxVmid,
+      internalVmid: order.internalVmId,
+      isProtected: order.isProtected ?? false,
+      priceTotal: order.totalAmount,
+      monthlyPrice: order.monthlyPrice,
+      paidAmount: order.paidAmount,
+      vmName: order.vmName,
+      isoName: order.os,
+      planType: order.planType,
+      cores: order.cores,
+      ramMb: order.ramMb,
+      diskGb: order.diskGb,
+      ipAddress: order.ipAddress || "",
+      createdAt: order.createdAt,
+      expiresAt: order.expiresAt,
+      status: order.status,
+      liveState: order.liveState,
+      isLocked: order.status?.toUpperCase() === "LOCKED",
+      user: {
+        firstName: order.customerName || "—",
+        lastName: "",
+        email: order.customerEmail || "—",
+        billingAddress: order.billingAddress || null,
+      },
+      originalData: order,
+    }));
+
+    setOrders(transformedOrders);
+    setTotalItems(ordersData.totalItems || 0);
+    setTotalPages(ordersData.totalPages || 0);
+  }, [ordersData]);
+
+  const { data: statsData } = useAdminStats();
+
+  useEffect(() => {
+    if (!statsData) return;
+
+    setStats({
+      totalOrders: statsData.orders?.totalOrders || 0,
+      activeOrders: statsData.orders?.activeOrders || 0,
+      pendingOrders: statsData.orders?.pendingOrders || 0,
+      failedOrders: statsData.failed?.totalFailedOrders || 0,
+      totalDeletedVms: statsData.deleted?.totalDeletedVms || 0,
+      totalUsers: statsData.users?.totalUsers || 0,
+    });
+  }, [statsData]);
+
   const { sortedItems, requestSort, sortConfig } = useSortableData(orders);
-  const [loading, setLoading] = useState(true);
   const [expandedRow, setExpandedRow] = useState(null);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
-  const [tableLoading, setTableLoading] = useState(false);
 
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -76,18 +150,6 @@ export default function OrdersPage() {
     this_year: 0,
     this_month: 0,
   });
-  const [loadingInsights, setLoadingInsights] = useState(false);
-  const [ipChangeLoading, setIpChangeLoading] = useState({});
-  const navigate = useNavigate();
-
-  const [page, setPage] = useState(0); // 0-based
-  const [size, setSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
-  const [statusFilter, setStatusFilter] = useState("");
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -101,144 +163,10 @@ export default function OrdersPage() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  const refreshOrdersWithDelay = async () => {
-    setTimeout(fetchOrders, 1000);
-  };
-
   const sortConfigObj = {
     key: sortConfig?.key,
     direction: sortConfig?.direction,
   };
-
-  async function fetchOrders() {
-    try {
-      setTableLoading(true);
-      const adminToken = localStorage.getItem("adminToken");
-
-      const params = new URLSearchParams({
-        page,
-        size,
-        sortBy: "createdAt",
-        sortDir: "desc",
-      });
-
-      if (debouncedSearch) {
-        params.append("search", debouncedSearch);
-      }
-
-      if (statusFilter) {
-        params.append("status", statusFilter);
-      }
-
-      const res = await fetch(
-        `${BASE_URL}/api/admin/vms?${params.toString()}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${adminToken}`,
-          },
-        },
-      );
-
-      if (res.status === 401) {
-        DarkSwal.fire({
-          icon: "error",
-          title: "Unauthorized",
-          text: "Please login again",
-          timer: 3000,
-          showConfirmButton: false,
-        });
-        return;
-      }
-
-      const data = await res.json();
-
-      // 🔑 IMPORTANT: backend pagination wrapper
-      const vmList = data.vms || [];
-
-      const transformedOrders = await Promise.all(
-        vmList.map(async (order) => {
-          let isLocked = false;
-
-          try {
-            const lockRes = await fetch(
-              `${BASE_URL}/api/admin/vms/order/${order.dbOrderId}/lock-status`,
-              {
-                headers: {
-                  Authorization: `Bearer ${adminToken}`,
-                },
-              },
-            );
-
-            if (lockRes.ok) {
-              const lockData = await lockRes.json();
-              isLocked = lockData.isLocked;
-            }
-          } catch (e) {
-            console.error("Failed to fetch lock status", e);
-          }
-
-          return {
-            id: order.dbOrderId,
-            dbOrderId: order.dbOrderId,
-            serverId: order.serverId,
-            vmid: order.proxmoxVmid,
-            internalVmid: order.internalVmId,
-            isProtected: order.isProtected ?? false,
-            priceTotal: order.totalAmount,
-
-            monthlyPrice: order.monthlyPrice,
-            paidAmount: order.paidAmount,
-
-            vmName: order.vmName,
-            isoName: order.os,
-            planType: order.planType,
-
-            cores: order.cores,
-            ramMb: order.ramMb,
-            diskGb: order.diskGb,
-
-            ipAddress: order.ipAddress || "",
-            createdAt: order.createdAt,
-            expiresAt: order.expiresAt,
-
-            status: order.status,
-            liveState: order.liveState,
-
-            user: {
-              firstName: order.customerName || "—",
-              lastName: "",
-              email: order.customerEmail || "—",
-              billingAddress: order.billingAddress || null,
-            },
-
-            isLocked, // ✅ ADD THIS
-            originalData: order,
-          };
-        }),
-      );
-
-      setOrders(transformedOrders);
-      setTotalItems(data.totalItems || 0);
-      setTotalPages(data.totalPages || 0);
-    } catch (err) {
-      DarkSwal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to fetch orders",
-        timer: 3000,
-        showConfirmButton: false,
-      });
-    } finally {
-      setTableLoading(false);
-      setLoading(false);
-    }
-  }
-
-  // Fetch Orders from API
-  useEffect(() => {
-    fetchOrders();
-  }, [page, size, statusFilter, debouncedSearch]);
 
   useEffect(() => {
     setPage(0);
@@ -248,45 +176,6 @@ export default function OrdersPage() {
     setStatusFilter(e.target.value);
     setPage(0); // reset pagination
   };
-
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const adminToken = localStorage.getItem("adminToken");
-        if (!adminToken) return;
-
-        const headers = {
-          Authorization: `Bearer ${adminToken}`,
-        };
-
-        const [ordersRes, deletedVmsRes, usersRes, failedOrdersRes] =
-          await Promise.all([
-            fetch(`${BASE_URL}/api/admin/stats/orders`, { headers }),
-            fetch(`${BASE_URL}/api/admin/stats/deleted-vms`, { headers }),
-            fetch(`${BASE_URL}/api/admin/stats/users`, { headers }),
-            fetch(`${BASE_URL}/api/admin/stats/failed-orders`, { headers }),
-          ]);
-
-        const ordersData = await ordersRes.json();
-        const deletedVmsData = await deletedVmsRes.json();
-        const usersData = await usersRes.json();
-        const failedOrdersData = await failedOrdersRes.json();
-
-        setStats({
-          totalOrders: ordersData.totalOrders || 0,
-          activeOrders: ordersData.activeOrders || 0,
-          pendingOrders: ordersData.pendingOrders || 0,
-          failedOrders: failedOrdersData.totalFailedOrders || 0,
-          totalDeletedVms: deletedVmsData.totalDeletedVms || 0,
-          totalUsers: usersData.totalUsers || 0,
-        });
-      } catch (err) {
-        toast.error("Failed to fetch dashboard stats");
-      }
-    }
-
-    fetchStats();
-  }, []);
 
   const [powerLoading, setPowerLoading] = useState({});
 
@@ -331,8 +220,6 @@ export default function OrdersPage() {
         throw new Error(text || "Power operation failed");
       }
 
-      await refreshOrdersWithDelay();
-
       DarkSwal.close();
       DarkSwal.fire({
         icon: "success",
@@ -341,6 +228,7 @@ export default function OrdersPage() {
         timer: 3000,
         showConfirmButton: false,
       });
+      await refetchOrders();
     } catch (err) {
       DarkSwal.fire({
         icon: "error",
@@ -415,6 +303,7 @@ export default function OrdersPage() {
         timer: 3000,
         showConfirmButton: false,
       });
+      await refetchOrders();
     } catch (err) {
       toast.error(err);
       DarkSwal.fire({
@@ -427,7 +316,6 @@ export default function OrdersPage() {
     } finally {
       setAdminActionLoading((p) => ({ ...p, [orderId]: null }));
     }
-    await refreshOrdersWithDelay();
   };
 
   // ---------- REBUILD HANDLER ----------
@@ -568,6 +456,7 @@ export default function OrdersPage() {
           timer: 3000,
           showConfirmButton: false,
         });
+        await refetchOrders();
       } catch (err) {
         DarkSwal.fire({
           icon: "error",
@@ -588,7 +477,6 @@ export default function OrdersPage() {
         showConfirmButton: false,
       });
     }
-    await refreshOrdersWithDelay();
   };
 
   // Remove the old handleRebuild function and use this new one
@@ -670,6 +558,7 @@ export default function OrdersPage() {
         timer: 3000,
         showConfirmButton: false,
       });
+      await refetchOrders();
     } catch (err) {
       DarkSwal.fire({
         icon: "error",
@@ -681,7 +570,6 @@ export default function OrdersPage() {
     } finally {
       setAdminActionLoading((p) => ({ ...p, [orderId]: null }));
     }
-    await refreshOrdersWithDelay();
   };
 
   // ---------- UNLOCK HANDLER ----------
@@ -689,7 +577,7 @@ export default function OrdersPage() {
     const adminToken = localStorage.getItem("adminToken");
 
     try {
-      await fetch(
+      const res = await fetch(
         `${BASE_URL}/api/admin/vms/order/${orderId}/lock?lock=${lock}`,
         {
           method: "POST",
@@ -699,8 +587,11 @@ export default function OrdersPage() {
         },
       );
 
+      if (!res.ok) throw new Error("Failed to update lock");
+
       toast.success(lock ? "VM Locked" : "VM Unlocked");
-      fetchOrders();
+
+      await refetchOrders(); // ✅ ADD THIS
     } catch (err) {
       toast.error("Failed to update lock status");
     }
@@ -768,8 +659,7 @@ export default function OrdersPage() {
         timer: 3000,
         showConfirmButton: false,
       });
-
-      await refreshOrdersWithDelay();
+      await refetchOrders();
     } catch (err) {
       DarkSwal.fire({
         icon: "error",
@@ -848,9 +738,7 @@ export default function OrdersPage() {
         background: "#1e2640",
         color: "#ffffff",
       });
-
-      // Refresh orders
-      fetchOrders();
+      await refetchOrders();
     } catch (err) {
       DarkSwal.fire({
         icon: "error",
@@ -1101,9 +989,7 @@ export default function OrdersPage() {
         timer: 3000,
         showConfirmButton: false,
       });
-
-      // refresh orders so UI reflects new state
-      await refreshOrdersWithDelay();
+      await refetchOrders();
     } catch (err) {
       DarkSwal.fire({
         icon: "error",
@@ -1225,8 +1111,6 @@ export default function OrdersPage() {
       toast.success(
         "IP address changed successfully! It will take 30 seconds to reflect.",
       );
-
-      // setTimeout(fetchOrders, 3000);
     } catch (err) {
       DarkSwal.fire({
         icon: "error",
@@ -1289,7 +1173,7 @@ export default function OrdersPage() {
         </div>
 
         {/* Loading state */}
-        {loading ? (
+        {ordersLoading ? (
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
@@ -1437,7 +1321,7 @@ export default function OrdersPage() {
                             EXPIRE ON
                             <SortIcon
                               columnKey="expiresAt"
-                             sortConfig={sortConfig}
+                              sortConfig={sortConfig}
                             />
                           </div>
                         </th>
@@ -2223,7 +2107,7 @@ export default function OrdersPage() {
               />
             </div>
             {/* Empty State */}
-            {orders.length === 0 && !loading && (
+            {orders.length === 0 && !ordersLoading && (
               <div className="text-center py-12">
                 <div className="inline-block p-4 bg-indigo-900/20 rounded-full mb-4">
                   <Package className="w-12 h-12 text-indigo-400" />

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
+import { useAdminInvoices } from "../../hooks/useAdminInvoices";
+import { useAdminPaymentStats } from "../../hooks/useAdminPaymentStats";
 import Swal from "sweetalert2";
 import Pagination from "../../components/Pagination";
 import toast from "react-hot-toast";
@@ -16,8 +18,6 @@ import {
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const BASE_URL = import.meta.env.VITE_BASE_URL;
   const token = localStorage.getItem("adminToken");
 
@@ -34,115 +34,73 @@ export default function InvoicesPage() {
     failedPayments: 0,
   });
 
-  const [loadingStats, setLoadingStats] = useState(true);
+  const {
+    data: invoicesData,
+    isLoading: invoicesLoading,
+    error: invoicesError,
+    refetch: refetchInvoices,
+  } = useAdminInvoices({
+    page,
+    size,
+    searchTerm,
+  });
+
+  const { data: statsData, isLoading: statsLoading } = useAdminPaymentStats();
 
   useEffect(() => {
-    async function fetchPaymentStats() {
-      try {
-        if (!token) return;
+    if (!invoicesData) return;
 
-        const res = await fetch(`${BASE_URL}/api/admin/stats/payments`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+    setTotalItems(invoicesData.totalItems || 0);
+    setTotalPages(invoicesData.totalPages || 0);
 
-        if (!res.ok) throw new Error("Failed to fetch payment stats");
+    const normalized = (invoicesData.payments || []).map((p) => {
+      const issueDate = new Date(p.timestamp);
 
-        const data = await res.json();
+      return {
+        recordId: p.recordId,
+        transactionId: p.orderTransactionId,
+        customerName: p.customerName || "N/A",
+        customerEmail: p.customerEmail || "N/A",
+        server: p.vmName || "N/A",
+        specs: p.specs || "N/A",
+        issueDateRaw: p.timestamp,
+        issueDate: issueDate.toLocaleDateString("en-IN", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+        dueDate: calculateDueDate(issueDate),
+        amount: new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: "INR",
+        }).format(p.amount),
+        rawAmount: p.amount,
+        paymentMethod: p.gatewayId || "N/A",
+        status: p.status?.toUpperCase() || "UNKNOWN",
+        paymentType: p.paymentType,
+        totalAmount: p.totalAmount,
+        gatewayAmount: p.gatewayAmount,
+        couponDiscount: p.couponDiscount,
+        couponCode: p.couponCode,
+        recordType: p.recordType,
+        ipAddress: p.ipAddress || "N/A",
+        rawData: p,
+      };
+    });
 
-        setPaymentStats({
-          totalPayments: data.totalPayments || 0,
-          paidPayments: data.paidPayments || 0,
-          pendingPayments: data.pendingPayments || 0,
-          failedPayments: data.failedPayments || 0,
-        });
-      } catch (err) {
-        toast.error("Failed to load payment insights");
-      } finally {
-        setLoadingStats(false);
-      }
-    }
+    setInvoices(normalized);
+  }, [invoicesData]);
 
-    fetchPaymentStats();
-  }, []);
+  useEffect(() => {
+    if (!statsData) return;
 
-  const fetchInvoices = useCallback(async () => {
-    if (!token) {
-      setError("Authentication required");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const searchParam = searchTerm
-        ? `&search=${encodeURIComponent(searchTerm)}`
-        : "";
-
-      const res = await fetch(
-        `${BASE_URL}/api/admin/payments/overview?page=${page}&size=${size}${searchParam}&sortBy=timestamp&sortDir=desc`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-
-      if (!res.ok) throw new Error("Failed to fetch invoices");
-
-      const data = await res.json();
-
-      setTotalItems(data.totalItems || 0);
-      setTotalPages(data.totalPages || 0);
-
-      const normalized = (data.payments || []).map((p) => {
-        const issueDate = new Date(p.timestamp);
-
-        return {
-          recordId: p.recordId,
-          transactionId: p.orderTransactionId,
-
-          customerName: p.customerName || "N/A",
-          customerEmail: p.customerEmail || "N/A",
-
-          server: p.vmName || "N/A",
-          specs: p.specs || "N/A",
-
-          issueDateRaw: p.timestamp,
-          issueDate: issueDate.toLocaleDateString("en-IN", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-
-          dueDate: calculateDueDate(issueDate),
-
-          amount: new Intl.NumberFormat("en-IN", {
-            style: "currency",
-            currency: "INR",
-          }).format(p.amount),
-
-          rawAmount: p.amount,
-
-          paymentMethod: p.gatewayId || "N/A",
-          status: p.status?.toUpperCase() || "UNKNOWN",
-          paymentType: p.paymentType,
-          totalAmount: p.totalAmount,
-          gatewayAmount: p.gatewayAmount,
-          couponDiscount: p.couponDiscount,
-          couponCode: p.couponCode,
-          recordType: p.recordType,
-          ipAddress : p.ipAddress || "N/A",
-
-          rawData: p,
-        };
-      });
-
-      setInvoices(normalized);
-    } catch (err) {
-      toast.error("Failed to fetch invoices");
-      setError(err.message || "Unable to load invoices");
-    } finally {
-      setLoading(false);
-    }
-  }, [token, page, size, searchTerm]);
+    setPaymentStats({
+      totalPayments: statsData.totalPayments || 0,
+      paidPayments: statsData.paidPayments || 0,
+      pendingPayments: statsData.pendingPayments || 0,
+      failedPayments: statsData.failedPayments || 0,
+    });
+  }, [statsData]);
 
   const showInvoiceDetails = (invoice) => {
     const cleanData = { ...invoice.rawData };
@@ -152,10 +110,6 @@ export default function InvoicesPage() {
 
     showKeyValueModal(`Invoice ${invoice.invoiceId}`, cleanData);
   };
-
-  useEffect(() => {
-    fetchInvoices();
-  }, [fetchInvoices, page, size, searchTerm]);
 
   useEffect(() => {
     setPage(0);
@@ -345,20 +299,22 @@ export default function InvoicesPage() {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={fetchInvoices}
-              disabled={loading}
+              onClick={refetchInvoices}
+              disabled={invoicesLoading}
               className="px-4 py-2 text-sm rounded-lg bg-indigo-900/30 hover:bg-indigo-800/30 border border-indigo-700/50 text-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading || loadingStats ? "Refreshing..." : "Refresh"}
+              {invoicesLoading || statsLoading
+                ? "Refreshing..."
+                : "Refresh"}{" "}
             </button>
           </div>
         </div>
 
-        {error && (
+        {invoicesError && (
           <div className="bg-red-900/20 border border-red-700/50 text-red-300 px-4 py-3 rounded-lg">
-            {error}
+            {invoicesError}
             <button
-              onClick={fetchInvoices}
+              onClick={refetchInvoices}
               className="ml-2 text-red-200 hover:text-white underline"
             >
               Retry
@@ -424,7 +380,7 @@ export default function InvoicesPage() {
             </thead>
 
             <tbody>
-              {loading ? (
+              {invoicesLoading ? (
                 <tr>
                   <td colSpan="8" className="text-center py-20">
                     <div className="flex flex-col items-center justify-center">
@@ -433,10 +389,10 @@ export default function InvoicesPage() {
                     </div>
                   </td>
                 </tr>
-              ) : error ? (
+              ) : invoicesError ? (
                 <tr>
                   <td colSpan="8" className="text-center py-20 text-red-300">
-                    {error}
+                    {invoicesError?.message || "Failed to load invoices"}{" "}
                   </td>
                 </tr>
               ) : invoices.length === 0 ? (

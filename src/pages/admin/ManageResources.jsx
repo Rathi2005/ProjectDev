@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import {
@@ -18,7 +19,7 @@ import {
   HardDrive,
   Server,
   Database,
-  
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -34,6 +35,26 @@ export default function ManageResourcesPage({
 }) {
   const { id } = useParams();
   const BASE_URL = import.meta.env.VITE_BASE_URL;
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleBack = () => {
+    if (endpoint === "/ips") {
+      // IPS → go to zones list
+      navigate("/admin/settings/zones");
+    } else if (extraForm === "disks") {
+      // Disks → go to servers list (dynamic admin id)
+      const pathParts = location.pathname.split("/").filter(Boolean);
+
+      // current: admin / servers / 13 / disks
+      // we need:  admin / 13 / servers
+
+      const serverId = pathParts[2]; // 13
+      navigate(`/admin/${serverId}/servers`);
+    } else {
+      navigate(-1);
+    }
+  };  
 
   // 🌐 IP-RELATED CONSTANTS
   const ipSingleFields = [
@@ -411,7 +432,7 @@ export default function ManageResourcesPage({
         url = `${BASE_URL}/api/admin/servers/${id}${endpoint}/${editingItem.id}`;
       }
 
-      await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
@@ -420,11 +441,16 @@ export default function ManageResourcesPage({
         body: JSON.stringify(editFormData),
       });
 
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Update failed");
+      }
+
       toast.success("Updated successfully");
       setEditingItem(null);
       await reloadData();
     } catch (err) {
-      toast.error("Update failed");
+      toast.error(err.message || "Update failed");
     }
   };
 
@@ -541,9 +567,18 @@ export default function ManageResourcesPage({
       </div>
 
       <main className="flex-1 mt-[72px] p-4 md:p-6 lg:p-10 space-y-8">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-wide mb-6">
-          {title} for {endpoint === "/ips" ? "Zone" : "Server"} #{id}
-        </h1>
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={handleBack}
+            className="p-2 rounded-lg hover:bg-indigo-600/20 text-indigo-400 hover:text-indigo-300 transition-all"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+
+          <h1 className="text-2xl md:text-3xl font-bold tracking-wide">
+            {title} for {endpoint === "/ips" ? "Zone" : "Server"} #{id}
+          </h1>
+        </div>
 
         {/* ADD FORM SECTION */}
         {showAddForm && (

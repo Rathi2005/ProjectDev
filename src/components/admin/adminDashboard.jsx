@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import AdminHeader from "./adminHeader";
 import Footer from "../user/Footer";
 import MetricChart from "./liveGraphs/MetricChart";
+import toast from "react-hot-toast";
+import { useAdminDashboard } from "../../hooks/useAdminDashboard";
 
 import {
   Users,
@@ -46,180 +48,8 @@ import {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    totalVMs: 0,
-    runningVMs: 0,
-    stoppedVMs: 0,
-    totalServers: 0,
-    onlineServers: 0,
-    offlineServers: 0,
-    totalRevenue: 45280,
-    monthlyGrowth: 12.5,
-  });
-  const [ramStats, setRamStats] = useState([]);
-  const token = localStorage.getItem("adminToken");
 
-  // State for VM data
-  const [vmData, setVmData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [serverLocations, setServerLocations] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [activityLoading, setActivityLoading] = useState(true);
-
-  // Fetch VM counts from API
-  useEffect(() => {
-    const fetchVmData = async () => {
-      try {
-        const token = localStorage.getItem("adminToken");
-        if (!token) return;
-
-        const res = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/api/admin/vms/direct-proxmox-count`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!res.ok) throw new Error("Failed to fetch VM data");
-
-        const data = await res.json();
-        setVmData(data);
-
-        // Calculate total stats
-        const totalVMs = data.totalVmsAcrossCloud || 0;
-        const runningVMs = data.totalRunning || 0;
-        const stoppedVMs = data.totalStopped || 0;
-
-        // Process server breakdown
-        const serverBreakdown = data.serverBreakdown || {};
-        const servers = Object.keys(serverBreakdown);
-        const totalServers = servers.length;
-        const onlineServers = servers.filter(
-          (server) => serverBreakdown[server]?.status === "ONLINE"
-        ).length;
-        const offlineServers = totalServers - onlineServers;
-
-        // Update stats
-        setStats((prev) => ({
-          ...prev,
-          totalVMs,
-          runningVMs,
-          stoppedVMs,
-          totalServers,
-          onlineServers,
-          offlineServers,
-        }));
-
-        // Format server locations for display
-        const locations = servers.map((server) => {
-          const serverData = serverBreakdown[server];
-          // Extract location from server name (e.g., "node6-noida" -> "Noida")
-          const locationName = server.split("-").pop() || server;
-          return {
-            name: server,
-            region:
-              locationName.charAt(0).toUpperCase() + locationName.slice(1),
-            servers: serverData.total || 0,
-            running: serverData.running || 0,
-            status:
-              serverData.status === "ONLINE"
-                ? "healthy"
-                : serverData.status === "OFFLINE"
-                ? "critical"
-                : "warning",
-            utilization:
-              serverData.total > 0
-                ? Math.round((serverData.running / serverData.total) * 100)
-                : 0,
-          };
-        });
-
-        setServerLocations(locations);
-      } catch (err) {
-        tost.error("Error fetching VM data:", err);
-        // Fallback to mock data if API fails
-        setServerLocations([
-          {
-            region: "US East",
-            servers: 45,
-            status: "healthy",
-            utilization: 82,
-          },
-          {
-            region: "EU West",
-            servers: 38,
-            status: "healthy",
-            utilization: 76,
-          },
-          {
-            region: "Asia Pacific",
-            servers: 29,
-            status: "warning",
-            utilization: 91,
-          },
-          {
-            region: "US West",
-            servers: 42,
-            status: "healthy",
-            utilization: 68,
-          },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVmData();
-  }, []);
-
-  // Fetch audit logs
-  useEffect(() => {
-    const fetchAuditLogs = async () => {
-      try {
-        const token = localStorage.getItem("adminToken");
-        if (!token) return;
-
-        const res = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/api/admin/audit-logs/all`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!res.ok) throw new Error("Failed to fetch audit logs");
-
-        const data = await res.json();
-
-        // Normalize for UI
-        const normalized = data.map((log) => ({
-          id: log.id,
-          user: log.userEmail,
-          action: `${log.operation} on ${log.vmName}`,
-          time: new Date(log.timestamp).toLocaleString(),
-          type:
-            log.status === "SUCCESS"
-              ? "success"
-              : log.status === "FAILED"
-              ? "error"
-              : "info",
-          node: log.parentNodeName,
-        }));
-
-        setRecentActivity(normalized);
-      } catch (err) {
-        tost.error("Audit log fetch failed:", err);
-      } finally {
-        setActivityLoading(false);
-      }
-    };
-
-    fetchAuditLogs();
-  }, []);
-
+  const { vmData, vmLoading, auditLogs, activityLoading } = useAdminDashboard();
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -227,7 +57,6 @@ export default function AdminDashboard() {
       navigate("/admin/login");
     }
   }, [navigate]);
-
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
@@ -307,6 +136,67 @@ export default function AdminDashboard() {
     }
   };
 
+  const stats = useMemo(() => {
+    if (!vmData) {
+      return {
+        totalVMs: 0,
+        runningVMs: 0,
+        stoppedVMs: 0,
+        totalServers: 0,
+        onlineServers: 0,
+        offlineServers: 0,
+      };
+    }
+
+    const totalVMs = vmData.totalVmsAcrossCloud || 0;
+    const runningVMs = vmData.totalRunning || 0;
+    const stoppedVMs = vmData.totalStopped || 0;
+
+    const serverBreakdown = vmData.serverBreakdown || {};
+    const servers = Object.keys(serverBreakdown);
+
+    const totalServers = servers.length;
+    const onlineServers = servers.filter(
+      (server) => serverBreakdown[server]?.status === "ONLINE",
+    ).length;
+
+    return {
+      totalVMs,
+      runningVMs,
+      stoppedVMs,
+      totalServers,
+      onlineServers,
+      offlineServers: totalServers - onlineServers,
+    };
+  }, [vmData]);
+
+  const serverLocations = useMemo(() => {
+    if (!vmData?.serverBreakdown) return [];
+
+    return Object.entries(vmData.serverBreakdown).map(
+      ([server, serverData]) => {
+        const locationName = server.split("-").pop() || server;
+
+        return {
+          name: server,
+          region: locationName.charAt(0).toUpperCase() + locationName.slice(1),
+          servers: serverData.total || 0,
+          running: serverData.running || 0,
+          status:
+            serverData.status === "ONLINE"
+              ? "healthy"
+              : serverData.status === "OFFLINE"
+                ? "critical"
+                : "warning",
+          utilization:
+            serverData.total > 0
+              ? Math.round((serverData.running / serverData.total) * 100)
+              : 0,
+        };
+      },
+    );
+  }, [vmData]);
+
   // Calculate VM health percentage
   const vmHealthPercentage =
     stats.totalVMs > 0
@@ -318,6 +208,7 @@ export default function AdminDashboard() {
     stats.totalServers > 0
       ? Math.round((stats.onlineServers / stats.totalServers) * 100)
       : 0;
+
 
   // Export audit logs function
   const exportAuditLogs = async () => {
@@ -334,7 +225,7 @@ export default function AdminDashboard() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!res.ok) {
@@ -383,15 +274,15 @@ export default function AdminDashboard() {
                   vmHealthPercentage >= 80
                     ? "bg-green-900/30 text-green-400"
                     : vmHealthPercentage >= 50
-                    ? "bg-yellow-900/30 text-yellow-400"
-                    : "bg-red-900/30 text-red-400"
+                      ? "bg-yellow-900/30 text-yellow-400"
+                      : "bg-red-900/30 text-red-400"
                 }`}
               >
                 {vmHealthPercentage}% healthy
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold mb-1">
-              {loading ? "..." : stats.totalVMs.toLocaleString()}
+              {vmLoading ? "..." : stats.totalVMs}{" "}
             </h3>
             <p className="text-gray-400 text-sm mb-2">Total Virtual Machines</p>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
@@ -400,8 +291,8 @@ export default function AdminDashboard() {
                   vmHealthPercentage >= 80
                     ? "bg-gradient-to-r from-green-500 to-emerald-500"
                     : vmHealthPercentage >= 50
-                    ? "bg-gradient-to-r from-yellow-500 to-orange-500"
-                    : "bg-gradient-to-r from-red-500 to-pink-500"
+                      ? "bg-gradient-to-r from-yellow-500 to-orange-500"
+                      : "bg-gradient-to-r from-red-500 to-pink-500"
                 }`}
                 style={{ width: `${vmHealthPercentage}%` }}
               ></div>
@@ -423,7 +314,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold mb-1">
-              {loading ? "..." : stats.runningVMs}
+              {vmLoading ? "..." : stats.runningVMs}
             </h3>
             <p className="text-gray-400 text-sm mb-2">Running VMs</p>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
@@ -440,7 +331,7 @@ export default function AdminDashboard() {
             <div className="text-xs text-gray-400 mt-2">
               {stats.totalVMs > 0
                 ? `${Math.round(
-                    (stats.runningVMs / stats.totalVMs) * 100
+                    (stats.runningVMs / stats.totalVMs) * 100,
                   )}% of total`
                 : "No VMs"}
             </div>
@@ -457,15 +348,15 @@ export default function AdminDashboard() {
                   serverHealthPercentage >= 80
                     ? "bg-green-900/30 text-green-400"
                     : serverHealthPercentage >= 50
-                    ? "bg-yellow-900/30 text-yellow-400"
-                    : "bg-red-900/30 text-red-400"
+                      ? "bg-yellow-900/30 text-yellow-400"
+                      : "bg-red-900/30 text-red-400"
                 }`}
               >
                 {serverHealthPercentage}% online
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold mb-1">
-              {loading ? "..." : stats.totalServers}
+              {vmLoading ? "..." : stats.totalServers}
             </h3>
             <p className="text-gray-400 text-sm mb-2">Proxmox Servers</p>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
@@ -474,8 +365,8 @@ export default function AdminDashboard() {
                   serverHealthPercentage >= 80
                     ? "bg-gradient-to-r from-emerald-500 to-teal-500"
                     : serverHealthPercentage >= 50
-                    ? "bg-gradient-to-r from-yellow-500 to-orange-500"
-                    : "bg-gradient-to-r from-red-500 to-orange-500"
+                      ? "bg-gradient-to-r from-yellow-500 to-orange-500"
+                      : "bg-gradient-to-r from-red-500 to-orange-500"
                 }`}
                 style={{ width: `${serverHealthPercentage}%` }}
               ></div>
@@ -497,7 +388,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold mb-1">
-              {loading ? "..." : stats.stoppedVMs + stats.offlineServers}
+              {vmLoading ? "..." : stats.stoppedVMs + stats.offlineServers}
             </h3>
             <p className="text-gray-400 text-sm mb-2">Issues & Alerts</p>
             <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
@@ -540,7 +431,7 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {loading ? (
+            {vmLoading ? (
               <div className="text-center py-8">
                 <p className="text-gray-400">Loading server data...</p>
               </div>
@@ -561,8 +452,8 @@ export default function AdminDashboard() {
                           location.status === "healthy"
                             ? "bg-green-500/20"
                             : location.status === "warning"
-                            ? "bg-yellow-500/20"
-                            : "bg-red-500/20"
+                              ? "bg-yellow-500/20"
+                              : "bg-red-500/20"
                         }`}
                       >
                         <Cloud
@@ -570,8 +461,8 @@ export default function AdminDashboard() {
                             location.status === "healthy"
                               ? "text-green-400"
                               : location.status === "warning"
-                              ? "text-yellow-400"
-                              : "text-red-400"
+                                ? "text-yellow-400"
+                                : "text-red-400"
                           }`}
                         />
                       </div>
@@ -607,8 +498,8 @@ export default function AdminDashboard() {
                               location.utilization >= 80
                                 ? "bg-red-500"
                                 : location.utilization >= 60
-                                ? "bg-yellow-500"
-                                : "bg-green-500"
+                                  ? "bg-yellow-500"
+                                  : "bg-green-500"
                             }`}
                             style={{ width: `${location.utilization}%` }}
                           ></div>
@@ -616,7 +507,7 @@ export default function AdminDashboard() {
                       </div>
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          location.status
+                          location.status,
                         )}`}
                       >
                         {location.status}
@@ -655,7 +546,7 @@ export default function AdminDashboard() {
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-2"></div>
                   <p className="text-gray-400 text-sm">Loading activity...</p>
                 </div>
-              ) : recentActivity.length === 0 ? (
+              ) : auditLogs.length === 0 ? (
                 <div className="text-center py-8">
                   <Clock className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                   <p className="text-gray-400 text-sm">
@@ -663,7 +554,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               ) : (
-                recentActivity.map((activity) => (
+                auditLogs.map((activity) => (
                   <div
                     key={activity.id}
                     className="flex items-start gap-3 p-3 hover:bg-gray-800/30 rounded-lg transition-colors"
@@ -677,7 +568,7 @@ export default function AdminDashboard() {
                         </p>
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            activity.type
+                            activity.type,
                           )}`}
                         >
                           {activity.type}
@@ -702,7 +593,7 @@ export default function AdminDashboard() {
               )}
 
               {/* Load More indicator (if you want pagination) */}
-              {recentActivity.length >= 5 && (
+              {auditLogs.length >= 5 && (
                 <div className="text-center pt-4 border-t border-gray-800/50">
                   <p className="text-xs text-gray-500">
                     Scroll to view more activities
@@ -728,7 +619,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {loading ? (
+            {vmLoading ? (
               <div className="text-center py-8">
                 <p className="text-gray-400">Loading VM distribution...</p>
               </div>
@@ -752,8 +643,8 @@ export default function AdminDashboard() {
                             serverData.status === "ONLINE"
                               ? "bg-green-500/20"
                               : serverData.status === "OFFLINE"
-                              ? "bg-red-500/20"
-                              : "bg-yellow-500/20"
+                                ? "bg-red-500/20"
+                                : "bg-yellow-500/20"
                           }`}
                         >
                           <Server
@@ -761,8 +652,8 @@ export default function AdminDashboard() {
                               serverData.status === "ONLINE"
                                 ? "text-green-400"
                                 : serverData.status === "OFFLINE"
-                                ? "text-red-400"
-                                : "text-yellow-400"
+                                  ? "text-red-400"
+                                  : "text-yellow-400"
                             }`}
                           />
                         </div>
@@ -802,9 +693,10 @@ export default function AdminDashboard() {
                                 serverData.running / serverData.total >= 0.8
                                   ? "bg-green-500"
                                   : serverData.total > 0 &&
-                                    serverData.running / serverData.total >= 0.5
-                                  ? "bg-yellow-500"
-                                  : "bg-red-500"
+                                      serverData.running / serverData.total >=
+                                        0.5
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
                               }`}
                               style={{
                                 width:
@@ -821,14 +713,14 @@ export default function AdminDashboard() {
                           <p className="text-xs text-gray-400 text-center mt-1">
                             {serverData.total > 0
                               ? `${Math.round(
-                                  (serverData.running / serverData.total) * 100
+                                  (serverData.running / serverData.total) * 100,
                                 )}% running`
                               : "No VMs"}
                           </p>
                         </div>
                       </div>
                     </div>
-                  )
+                  ),
                 )}
               </div>
             )}
@@ -902,8 +794,8 @@ export default function AdminDashboard() {
                     stats.totalServers > 0
                       ? "All systems operational"
                       : stats.offlineServers > 0
-                      ? `${stats.offlineServers} server(s) offline`
-                      : "Loading status..."}
+                        ? `${stats.offlineServers} server(s) offline`
+                        : "Loading status..."}
                   </p>
                 </div>
                 <div

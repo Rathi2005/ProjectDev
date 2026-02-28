@@ -10,6 +10,7 @@ import {
   File,
   MemoryStick,
   AlertCircle,
+  ArrowLeft,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -37,6 +38,10 @@ export default function ServersPage() {
     zoneId: "",
     ramAllocatedPercentage: 90,
   });
+
+  const handleBack = () => {
+    navigate("/admin/settings/zones");
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -555,7 +560,21 @@ export default function ServersPage() {
       {/* Main */}
       <main className="flex-1 mt-[72px] p-4 sm:p-10 space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-wide">Servers</h1>
+          {/* Left Side: Back + Title */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/admin/settings/zones")}
+              className="p-2 rounded-lg hover:bg-indigo-600/20 
+        text-indigo-400 hover:text-indigo-300 transition-all duration-300"
+              title="Back to Zones"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+
+            <h1 className="text-3xl font-bold tracking-wide">Servers</h1>
+          </div>
+
+          {/* Right Side: Add Button */}
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => setShowModal(true)}

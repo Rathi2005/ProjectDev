@@ -150,6 +150,20 @@ export default function UserOrdersPage() {
     checkAccountStatus();
   }, [BASE_URL]);
 
+  const isWindows = navigator.userAgent.toLowerCase().includes("windows");
+
+  const handleSSH = (order) => {
+    const username = getDefaultUsername(order.osType);
+    const command = `ssh ${username}@${order.ipAddress}`;
+
+    if (isWindows) {
+      toast.success("SSH command copied! Paste in PowerShell or CMD.");
+      navigator.clipboard.writeText(command);
+    } else {
+      window.location.href = `ssh://${username}@${order.ipAddress}`;
+    }
+  };
+
   // Fetch User Orders from API
   useEffect(() => {
     if (statusLoading) return;
@@ -1775,16 +1789,17 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                 "RUNNING" && (
                                                 <div className="grid grid-cols-3 gap-3">
                                                   {/* SSH */}
-                                                  <a
-                                                    href={`ssh://root@${order.ipAddress}`}
+                                                  <button
+                                                    onClick={() =>
+                                                      handleSSH(order)
+                                                    }
                                                     className="flex items-center justify-center gap-2 p-3 bg-[#0e1525]
-                   hover:bg-indigo-900/20 border border-indigo-900/50
-                   rounded-lg text-indigo-300 text-sm transition-colors"
+   hover:bg-indigo-900/20 border border-indigo-900/50
+   rounded-lg text-indigo-300 text-sm transition-colors"
                                                   >
                                                     <Terminal className="w-4 h-4" />
                                                     SSH
-                                                  </a>
-
+                                                  </button>
                                                   {/* Console */}
                                                   <button
                                                     onClick={() =>

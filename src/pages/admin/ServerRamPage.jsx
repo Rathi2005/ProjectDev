@@ -180,7 +180,7 @@ export default function ServerRamPage() {
 
       <main className="flex-1 p-4 md:p-8">
         {/* Header Section */}
-        <div className="max-w-7xl mx-auto">
+        <div className="mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div className="flex items-center gap-4">
               {/* Add Back Button Here */}
