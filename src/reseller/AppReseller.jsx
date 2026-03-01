@@ -6,6 +6,8 @@ import ResellerProtectedRoute from "./ResellerProtectedRoute";
 
 // Pages
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+
 // import Dashboard from "./pages/Dashboard";
 
 export default function AppReseller() {
@@ -17,6 +19,7 @@ export default function AppReseller() {
 
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
       {/* ========================= */}
       {/* PROTECTED ROUTES */}
