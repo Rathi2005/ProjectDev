@@ -336,6 +336,7 @@ export default function App() {
     "localhost",  
     "127.0.0.1",
     "10.0.0.49",
+    "project-dev-three.vercel.app"
   ];
 
   const isMainDomain = mainDomains.includes(currentDomain);
