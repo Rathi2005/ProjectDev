@@ -1,14 +1,14 @@
 // reseller-app/api/authApi.js
-import api from "./axiosInstance";
-const BASE_URL = import.meta.env.VITE_RESELLER_BASE_URL;
+// import api from "./axiosInstance";
+const BASE_URL = "https://console.devai.in"; 
 
-// 🔐 Password Login
+// Password Login
 export const loginWithPassword = async (payload) => {
   const res = await fetch(
     `${BASE_URL}/api/reseller/auth/login/password`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json"       },
       body: JSON.stringify(payload),
     }
   );
@@ -28,7 +28,8 @@ export const initiateOtpLogin = async (payload) => {
     `${BASE_URL}/api/reseller/auth/login/otp/initiate`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json"
+       },
       body: JSON.stringify(payload),
     }
   );
