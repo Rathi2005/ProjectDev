@@ -8,7 +8,7 @@ export const loginWithPassword = async (payload) => {
     `${BASE_URL}/api/reseller/auth/login/password`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json"       },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }
   );
@@ -28,8 +28,7 @@ export const initiateOtpLogin = async (payload) => {
     `${BASE_URL}/api/reseller/auth/login/otp/initiate`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json"
-       },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }
   );

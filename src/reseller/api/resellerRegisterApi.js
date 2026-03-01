@@ -1,4 +1,4 @@
-const BASE_URL = "https://console.devai.in";
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 // Initiate Registration
 export const initiateResellerRegistration = async (payload) => {
