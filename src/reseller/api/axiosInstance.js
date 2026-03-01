@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_RESELLER_BASE_URL,
+  baseURL: "https://console.devai.in",
 });
 
 // Attach origin automatically
