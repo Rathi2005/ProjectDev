@@ -74,7 +74,7 @@ const SummarySidebar = ({
 
   useEffect(() => {
       fetchWalletBalance();
-  });
+  },[]);
 
   const disablePayForCoupon = useMemo(() => {
     return useCoupon && !couponValidated;

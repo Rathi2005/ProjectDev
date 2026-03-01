@@ -1,7 +1,6 @@
 import ActivityList from "./ActivityList";
 import LocationMap from "./LocationMap";
 import ResourceGrid from "./ResourceGrid";
-import img from "../../../assets/map3.jpg";
 import {
   FaServer,
   FaMapMarkerAlt,

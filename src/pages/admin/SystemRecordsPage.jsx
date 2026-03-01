@@ -5,7 +5,8 @@ import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import CreateVmModal from "../../components/admin/UsersDetails/CreateVmModel";
 import { showUserDetailsModal } from "../../components/admin/UsersDetails/UserDetailsModel";
-import ManualVmImportModal from "../../components/admin/UsersDetails/ManualVmImportModal";  
+import ManualVmImportModal from "../../components/admin/UsersDetails/ManualVmImportModal";
+import UpgradeUserModal from "../../components/admin/UsersDetails/UpgradeUserModel";
 import Pagination from "../../components/Pagination";
 import Swal from "sweetalert2";
 import {
@@ -63,6 +64,8 @@ export default function SystemRecordsPage() {
 
   const [showVmModal, setShowVmModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [selectedUpgradeUser, setSelectedUpgradeUser] = useState(null);
 
   const initialForm = {
     vmName: "",
@@ -1050,19 +1053,23 @@ export default function SystemRecordsPage() {
         <div className="w-full mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <button
-              onClick={() => navigate("/admin/settings")}
-              className="group flex items-center justify-center w-10 h-10 rounded-xl  hover:bg-indigo-600/10 transition-all"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
-            </button>
-
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
+                  {/* 🔙 LEFT ARROW INLINE */}
+                  {pageType !== "users-overview" && (
+                    <button
+                      onClick={() => navigate("/admin/settings")}
+                      className="group flex items-center justify-center w-10 h-10 rounded-xl hover:bg-indigo-600/10 transition-all"
+                    >
+                      <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
+                    </button>
+                  )}
+
                   <div className={`p-3 rounded-xl ${config.bgColor}`}>
                     {config.icon}
                   </div>
+
                   <div>
                     <h1 className="text-2xl sm:text-3xl font-bold">
                       {config.title}
@@ -1231,6 +1238,11 @@ export default function SystemRecordsPage() {
                             Lock Status
                           </th>
                         )}
+                        {pageType === "users-overview" && (
+                          <th className="py-3 px-4 text-left text-gray-300 text-sm font-medium w-40">
+                            Upgrade User
+                          </th>
+                        )}
 
                         <th className="py-3 px-4 text-left text-gray-300 text-sm font-medium w-32">
                           Actions
@@ -1312,6 +1324,20 @@ export default function SystemRecordsPage() {
                                   </svg>
                                 </div>
                               </div>
+                            </td>
+                          )}
+
+                          {pageType === "users-overview" && (
+                            <td className="py-3 px-4">
+                              <button
+                                onClick={() => {
+                                  setSelectedUpgradeUser(record);
+                                  setShowUpgradeModal(true);
+                                }}
+                                className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded"
+                              >
+                                Upgrade
+                              </button>
                             </td>
                           )}
 
@@ -1439,6 +1465,12 @@ export default function SystemRecordsPage() {
       </main>
 
       <Footer />
+      {showUpgradeModal && selectedUpgradeUser && (
+        <UpgradeUserModal
+          user={selectedUpgradeUser}
+          onClose={() => setShowUpgradeModal(false)}
+        />
+      )}
     </div>
   );
 }
