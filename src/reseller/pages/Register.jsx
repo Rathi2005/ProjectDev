@@ -8,7 +8,7 @@ import { toast } from "react-hot-toast";
 
 // const VALIDATE_EMAIL = import.meta.env.VITE_VALIDATE;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-const VALIDATE_EMAIL = `${BASE_URL}/api/reseller/auth/register/verify`;
+// const VALIDATE_EMAIL = `${BASE_URL}/api/reseller/auth/register/verify`;
 const INITIATE_VERIFICATION = `${BASE_URL}/api/reseller/auth/register/initiate`;
 
 const LogoIcon = () => (
@@ -64,47 +64,12 @@ export default function CreateAccount() {
     setLoading(true);
 
     try {
-      // 1) Validate email availability
-      const valRes = await fetch(VALIDATE_EMAIL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email }),
-      });
-
-      // If validation endpoint returns non-JSON text, guard parse
-      let valData = {};
-      try {
-        valData = await valRes.json();
-      } catch (err) {
-        valData = {};
-      }
-
-      // If endpoint responded with e.g. 4xx or returned isEmailTaken flag
-      if (!valRes.ok) {
-        // If server returns explicit message structure handle it
-        const msg =
-          valData?.message || "Email validation failed. Please try again.";
-        setError(msg);
-        toast.error(msg);
-        setLoading(false);
-        return;
-      }
-
-      // Expecting: {"isEmailTaken": boolean}
-      if (valData.isEmailTaken) {
-        setError("This email is already registered. Please use another one.");
-        toast.error("This email is already registered. Please use another one.");
-        setLoading(false);
-        return;
-      }
-
       // 2) If email NOT taken -> call initiate-verification to send OTP
       const payload = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
-        confirmPassword: formData.confirmPassword,
       };
 
       const initRes = await fetch(INITIATE_VERIFICATION, {

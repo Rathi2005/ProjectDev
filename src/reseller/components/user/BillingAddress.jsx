@@ -2,20 +2,16 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 // const BILLING = import.meta.env.VITE_BILLING;
-const BILLING = `${BASE_URL}/api/register/step2/billing`;
+const BILLING = `${BASE_URL}/api/reseller/auth/billing`;
 
 const BillingAddress = ({ email }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    companyName: "",
     streetAddress: "",
-    streetAddress2: "",
     city: "",
     state: "",
-    postcode: "",
+    zipCode: "",
     country: "",
-    taxId: "",
-    contactNumber: "",
   });
 
   const [error, setError] = useState("");
@@ -26,28 +22,17 @@ const BillingAddress = ({ email }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const isValidPhoneNumber = (phone) => {
-    return /^[0-9]{10}$/.test(phone);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (
-      !formData.companyName ||
       !formData.streetAddress ||
       !formData.city ||
       !formData.state ||
-      !formData.postcode ||
-      !formData.country ||
-      !formData.contactNumber
+      !formData.zipCode ||
+      !formData.country
     ) {
       setError("Please fill in all required fields.");
-      return;
-    }
-
-    if (!isValidPhoneNumber(formData.contactNumber)) {
-      setError("Contact number must be exactly 10 digits.");
       return;
     }
 
@@ -56,19 +41,16 @@ const BillingAddress = ({ email }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${BILLING}/${encodeURIComponent(email)}`, {
+      const response = await fetch(`${BILLING}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyName: formData.companyName,
+          userId: userId,
           streetAddress: formData.streetAddress,
-          streetAddress2: formData.streetAddress2,
           city: formData.city,
           state: formData.state,
-          postcode: formData.postcode,
+          zipCode: formData.zipCode,
           country: formData.country,
-          taxId: formData.taxId,
-          phoneNumber: formData.contactNumber,
         }),
       });
 
@@ -93,8 +75,6 @@ const BillingAddress = ({ email }) => {
       setLoading(false);
     }
   };
-
-  
 
   return (
     <div className="min-h-screen bg-[#0e1525]">
@@ -124,91 +104,7 @@ const BillingAddress = ({ email }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-            {/* Company Name - Full width */}
-            <div className="space-y-2">
-              <label className="flex items-center text-gray-300 text-sm font-medium">
-                <svg
-                  className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                  />
-                </svg>
-                Company Name *
-              </label>
-              <input
-                type="text"
-                name="companyName"
-                value={formData.companyName}
-                onChange={handleChange}
-                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
-                placeholder="Enter company name"
-              />
-            </div>
-
-            {/* Contact & Tax ID - Better mobile layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-              <div className="space-y-2">
-                <label className="flex items-center text-gray-300 text-sm font-medium">
-                  <svg
-                    className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.357 4.071a1 1 0 01-.272 1.034l-2.12 2.12a16.001 16.001 0 006.364 6.364l2.12-2.12a1 1 0 011.034-.272l4.071 1.357a1 1 0 01.684.948V19a2 2 0 01-2 2h-1C9.163 21 3 14.837 3 7V5z"
-                    />
-                  </svg>
-                  Contact Number *
-                </label>
-                <input
-                  type="tel"
-                  name="contactNumber"
-                  value={formData.contactNumber}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
-                  placeholder="Enter contact number"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="flex items-center text-gray-300 text-sm font-medium">
-                  <svg
-                    className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  Tax ID (GSTIN)
-                </label>
-                <input
-                  type="text"
-                  name="taxId"
-                  value={formData.taxId}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
-                  placeholder="Enter tax ID (optional)"
-                />
-              </div>
-            </div>
-
+           
             {/* Street Address - Full width */}
             <div className="space-y-2">
               <label className="flex items-center text-gray-300 text-sm font-medium">
@@ -240,34 +136,6 @@ const BillingAddress = ({ email }) => {
                 onChange={handleChange}
                 className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                 placeholder="Enter street address"
-              />
-            </div>
-
-            {/* Street Address 2 - Full width */}
-            <div className="space-y-2">
-              <label className="flex items-center text-gray-300 text-gray-400 text-sm">
-                <svg
-                  className="w-4 h-4 mr-2 text-blue-400 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                  />
-                </svg>
-                Street Address 2
-              </label>
-              <input
-                type="text"
-                name="streetAddress2"
-                value={formData.streetAddress2}
-                onChange={handleChange}
-                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
-                placeholder="Apartment, suite, unit, etc. (optional)"
               />
             </div>
 
@@ -342,12 +210,12 @@ const BillingAddress = ({ email }) => {
                       d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"
                     />
                   </svg>
-                  Postcode *
+                  ZipCode *
                 </label>
                 <input
                   type="text"
-                  name="postcode"
-                  value={formData.postcode}
+                  name="zipCode"
+                  value={formData.zipCode}
                   onChange={handleChange}
                   className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-base"
                   placeholder="Postcode"
