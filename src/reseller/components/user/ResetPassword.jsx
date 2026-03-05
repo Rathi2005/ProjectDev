@@ -94,7 +94,6 @@ const ResetPassword = ({ email, onSuccess }) => {
             email,
             otp: otp.join(""),
             newPassword,
-            confirmPassword,
           }),
         });
 

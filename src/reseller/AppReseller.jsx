@@ -8,7 +8,8 @@ import ResellerProtectedRoute from "./ResellerProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-
+import Orders from "./pages/Orders";
+import Profile from "./components/Profile";
 
 // import Dashboard from "./pages/Dashboard";
 
@@ -33,8 +34,11 @@ export default function AppReseller() {
             <Dashboard />
           </ResellerProtectedRoute>
         }
-      />
-
+      >
+        <Route index element={<Orders />} />
+        <Route path="orders" element={<Orders />} />
+        <Route path="profile" element={<Profile />} />
+      </Route>
       {/* <Route
         path="/dashboard"
         element={
@@ -45,7 +49,7 @@ export default function AppReseller() {
           </ResellerProtectedRoute>
         }
       /> */}
-      
+
       {/* ========================= */}
       {/* 404 FALLBACK */}
       {/* ========================= */}

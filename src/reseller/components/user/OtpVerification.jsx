@@ -5,7 +5,14 @@ const VERIFY_REGISTER_OTP = `${BASE_URL}/api/reseller/auth/register/verify`;
 const VERIFY_LOGIN_OTP = `${BASE_URL}/api/reseller/auth/login/otp/verify`;
 const RESEND_OTP = `${BASE_URL}/api/reseller/auth/register/resend-otp`;
 
-const OtpVerification = ({ email, onVerified, toggle }) => {
+const OtpVerification = ({
+  email,
+  firstName,
+  lastName,
+  password,
+  onVerified,
+  toggle,
+}) => {
   // toggle -> 1 then verify login otp, else if(0) register otp
   const [otp, setOtp] = useState(Array(6).fill(""));
   const [error, setError] = useState("");
@@ -54,7 +61,13 @@ const OtpVerification = ({ email, onVerified, toggle }) => {
         response = await fetch(VERIFY_REGISTER_OTP, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, otp: otp.join("") }),
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            email,
+            password,
+            otp: otp.join(""),
+          }),
         });
       } else if (toggle === 1) {
         response = await fetch(VERIFY_LOGIN_OTP, {
@@ -65,10 +78,10 @@ const OtpVerification = ({ email, onVerified, toggle }) => {
       }
 
       const data = await response.json();
-
+      console.log(data);
       if (response.ok) {
         if (data.token) {
-          localStorage.setItem("token", data.token);
+          localStorage.setItem("rToken", data.token);
         }
         setSuccess("OTP verified successfully!");
         // Wait a moment to show success, then call onVerified

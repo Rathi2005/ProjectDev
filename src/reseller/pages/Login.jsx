@@ -10,7 +10,7 @@ import { jwtDecode } from "jwt-decode";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const LOGIN_API = `${BASE_URL}/api/reseller/auth/login/password`;
 const OTP_INITIATE_API = `${BASE_URL}/api/reseller/auth/login/otp/initiate`;
-const FORGET_PASSWORD_API = `${BASE_URL}/api/reseller/auth/password/forgot`;
+const FORGET_PASSWORD_API = `${BASE_URL}/api/reseller/auth/password/forgot/initiate`;
 
 const LogoIcon = () => (
   <svg
@@ -46,7 +46,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("rToken");
     if (!token) return;
 
     try {
@@ -56,10 +56,10 @@ export default function LoginPage() {
       if (!isExpired) {
         navigate("/dashboard");
       } else {
-        localStorage.removeItem("token");
+        localStorage.removeItem("rToken");
       }
     } catch {
-      localStorage.removeItem("token");
+      localStorage.removeItem("rToken");
     }
   }, []);
 
@@ -77,7 +77,9 @@ export default function LoginPage() {
       if (loginWithOtp) {
         const otpRes = await fetch(OTP_INITIATE_API, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json",
+            "X-Reseller-Domain": "reseller3.devai.in",
+           },
           body: JSON.stringify({ email: formData.email }),
         });
 
@@ -103,7 +105,7 @@ export default function LoginPage() {
         if (response.ok) {
           setSuccess(data.message || "Login successful!");
           toast.success(data.message || "Login successful!");
-          localStorage.setItem("token", data.token);
+          localStorage.setItem("rToken", data.token);
           setTimeout(() => navigate("/dashboard"), 1500);
         } else if (response.status === 401) {
           toast.error(data.message || "Incorrect email or password.");

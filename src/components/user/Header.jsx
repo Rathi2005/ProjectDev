@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Globe, Server, Ticket, Settings, User, Wallet, ShoppingBag } from "lucide-react";
+import {
+  Globe,
+  Server,
+  Ticket,
+  Settings,
+  User,
+  Wallet,
+  ShoppingBag,
+} from "lucide-react";
 import useLogout from "./Logout";
 import { jwtDecode } from "jwt-decode";
 import toast from "react-hot-toast";
@@ -8,6 +16,7 @@ const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [isReseller, setIsReseller] = useState(false);
   const dropdownRef = useRef(null);
   const APP_NAME = import.meta.env.VITE_APP_NAME;
 
@@ -18,20 +27,35 @@ const Header = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setUser(decoded);
-        setIsLoggedIn(true);
-      } catch (error) {
-        toast.error("Invalid token:", error);
+    if (!token) {
+      setIsLoggedIn(false);
+      setUser(null);
+      setIsReseller(false);
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+
+      if (decoded.exp * 1000 < Date.now()) {
         localStorage.removeItem("token");
         setIsLoggedIn(false);
         setUser(null);
+        setIsReseller(false);
+      } else {
+        setUser(decoded);
+        setIsLoggedIn(true);
+
+        // ✅ Detect reseller from token
+        setIsReseller(decoded.isReseller === true);
+        // OR if backend sends role instead:
+        // setIsReseller(decoded.role === "ROLE_RESELLER_USER");
       }
-    } else {
+    } catch {
+      localStorage.removeItem("token");
       setIsLoggedIn(false);
       setUser(null);
+      setIsReseller(false);
     }
   }, []);
 
@@ -75,42 +99,38 @@ const Header = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="hidden md:flex items-center space-x-8 text-sm">
-          <a
-            href="/orders"
-            className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Orders</span>
-          </a>
-
-          {/* <a
-            href="/credits"
-            className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
-          >
-            <Wallet className="w-4 h-4" />
-            <span>Credits</span>
-          </a> */}
-
-          {/* <a
-            href="#"
-            className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
-          >
-            <Ticket className="w-4 h-4" />
-            <span>About Us</span>
-          </a> */}
-        </nav>
+        {isLoggedIn && (
+          <nav className="hidden md:flex items-center space-x-8 text-sm">
+            <a
+              href="/orders"
+              className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Orders</span>
+            </a>
+            {/* {isReseller && ( */}
+              <a
+                href="/sub-users"
+                className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Users</span>
+              </a>
+            {/* )} */}
+          </nav>
+        )}
 
         {/* Right Section */}
         <div className="flex items-center space-x-4 relative">
-          {/* Wallet */}
-          <a
-            href="/wallet"
-            className="flex items-center gap-2 p-2 border border-gray-600 rounded-full hover:border-[#4f46e5] hover:text-[#4f46e5] transition"
-            title="Wallet"
-          >
-            <Wallet className="w-5 h-5" />
-          </a>
+          {isLoggedIn && (
+            <a
+              href="/wallet"
+              className="flex items-center gap-2 p-2 border border-gray-600 rounded-full hover:border-[#4f46e5] hover:text-[#4f46e5] transition"
+              title="Wallet"
+            >
+              <Wallet className="w-5 h-5" />
+            </a>
+          )}
 
           {/* User Dropdown */}
           <div className="relative" ref={dropdownRef}>

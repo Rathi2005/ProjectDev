@@ -5,7 +5,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: "0.0.0.0",
-    // host: "harshit.com",
     port: 5173,
     allowedHosts: true, // CRITICAL: Allows Nginx to pass ANY reseller domain to Vite
     headers: {

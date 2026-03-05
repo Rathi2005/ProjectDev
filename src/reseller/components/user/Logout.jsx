@@ -8,7 +8,7 @@ export default function useLogout() {
   const navigate = useNavigate();
 
   const logout = async () => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("rToken");
 
     try {
       const response = await fetch(LOGOUT_API, {
@@ -23,7 +23,7 @@ export default function useLogout() {
       await response.text();
 
       // Always clear local data
-      localStorage.removeItem("token");
+      localStorage.removeItem("rToken");
 
       if (response.ok) {
         toast.success("Logged out successfully");
@@ -36,7 +36,7 @@ export default function useLogout() {
     } catch (error) {
       toast.error("Logout error:", error);
       // Even if there's an error, still redirect user
-      localStorage.removeItem("token");
+      localStorage.removeItem("rToken");
       navigate("/login", { replace: true });
     }
   };

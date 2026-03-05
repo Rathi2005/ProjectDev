@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import Header from "../components/user/Header";
 import PaymentFlow from "../components/payment/PaymentFlow";
 import CouponAndWallet from "../components/payment/CouponAndWallet";
 import UpgradeModal from "../components/payment/UpgradeModal";
@@ -1070,7 +1069,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen">
-      <Header />
       <Toaster
         position="top-right"
         toastOptions={{
@@ -1121,10 +1119,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
             {/* Page Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
-                <a className="text-gray-400 text-sm mt-1" href="/dashboard">
-                  ← Back to dashboard
-                </a>
-                <br />
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-wide">
                   My Servers
                 </h1>

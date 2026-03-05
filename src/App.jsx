@@ -40,6 +40,8 @@ import GatewaySettings from "./components/admin/AllSettings/GatewaySettings";
 
 // --- RESELLER IMPORT ---
 import ResellerApp from "./reseller/AppReseller";
+import ResellerProtectedRoute from "./pages/subusers/ResellerProtectedRoute";
+import SubUsers from "./pages/subusers/SubUsers";
 
 // ==========================================
 // 1. ALL YOUR EXISTING MAIN ROUTES
@@ -320,6 +322,14 @@ function MainRoutes() {
         }
       />
       <Route path="*" element={<NotFound />} />
+
+      {/* Resellers Protected Routes */}
+      <Route
+        path="/sub-users"
+        element={
+            <SubUsers />
+        }
+      />
     </Routes>
   );
 }

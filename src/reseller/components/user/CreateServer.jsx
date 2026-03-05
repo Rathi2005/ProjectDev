@@ -24,8 +24,7 @@ export default function CreateServer() {
           <div className="grid md:grid-cols-3 gap-5">
             {locations.map((loc) => (
               <button
-                key={loc.name}
-                onClick={() => setSelectedRegion(loc.name)}
+                key={loc.name}                onClick={() => setSelectedRegion(loc.name)}
                 className={`p-5 rounded-xl border transition-all text-left ${
                   selectedRegion === loc.name
                     ? "border-indigo-500 bg-indigo-600/20"

@@ -57,7 +57,7 @@ export default function CreateAccount() {
     // basic client-side check
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match!");
-      toast.error("Passwords do not match!"); 
+      toast.error("Passwords do not match!");
       return;
     }
 
@@ -89,21 +89,21 @@ export default function CreateAccount() {
         // Success -> OTP sent
         setSuccessMsg(
           initData.message ||
-            "Verification OTP sent to your email. Please check."
+            "Verification OTP sent to your email. Please check.",
         );
         toast.success(
           initData.message ||
-            "Verification OTP sent to your email. Please check."
+            "Verification OTP sent to your email. Please check.",
         );
         // small delay so user sees success toast, then show OTP form
         setTimeout(() => setShowOtp(true), 700);
       } else if (initRes.status === 409) {
         // Email already exists (server-side race condition)
         setError(
-          initData.message || "An account with this email already exists."
+          initData.message || "An account with this email already exists.",
         );
         toast.error(
-          initData.message || "An account with this email already exists."
+          initData.message || "An account with this email already exists.",
         );
       } else if (initRes.status === 400) {
         // validation errors (object with fields)
@@ -258,15 +258,20 @@ export default function CreateAccount() {
           <OtpVerification
             email={formData.email}
             firstName={formData.firstName}
+            lastName={formData.lastName}
+            password={formData.password}
             onVerified={() => {
               setShowOtp(false);
               setShowBilling(true);
             }}
-            toggle={0}  // 0 -> registration otp
+            toggle={0} // 0 -> registration otp
           />
         ) : (
-          <BillingAddress email={formData.email} firstName={formData.firstName} />
-        )} 
+          <BillingAddress
+            email={formData.email}
+            firstName={formData.firstName}
+          />
+        )}
       </div>
       <Footer />
     </div>
