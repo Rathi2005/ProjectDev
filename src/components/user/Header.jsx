@@ -108,7 +108,7 @@ const Header = () => {
               <ShoppingBag className="w-4 h-4" />
               <span>Orders</span>
             </a>
-            {/* {isReseller && ( */}
+            {isReseller && (
               <a
                 href="/sub-users"
                 className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
@@ -116,7 +116,16 @@ const Header = () => {
                 <ShoppingBag className="w-4 h-4" />
                 <span>Users</span>
               </a>
-            {/* )} */}
+            )} 
+            {isReseller && (
+              <a
+                href="/settings"
+                className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Settings</span>
+              </a>
+            )} 
           </nav>
         )}
 

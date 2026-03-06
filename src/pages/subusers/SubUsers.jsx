@@ -50,6 +50,15 @@ const SubUsers = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
 
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignUser, setAssignUser] = useState(null);
+  const [unassignedVMs, setUnassignedVMs] = useState([]);
+  const [selectedVmId, setSelectedVmId] = useState("");
+  const [assignLoading, setAssignLoading] = useState(false);
+
+  const ASSIGN_VM_API = `${BASE_URL}/api/reseller/admin/vms/assign`;
+  const UNASSIGN_VM_API = `${BASE_URL}/api/reseller/admin/vms/available`;
+
   // Stats
   const [stats, setStats] = useState({
     total: 0,
@@ -187,6 +196,75 @@ const SubUsers = () => {
       setUsers([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUnassignedVMs = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await fetch(UNASSIGN_VM_API, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUnassignedVMs(data.availableVms || []);
+      } else {
+        toast.error(data.message || "Failed to fetch VMs");
+      }
+    } catch (error) {
+      toast.error("Error fetching VMs");
+    }
+  };
+
+  const handleAssignVmClick = (user) => {
+    setAssignUser(user);
+    setShowAssignModal(true);
+    fetchUnassignedVMs();
+  };
+
+  const handleAssignVM = async () => {
+    if (!selectedVmId) {
+      toast.error("Please select a VM");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    setAssignLoading(true);
+
+    try {
+      const response = await fetch(ASSIGN_VM_API, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: assignUser.id,
+          vmId: Number(selectedVmId),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("VM assigned successfully");
+        setShowAssignModal(false);
+        setSelectedVmId("");
+        fetchUsers();
+      } else {
+        toast.error(data.message || "Failed to assign VM");
+      }
+    } catch (error) {
+      toast.error("Error assigning VM");
+    } finally {
+      setAssignLoading(false);
     }
   };
 
@@ -418,9 +496,7 @@ const SubUsers = () => {
                     <User className="w-6 h-6 text-blue-400" />
                   </div>
                   <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold">
-                      Users
-                    </h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold">Users</h1>
                     <p className="text-gray-400">
                       Manage and monitor all sub-users within your reseller
                       account
@@ -586,13 +662,23 @@ const SubUsers = () => {
                             </td>
                           ))}
                           <td className="py-3 px-4 align-middle">
-                            <button
-                              onClick={() => handleViewDetails(user)}
-                              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-                            >
-                              <Eye className="w-3 h-3" />
-                              Details
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleViewDetails(user)}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Details
+                              </button>
+
+                              <button
+                                onClick={() => handleAssignVmClick(user)}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 rounded-lg"
+                              >
+                                <Server className="w-3 h-3" />
+                                Assign VM
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -883,6 +969,59 @@ const SubUsers = () => {
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-[#151c2f] rounded-xl w-full max-w-md p-6 border border-indigo-900/30">
+            <h2 className="text-lg font-bold mb-4">
+              Assign VM to {assignUser?.firstName}
+            </h2>
+
+            <div className="mb-4">
+              <label className="block text-sm mb-2 text-gray-400">
+                Select VM
+              </label>
+
+              <select
+                value={selectedVmId}
+                onChange={(e) => setSelectedVmId(e.target.value)}
+                disabled={unassignedVMs.length === 0}
+                className="w-full px-3 py-2 bg-[#0e1525] border border-indigo-900/50 rounded-lg"
+              >
+                {unassignedVMs.length === 0 ? (
+                  <option>No VMs Available</option>
+                ) : (
+                  <>
+                    <option value="">Select VM</option>
+                    {unassignedVMs.map((vm) => (
+                      <option key={vm.id} value={vm.id}>
+                        {vm.name} (IP: {vm.ipAddress})
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowAssignModal(false)}
+                className="px-4 py-2 bg-gray-600 rounded-lg"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleAssignVM}
+                disabled={assignLoading}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg"
+              >
+                {assignLoading ? "Assigning..." : "Assign VM"}
               </button>
             </div>
           </div>

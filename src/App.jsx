@@ -42,7 +42,7 @@ import GatewaySettings from "./components/admin/AllSettings/GatewaySettings";
 import ResellerApp from "./reseller/AppReseller";
 import ResellerProtectedRoute from "./pages/subusers/ResellerProtectedRoute";
 import SubUsers from "./pages/subusers/SubUsers";
-
+import ResellerSettings from "./pages/subusers/ResellerSettings";
 // ==========================================
 // 1. ALL YOUR EXISTING MAIN ROUTES
 // ==========================================
@@ -328,6 +328,13 @@ function MainRoutes() {
         path="/sub-users"
         element={
             <SubUsers />
+        }
+      />
+
+      <Route
+        path="/settings"
+        element={
+            <ResellerSettings />
         }
       />
     </Routes>
