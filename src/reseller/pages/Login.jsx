@@ -6,6 +6,7 @@ import OtpVerification from "../components/user/OtpVerification";
 import ResetPassword from "../components/user/ResetPassword";
 import { toast } from "react-hot-toast";
 import { jwtDecode } from "jwt-decode";
+import { apiFetch } from "../utils/api";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const LOGIN_API = `${BASE_URL}/api/reseller/auth/login/password`;
@@ -75,11 +76,15 @@ export default function LoginPage() {
 
     try {
       if (loginWithOtp) {
-        const otpRes = await fetch(OTP_INITIATE_API, {
+        // const otpRes = await fetch(OTP_INITIATE_API, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json",
+        //     "X-Reseller-Domain": "reseller3.devai.in",
+        //    },
+        //   body: JSON.stringify({ email: formData.email }),
+        // });
+        const otpRes = await apiFetch("/api/reseller/auth/login/otp/initiate", {
           method: "POST",
-          headers: { "Content-Type": "application/json",
-            "X-Reseller-Domain": "reseller3.devai.in",
-           },
           body: JSON.stringify({ email: formData.email }),
         });
 
@@ -94,9 +99,13 @@ export default function LoginPage() {
           toast.error("Failed to initiate OTP. Please try again.");
         }
       } else {
-        const response = await fetch(LOGIN_API, {
+        // const response = await fetch(LOGIN_API, {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify(formData),
+        // });
+        const response = await apiFetch("/api/reseller/auth/login/password", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         });
 
@@ -132,11 +141,18 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(FORGET_PASSWORD_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email }),
-      });
+      // const res = await fetch(FORGET_PASSWORD_API, {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ email: formData.email }),
+      // });
+      const res = await apiFetch(
+        "/api/reseller/auth/password/forgot/initiate",
+        {
+          method: "POST",
+          body: JSON.stringify({ email: formData.email }),
+        },
+      );
 
       let data = {};
       const text = await res.text();
@@ -145,7 +161,7 @@ export default function LoginPage() {
       if (res.ok) {
         toast.success(data.message || "OTP has been sent!");
         setResetPasswordMode(true);
-        setResetStep(1); 
+        setResetStep(1);
       } else {
         toast.error(data.message || "Something went wrong. Please try again.");
       }
@@ -167,7 +183,9 @@ export default function LoginPage() {
                 <LogoIcon />
               </div>
               <h1 className="text-2xl font-bold">
-                {loginWithOtp ? "Login with OTP" : "Login to Your Reseller Account"}
+                {loginWithOtp
+                  ? "Login with OTP"
+                  : "Login to Your Reseller Account"}
               </h1>
               <p className="text-gray-400 text-center text-sm mt-1">
                 {loginWithOtp

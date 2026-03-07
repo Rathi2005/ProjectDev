@@ -7,6 +7,8 @@ const BILLING = `${BASE_URL}/api/reseller/auth/billing`;
 const BillingAddress = ({ email }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    companyName: "",
+    phoneNumber: "",
     streetAddress: "",
     city: "",
     state: "",
@@ -45,7 +47,8 @@ const BillingAddress = ({ email }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: userId,
+          companyName: formData.companyName,
+          phoneNumber: formData.phoneNumber,
           streetAddress: formData.streetAddress,
           city: formData.city,
           state: formData.state,
@@ -104,7 +107,60 @@ const BillingAddress = ({ email }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-           
+            <div className="space-y-2">
+              <label className="flex items-center text-gray-300 text-sm font-medium">
+                <svg
+                  className="w-4 h-4 mr-2 text-blue-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 7h18M3 12h18M3 17h18"
+                  />
+                </svg>
+                Company Name
+              </label>
+
+              <input
+                type="text"
+                name="companyName"
+                value={formData.companyName}
+                onChange={handleChange}
+                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Company name (optional)"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center text-gray-300 text-sm font-medium">
+                <svg
+                  className="w-4 h-4 mr-2 text-blue-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 5a2 2 0 012-2h3.28a2 2 0 011.94 1.515l.7 2.8a2 2 0 01-.45 1.91l-1.27 1.27a16 16 0 006.586 6.586l1.27-1.27a2 2 0 011.91-.45l2.8.7A2 2 0 0121 18.72V22a2 2 0 01-2 2h-1C9.163 24 0 14.837 0 3V2a2 2 0 012-2h1z"
+                  />
+                </svg>
+                Phone Number
+              </label>
+
+              <input
+                type="text"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                className="w-full p-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="+91XXXXXXXXXX"
+              />
+            </div>
             {/* Street Address - Full width */}
             <div className="space-y-2">
               <label className="flex items-center text-gray-300 text-sm font-medium">

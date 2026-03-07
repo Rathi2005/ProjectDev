@@ -30,9 +30,9 @@ export default function AppReseller() {
       <Route
         path="/dashboard"
         element={
-          <ResellerProtectedRoute>
+          // <ResellerProtectedRoute>
             <Dashboard />
-          </ResellerProtectedRoute>
+          // </ResellerProtectedRoute>
         }
       >
         <Route index element={<Orders />} />

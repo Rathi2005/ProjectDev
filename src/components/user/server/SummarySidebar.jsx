@@ -222,30 +222,8 @@ const SummarySidebar = ({
 
       return response;
     } catch (error) {
-      console.error("🔥 API request failed:", error);
+      console.error("API request failed:", error);
       throw error;
-    }
-  };
-
-  // Test token validity
-  const testTokenValidity = async () => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      throw new Error("No authentication token found");
-    }
-
-    if (!isTokenValid(token)) {
-      throw new Error("Token is invalid or expired");
-    }
-
-    const testUrl = `${import.meta.env.VITE_BASE_URL}/api/users/profile`;
-
-    try {
-      const testResponse = await apiRequest(testUrl, { method: "GET" });
-      return true;
-    } catch (error) {
-      throw new Error(`Token validation failed: ${error.message}`);
     }
   };
 
@@ -282,8 +260,6 @@ const SummarySidebar = ({
     }
 
     try {
-      await testTokenValidity();
-
       const CREATE_SERVER_URL = `${import.meta.env.VITE_BASE_URL}/api/users/vms/create`;
 
       if (!CREATE_SERVER_URL) {

@@ -113,7 +113,7 @@ const Header = () => {
                 href="/sub-users"
                 className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
               >
-                <ShoppingBag className="w-4 h-4" />
+                <User className="w-4 h-4" />
                 <span>Users</span>
               </a>
             )} 
@@ -122,7 +122,7 @@ const Header = () => {
                 href="/settings"
                 className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
               >
-                <ShoppingBag className="w-4 h-4" />
+                <Settings className="w-4 h-4" />
                 <span>Settings</span>
               </a>
             )} 
