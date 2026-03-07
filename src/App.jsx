@@ -350,7 +350,7 @@ export default function App() {
   // List of domains that should show the MAIN application
   const mainDomains = [
     "console.devai.in",
-    // "localhost",  
+    "localhost",  
     "127.0.0.1",
     "10.0.0.49",
     "project-dev-three.vercel.app"

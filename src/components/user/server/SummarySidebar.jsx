@@ -239,9 +239,7 @@ const SummarySidebar = ({
       throw new Error("Token is invalid or expired");
     }
 
-    const testUrl = import.meta.env.VITE_BASE_URL
-      ? `${import.meta.env.VITE_BASE_URL}/api/users/profile`
-      : "https://vps.devai.in/api/users/profile";
+    const testUrl = `${import.meta.env.VITE_BASE_URL}/api/users/profile`;
 
     try {
       const testResponse = await apiRequest(testUrl, { method: "GET" });
