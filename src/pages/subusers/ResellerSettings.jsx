@@ -66,59 +66,22 @@ const ResellerSettings = () => {
 
   const token = localStorage.getItem("token");
 
-  // Fetch existing settings
   useEffect(() => {
-    fetchSettings();
+    setLoading(false);
   }, []);
 
-  const fetchSettings = async () => {
-    try {
-      setLoading(true);
-      // You might need separate endpoints for fetching existing settings
-      const [companyRes, smtpRes] = await Promise.all([
-        fetch(COMPANY_API, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(SMTP_API, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      if (companyRes.ok) {
-        const companyData = await companyRes.json();
-        setCompany(companyData);
-        setInitialCompany(companyData);
-      }
-
-      if (smtpRes.ok) {
-        const smtpData = await smtpRes.json();
-        setSmtp(smtpData);
-        setInitialSmtp(smtpData);
-      }
-    } catch (error) {
-      toast.error("Failed to load settings");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Track unsaved changes
   useEffect(() => {
-    if (Object.keys(initialCompany).length > 0) {
-      const changed = Object.keys(company).some(
-        (key) => company[key] !== initialCompany[key]
-      );
-      setUnsavedChanges((prev) => ({ ...prev, company: changed }));
-    }
+    const changed = Object.keys(company).some(
+      (key) => company[key] !== initialCompany[key],
+    );
+    setUnsavedChanges((prev) => ({ ...prev, company: changed }));
   }, [company, initialCompany]);
 
   useEffect(() => {
-    if (Object.keys(initialSmtp).length > 0) {
-      const changed = Object.keys(smtp).some(
-        (key) => smtp[key] !== initialSmtp[key]
-      );
-      setUnsavedChanges((prev) => ({ ...prev, smtp: changed }));
-    }
+    const changed = Object.keys(smtp).some(
+      (key) => smtp[key] !== initialSmtp[key],
+    );
+    setUnsavedChanges((prev) => ({ ...prev, smtp: changed }));
   }, [smtp, initialSmtp]);
 
   const handleCompanySubmit = async () => {
@@ -136,7 +99,7 @@ const ResellerSettings = () => {
       const data = await res.json();
 
       if (res.ok) {
-        setInitialCompany(company);
+        setInitialCompany({ ...company });
         setUnsavedChanges((prev) => ({ ...prev, company: false }));
         toast.success("Company branding saved successfully");
       } else {
@@ -164,7 +127,7 @@ const ResellerSettings = () => {
       const data = await res.json();
 
       if (res.ok) {
-        setInitialSmtp(smtp);
+        setInitialSmtp({ ...smtp });
         setUnsavedChanges((prev) => ({ ...prev, smtp: false }));
         toast.success("SMTP configured successfully");
       } else {
@@ -197,7 +160,7 @@ const ResellerSettings = () => {
   const calculateCompanyCompletion = () => {
     const requiredFields = ["companyName", "supportEmail", "supportPhone"];
     const filled = requiredFields.filter(
-      (field) => company[field] && company[field].trim() !== ""
+      (field) => company[field] && company[field].trim() !== "",
     ).length;
     return Math.round((filled / requiredFields.length) * 100);
   };
@@ -328,9 +291,7 @@ const ResellerSettings = () => {
                       <Input
                         label="Tax ID / GSTIN"
                         value={company.taxId}
-                        onChange={(v) =>
-                          setCompany({ ...company, taxId: v })
-                        }
+                        onChange={(v) => setCompany({ ...company, taxId: v })}
                         icon={CreditCard}
                         placeholder="Enter tax ID"
                       />
@@ -357,9 +318,7 @@ const ResellerSettings = () => {
                       <Input
                         label="City"
                         value={company.city}
-                        onChange={(v) =>
-                          setCompany({ ...company, city: v })
-                        }
+                        onChange={(v) => setCompany({ ...company, city: v })}
                         icon={Globe}
                         placeholder="City"
                       />
@@ -367,9 +326,7 @@ const ResellerSettings = () => {
                       <Input
                         label="State"
                         value={company.state}
-                        onChange={(v) =>
-                          setCompany({ ...company, state: v })
-                        }
+                        onChange={(v) => setCompany({ ...company, state: v })}
                         icon={Globe}
                         placeholder="State"
                       />
@@ -377,9 +334,7 @@ const ResellerSettings = () => {
                       <Input
                         label="Country"
                         value={company.country}
-                        onChange={(v) =>
-                          setCompany({ ...company, country: v })
-                        }
+                        onChange={(v) => setCompany({ ...company, country: v })}
                         icon={Globe}
                         placeholder="Country"
                       />
@@ -387,9 +342,7 @@ const ResellerSettings = () => {
                       <Input
                         label="Zip Code"
                         value={company.zipCode}
-                        onChange={(v) =>
-                          setCompany({ ...company, zipCode: v })
-                        }
+                        onChange={(v) => setCompany({ ...company, zipCode: v })}
                         icon={MapPin}
                         placeholder="Zip/Postal code"
                       />
@@ -421,8 +374,8 @@ const ResellerSettings = () => {
                       {savingCompany
                         ? "Saving..."
                         : unsavedChanges.company
-                        ? "Save Changes"
-                        : "Saved"}
+                          ? "Save Changes"
+                          : "Saved"}
                     </button>
                   </div>
                 </div>
@@ -443,9 +396,7 @@ const ResellerSettings = () => {
                       <Input
                         label="SMTP Host"
                         value={smtp.smtpHost}
-                        onChange={(v) =>
-                          setSmtp({ ...smtp, smtpHost: v })
-                        }
+                        onChange={(v) => setSmtp({ ...smtp, smtpHost: v })}
                         icon={Server}
                         placeholder="smtp.gmail.com"
                         required
@@ -455,7 +406,7 @@ const ResellerSettings = () => {
                         label="SMTP Port"
                         value={smtp.smtpPort}
                         onChange={(v) =>
-                          setSmtp({ ...smtp, smtpPort: v })
+                          setSmtp({ ...smtp, smtpPort: Number(v) })
                         }
                         icon={Server}
                         placeholder="587"
@@ -478,7 +429,7 @@ const ResellerSettings = () => {
                         label="SMTP Password"
                         value={smtp.smtpPassword}
                         onChange={(v) =>
-                          setSmtp({ ...smtp, smtpPassword: v })
+                          setSmtp({ ...smtp, smtpPassword: v  })
                         }
                         icon={Lock}
                         type="password"
@@ -499,7 +450,7 @@ const ResellerSettings = () => {
                         label="Sender Email"
                         value={smtp.smtpSenderEmail}
                         onChange={(v) =>
-                          setSmtp({ ...smtp, smtpSenderEmail: v })
+                          setSmtp({ ...smtp, smtpSenderEmail: v  })
                         }
                         icon={Mail}
                         placeholder="noreply@company.com"
@@ -533,7 +484,10 @@ const ResellerSettings = () => {
                           <select
                             value={smtp.smtpEncryption}
                             onChange={(e) =>
-                              setSmtp({ ...smtp, smtpEncryption: e.target.value })
+                              setSmtp({
+                                ...smtp,
+                                smtpEncryption: e.target.value,
+                              })
                             }
                             className="w-full bg-[#1a2335] border border-indigo-900/40 rounded-xl px-4 py-3 text-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none cursor-pointer"
                           >
@@ -590,8 +544,8 @@ const ResellerSettings = () => {
                       {savingSmtp
                         ? "Saving..."
                         : unsavedChanges.smtp
-                        ? "Save Changes"
-                        : "Saved"}
+                          ? "Save Changes"
+                          : "Saved"}
                     </button>
                   </div>
                 </div>
@@ -654,8 +608,8 @@ function Input({
             disabled
               ? "opacity-50 cursor-not-allowed border-gray-700"
               : focused
-              ? "border-indigo-500 ring-2 ring-indigo-500/20"
-              : "border-indigo-900/40 hover:border-indigo-500/50"
+                ? "border-indigo-500 ring-2 ring-indigo-500/20"
+                : "border-indigo-900/40 hover:border-indigo-500/50"
           }`}
         />
         {suffix && (
