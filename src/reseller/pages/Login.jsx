@@ -70,61 +70,21 @@ export default function LoginPage() {
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
     setLoading(true);
 
     try {
-      if (loginWithOtp) {
-        // const otpRes = await fetch(OTP_INITIATE_API, {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json",
-        //     "X-Reseller-Domain": "reseller3.devai.in",
-        //    },
-        //   body: JSON.stringify({ email: formData.email }),
-        // });
-        const otpRes = await apiFetch("/api/reseller/auth/login/otp/initiate", {
-          method: "POST",
-          body: JSON.stringify({ email: formData.email }),
-        });
+      const data = await apiFetch("/api/reseller/auth/login/password", {
+        method: "POST",
+        body: JSON.stringify(formData),
+      });
 
-        const otpData = await otpRes.json();
+      toast.success(data.message || "Login successful!");
 
-        if (otpRes.ok) {
-          toast.success(otpData.message || "OTP sent to your email!");
-          setTimeout(() => setShowOtpForm(true), 100);
-        } else if (otpRes.status === 404) {
-          toast.error(otpData.message || "No account found with this email.");
-        } else {
-          toast.error("Failed to initiate OTP. Please try again.");
-        }
-      } else {
-        // const response = await fetch(LOGIN_API, {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify(formData),
-        // });
-        const response = await apiFetch("/api/reseller/auth/login/password", {
-          method: "POST",
-          body: JSON.stringify(formData),
-        });
+      localStorage.setItem("rToken", data.token);
 
-        const data = await response.json();
-
-        if (response.ok) {
-          setSuccess(data.message || "Login successful!");
-          toast.success(data.message || "Login successful!");
-          localStorage.setItem("rToken", data.token);
-          setTimeout(() => navigate("/dashboard"), 1500);
-        } else if (response.status === 401) {
-          toast.error(data.message || "Incorrect email or password.");
-        } else {
-          setError("Login failed. Please try again.");
-          toast.error("Login failed. Please try again.");
-        }
-      }
+      setTimeout(() => navigate("/dashboard"), 1000);
     } catch (err) {
-      toast.error("Network error. Please try again.");
+      toast.error(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -136,17 +96,10 @@ export default function LoginPage() {
       return;
     }
 
-    setError("");
-    setSuccess("");
     setLoading(true);
 
     try {
-      // const res = await fetch(FORGET_PASSWORD_API, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ email: formData.email }),
-      // });
-      const res = await apiFetch(
+      const data = await apiFetch(
         "/api/reseller/auth/password/forgot/initiate",
         {
           method: "POST",
@@ -154,19 +107,12 @@ export default function LoginPage() {
         },
       );
 
-      let data = {};
-      const text = await res.text();
-      if (text) data = JSON.parse(text);
+      toast.success(data.message || "OTP has been sent!");
 
-      if (res.ok) {
-        toast.success(data.message || "OTP has been sent!");
-        setResetPasswordMode(true);
-        setResetStep(1);
-      } else {
-        toast.error(data.message || "Something went wrong. Please try again.");
-      }
+      setResetPasswordMode(true);
+      setResetStep(1);
     } catch (err) {
-      toast.error("Network error. Please try again.");
+      toast.error(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }

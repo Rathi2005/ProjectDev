@@ -33,6 +33,8 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 const GET_USERS_API = `${BASE_URL}/api/reseller/admin/users`;
 const GET_USER_COUNT_API = `${BASE_URL}/api/reseller/admin/users/count`;
 const GET_USER_DETAIL_API = `${BASE_URL}/api/reseller/admin/users`;
+const UNASSIGN_VM_API = `${BASE_URL}/api/reseller/admin/vms/unassign`;
+const GET_MY_VMS_API = `${BASE_URL}/api/reseller/user/vms`;
 
 const SubUsers = () => {
   const [users, setUsers] = useState([]);
@@ -56,8 +58,14 @@ const SubUsers = () => {
   const [selectedVmId, setSelectedVmId] = useState("");
   const [assignLoading, setAssignLoading] = useState(false);
 
+  const [showUnassignModal, setShowUnassignModal] = useState(false);
+  const [unassignUser, setUnassignUser] = useState(null);
+  const [userVMs, setUserVMs] = useState([]);
+  const [selectedUnassignVmId, setSelectedUnassignVmId] = useState("");
+  const [unassignLoading, setUnassignLoading] = useState(false);
+
   const ASSIGN_VM_API = `${BASE_URL}/api/reseller/admin/vms/assign`;
-  const UNASSIGN_VM_API = `${BASE_URL}/api/reseller/admin/vms/available`;
+  const AVAILABLE_VM_API = `${BASE_URL}/api/reseller/admin/vms/available`;
 
   // Stats
   const [stats, setStats] = useState({
@@ -203,7 +211,7 @@ const SubUsers = () => {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(UNASSIGN_VM_API, {
+      const response = await fetch(AVAILABLE_VM_API, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -219,6 +227,58 @@ const SubUsers = () => {
         toast.error(data.message || "Failed to fetch VMs");
       }
     } catch (error) {
+      toast.error("Error fetching VMs");
+    }
+  };
+
+  const fetchUserVMs = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await fetch(GET_MY_VMS_API, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUserVMs(data || []);
+      } else {
+        toast.error("Failed to fetch VMs");
+      }
+    } catch (err) {
+      toast.error("Error fetching VMs");
+    }
+  };
+
+  const handleUnassignVmClick = async (user) => {
+    setUnassignUser(user);
+    setShowUnassignModal(true);
+
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await fetch(
+        `${GET_USER_DETAIL_API}/${user.id}/details`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUserVMs(data.assignedVms || []);
+      } else {
+        toast.error("Failed to fetch user VMs");
+      }
+    } catch (err) {
       toast.error("Error fetching VMs");
     }
   };
@@ -268,6 +328,45 @@ const SubUsers = () => {
     }
   };
 
+  const handleUnassignVM = async () => {
+    if (!selectedUnassignVmId) {
+      toast.error("Please select a VM");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    setUnassignLoading(true);
+
+    try {
+      const response = await fetch(UNASSIGN_VM_API, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: unassignUser.id,
+          vmId: Number(selectedUnassignVmId),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("VM unassigned successfully");
+        setShowUnassignModal(false);
+        setSelectedUnassignVmId("");
+        fetchUsers();
+      } else {
+        toast.error(data.message || "Failed to unassign VM");
+      }
+    } catch (error) {
+      toast.error("Error unassigning VM");
+    } finally {
+      setUnassignLoading(false);
+    }
+  };
+
   const fetchUserDetails = async (userId) => {
     setLoadingDetails(true);
 
@@ -305,6 +404,7 @@ const SubUsers = () => {
             : null,
           vms: (data.assignedVms || []).map((vm) => ({
             id: vm.vmid,
+            internalvmid: vm.internalvmid,
             name: vm.vmName,
             ipAddress: vm.vmIp,
             assignedDate: vm.assignedDate,
@@ -678,6 +778,14 @@ const SubUsers = () => {
                                 <Server className="w-3 h-3" />
                                 Assign VM
                               </button>
+
+                              <button
+                                onClick={() => handleUnassignVmClick(user)}
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 rounded-lg"
+                              >
+                                <Server className="w-3 h-3" />
+                                Unassign VM
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1022,6 +1130,53 @@ const SubUsers = () => {
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg"
               >
                 {assignLoading ? "Assigning..." : "Assign VM"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUnassignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-[#151c2f] rounded-xl w-full max-w-md p-6 border border-indigo-900/30">
+            <h2 className="text-lg font-bold mb-4">
+              Unassign VM from {unassignUser?.firstName}
+            </h2>
+
+            <div className="mb-4">
+              <label className="block text-sm mb-2 text-gray-400">
+                Select VM
+              </label>
+
+              <select
+                value={selectedUnassignVmId}
+                onChange={(e) => setSelectedUnassignVmId(e.target.value)}
+                className="w-full px-3 py-2 bg-[#0e1525] border border-indigo-900/50 rounded-lg"
+              >
+                <option value="">Select VM</option>
+
+                {userVMs.map((vm) => (
+                  <option key={vm.internalvmid} value={vm.internalvmid}>
+                    VMID: {vm.internalvmid} | IP: {vm.vmIp}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowUnassignModal(false)}
+                className="px-4 py-2 bg-gray-600 rounded-lg"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleUnassignVM}
+                disabled={unassignLoading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg"
+              >
+                {unassignLoading ? "Unassigning..." : "Unassign VM"}
               </button>
             </div>
           </div>

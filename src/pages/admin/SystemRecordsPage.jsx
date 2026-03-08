@@ -7,6 +7,7 @@ import CreateVmModal from "../../components/admin/UsersDetails/CreateVmModel";
 import { showUserDetailsModal } from "../../components/admin/UsersDetails/UserDetailsModel";
 import ManualVmImportModal from "../../components/admin/UsersDetails/ManualVmImportModal";
 import UpgradeUserModal from "../../components/admin/UsersDetails/UpgradeUserModel";
+import ResellerActionButton from "../../components/admin/UsersDetails/ResellerActionButton";
 import Pagination from "../../components/Pagination";
 import Swal from "sweetalert2";
 import {
@@ -99,7 +100,7 @@ export default function SystemRecordsPage() {
   const [loadingStorage, setLoadingStorage] = useState(false);
   const [showCreateVm, setShowCreateVm] = useState(false);
 
-  const [page, setPage] = useState(0); // 0-based
+  const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -406,6 +407,8 @@ export default function SystemRecordsPage() {
                   ).length || 0,
                 totalSpent: calculateUserSpent(user.vms || []),
                 isLocked,
+                role: user.role,
+                reseller: user.reseller || false,
               };
             }),
           );
@@ -1329,15 +1332,15 @@ export default function SystemRecordsPage() {
 
                           {pageType === "users-overview" && (
                             <td className="py-3 px-4">
-                              <button
-                                onClick={() => {
-                                  setSelectedUpgradeUser(record);
+                              <ResellerActionButton
+                                user={record}
+                                BASE_URL={BASE_URL}
+                                onUpgrade={(user) => {
+                                  setSelectedUpgradeUser(user);
                                   setShowUpgradeModal(true);
                                 }}
-                                className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded"
-                              >
-                                Upgrade
-                              </button>
+                                onSuccess={fetchRecords}
+                              />
                             </td>
                           )}
 

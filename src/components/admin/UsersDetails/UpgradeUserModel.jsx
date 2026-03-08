@@ -27,7 +27,7 @@ export default function UpgradeUserModal({ user, onClose }) {
     if (!form.domainUrl) {
       newErrors.domainUrl = "Domain URL is required";
     } else if (
-      !/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/.test(
+      !/^(?!:\/\/)([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(
         form.domainUrl,
       )
     ) {
