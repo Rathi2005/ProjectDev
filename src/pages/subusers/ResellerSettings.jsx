@@ -59,7 +59,8 @@ const ResellerSettings = () => {
     smtpSenderEmail: "",
     smtpSenderName: "",
     smtpAuth: true,
-    smtpEncryption: "tls",
+    domainUrl: "",
+    brandName: "",
   });
 
   const [initialSmtp, setInitialSmtp] = useState({});
@@ -115,21 +116,49 @@ const ResellerSettings = () => {
   const handleSmtpSubmit = async () => {
     try {
       setSavingSmtp(true);
-      const res = await fetch(SMTP_API, {
+
+      const payload = {
+        smtpHost: smtp.smtpHost,
+        smtpPort: Number(smtp.smtpPort),
+        smtpUsername: smtp.smtpUsername,
+        smtpPassword: smtp.smtpPassword,
+        smtpSenderEmail: smtp.smtpSenderEmail,
+        smtpSenderName: smtp.smtpSenderName,
+        smtpAuth: smtp.smtpAuth,
+        
+        domainUrl: smtp.domainUrl,
+        brandName: smtp.brandName,
+      };
+
+      let res = await fetch(SMTP_API, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(smtp),
+        body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      let data = await res.json();
+
+      // If SMTP already exists → Update it
+      if (!res.ok && data.message?.includes("already exist")) {
+        res = await fetch(SMTP_API, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        data = await res.json();
+      }
 
       if (res.ok) {
         setInitialSmtp({ ...smtp });
         setUnsavedChanges((prev) => ({ ...prev, smtp: false }));
-        toast.success("SMTP configured successfully");
+        toast.success("SMTP settings saved successfully");
       } else {
         toast.error(data.message || "Failed to configure SMTP");
       }
@@ -406,7 +435,7 @@ const ResellerSettings = () => {
                         label="SMTP Port"
                         value={smtp.smtpPort}
                         onChange={(v) =>
-                          setSmtp({ ...smtp, smtpPort: Number(v) })
+                          setSmtp({ ...smtp, smtpPort: parseInt(v) || "" })
                         }
                         icon={Server}
                         placeholder="587"
@@ -417,9 +446,7 @@ const ResellerSettings = () => {
                       <Input
                         label="SMTP Username"
                         value={smtp.smtpUsername}
-                        onChange={(v) =>
-                          setSmtp({ ...smtp, smtpUsername: v })
-                        }
+                        onChange={(v) => setSmtp({ ...smtp, smtpUsername: v })}
                         icon={User}
                         placeholder="user@example.com"
                         required
@@ -428,9 +455,7 @@ const ResellerSettings = () => {
                       <Input
                         label="SMTP Password"
                         value={smtp.smtpPassword}
-                        onChange={(v) =>
-                          setSmtp({ ...smtp, smtpPassword: v  })
-                        }
+                        onChange={(v) => setSmtp({ ...smtp, smtpPassword: v })}
                         icon={Lock}
                         type="password"
                         placeholder="••••••••"
@@ -450,7 +475,7 @@ const ResellerSettings = () => {
                         label="Sender Email"
                         value={smtp.smtpSenderEmail}
                         onChange={(v) =>
-                          setSmtp({ ...smtp, smtpSenderEmail: v  })
+                          setSmtp({ ...smtp, smtpSenderEmail: v })
                         }
                         icon={Mail}
                         placeholder="noreply@company.com"
@@ -469,35 +494,22 @@ const ResellerSettings = () => {
                         required
                       />
 
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
-                          <Lock className="w-4 h-4" />
-                          Encryption
-                          <div className="group relative">
-                            <Info className="w-3 h-3 text-gray-500 cursor-help" />
-                            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block w-48 p-2 bg-[#1a2335] text-xs text-gray-300 rounded-lg border border-indigo-900/40">
-                              Choose encryption method for SMTP connection
-                            </div>
-                          </div>
-                        </label>
-                        <div className="relative">
-                          <select
-                            value={smtp.smtpEncryption}
-                            onChange={(e) =>
-                              setSmtp({
-                                ...smtp,
-                                smtpEncryption: e.target.value,
-                              })
-                            }
-                            className="w-full bg-[#1a2335] border border-indigo-900/40 rounded-xl px-4 py-3 text-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none appearance-none cursor-pointer"
-                          >
-                            <option value="none">None</option>
-                            <option value="ssl">SSL</option>
-                            <option value="tls">TLS</option>
-                          </select>
-                          <ChevronDown className="absolute right-3 top-3.5 w-4 h-4 text-gray-400 pointer-events-none" />
-                        </div>
-                      </div>
+                      <Input
+                        label="Domain URL"
+                        value={smtp.domainUrl}
+                        onChange={(v) => setSmtp({ ...smtp, domainUrl: v })}
+                        icon={Globe}
+                        placeholder="getwebup.com"
+                        required
+                      />
+
+                      <Input
+                        label="Brand Name"
+                        value={smtp.brandName}
+                        onChange={(v) => setSmtp({ ...smtp, brandName: v })}
+                        icon={Building2}
+                        placeholder="Your Brand"
+                      />
 
                       <div className="flex items-center gap-3 mt-2">
                         <input
