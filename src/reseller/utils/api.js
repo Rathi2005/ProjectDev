@@ -5,7 +5,7 @@ export const apiFetch = async (url, options = {}) => {
 
   const domain =
     window.location.hostname === "localhost"
-      ? "shribankebiharitraders.com"
+      ? "somanione.com"
       : window.location.hostname;
 
   const headers = {
@@ -24,8 +24,8 @@ export const apiFetch = async (url, options = {}) => {
   });
 
   if (!res.ok) {
-    const error = await res.text();
-    throw new Error(error || "API Error");
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || "API Error");
   }
 
   return res.json();

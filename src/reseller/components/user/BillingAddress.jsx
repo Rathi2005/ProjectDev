@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+import { apiFetch } from "../../utils/api";
 // const BILLING = import.meta.env.VITE_BILLING;
 const BILLING = `${BASE_URL}/api/reseller/auth/billing`;
 
@@ -43,37 +44,19 @@ const BillingAddress = ({ email }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${BILLING}`, {
+      const data = await apiFetch("/api/reseller/auth/billing", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyName: formData.companyName,
-          phoneNumber: formData.phoneNumber,
-          streetAddress: formData.streetAddress,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          country: formData.country,
-        }),
+        body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      setSuccess(data.message || "Billing address saved successfully!");
 
-      if (response.ok) {
-        setSuccess(data.message || "Billing address saved successfully!");
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
-      } else if (response.status === 400) {
-        const messages = Object.values(data).join(", ");
-        setError(messages || "Validation error. Please check your input.");
-      } else if (response.status === 404) {
-        setError(data.message || "User not found.");
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+
     } catch (err) {
-      setError("Network error. Please try again.");
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
