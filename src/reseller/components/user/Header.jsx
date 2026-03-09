@@ -9,7 +9,6 @@ const Header = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const dropdownRef = useRef(null);
-  const APP_NAME = import.meta.env.VITE_APP_NAME;
 
   // ✅ Call your hook here — this gives you the logout function
   const logout = useLogout();
@@ -68,9 +67,6 @@ const Header = () => {
               alt="Logo"
               className="h-9 w-9 object-contain"
             />
-            <h1 className="text-lg font-semibold text-white tracking-wide">
-              {APP_NAME}
-            </h1>
           </a>
         </div>
 
@@ -83,113 +79,7 @@ const Header = () => {
             <ShoppingBag className="w-4 h-4" />
             <span>Orders</span>
           </a>
-
-          {/* <a
-            href="/credits"
-            className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
-          >
-            <Wallet className="w-4 h-4" />
-            <span>Credits</span>
-          </a> */}
-
-          {/* <a
-            href="#"
-            className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
-          >
-            <Ticket className="w-4 h-4" />
-            <span>About Us</span>
-          </a> */}
         </nav>
-
-        {/* Right Section */}
-        <div className="flex items-center space-x-4 relative">
-          {/* Wallet */}
-          <a
-            href="/wallet"
-            className="flex items-center gap-2 p-2 border border-gray-600 rounded-full hover:border-[#4f46e5] hover:text-[#4f46e5] transition"
-            title="Wallet"
-          >
-            <Wallet className="w-5 h-5" />
-          </a>
-
-          {/* User Dropdown */}
-          <div className="relative" ref={dropdownRef}>
-            {/* User Avatar Button - This should be OUTSIDE the dropdown menu */}
-            <button
-              className="flex items-center gap-2 p-2 border border-gray-600 rounded-full hover:border-[#4f46e5] transition"
-              onClick={() => setIsDropdownOpen((prev) => !prev)}
-            >
-              {isLoggedIn && user && user.name ? (
-                <div className="w-8 h-8 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] rounded-full flex items-center justify-center text-white text-sm font-medium">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-              ) : (
-                <User className="w-5 h-5 text-gray-300 hover:text-[#4f46e5]" />
-              )}
-            </button>
-
-            {/* Dropdown Menu */}
-            {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-[#121a2a] border border-gray-700 rounded-xl shadow-lg py-2 z-50">
-                {isLoggedIn ? (
-                  <>
-                    {/* Menu Items */}
-                    <a
-                      href="/profile"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <span className="material-icons text-[18px]">
-                        account_circle
-                      </span>
-                      <span>Profile</span>
-                    </a>
-
-                    <a
-                      href="/dashboard"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-gray-700"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <span className="material-icons text-[18px]">
-                        dashboard
-                      </span>
-                      <span>Dashboard</span>
-                    </a>
-
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-red-400 transition"
-                    >
-                      <span className="material-icons text-[18px]">logout</span>
-                      <span>Logout</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <a
-                      href="/login"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-gray-700"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <span className="material-icons text-[18px]">login</span>
-                      <span>Login</span>
-                    </a>
-                    <a
-                      href="/register"
-                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <span className="material-icons text-[18px]">
-                        person_add
-                      </span>
-                      <span>Sign Up</span>
-                    </a>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </header>
   );

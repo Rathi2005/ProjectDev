@@ -131,7 +131,7 @@ export default function LoginPage() {
               <h1 className="text-2xl font-bold">
                 {loginWithOtp
                   ? "Login with OTP"
-                  : "Login to Your Reseller Account"}
+                  : "Login to Your Account"}
               </h1>
               <p className="text-gray-400 text-center text-sm mt-1">
                 {loginWithOtp
