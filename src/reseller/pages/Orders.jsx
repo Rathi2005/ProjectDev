@@ -67,6 +67,16 @@ export default function UserOrdersPage() {
     }));
   };
 
+  const getDefaultUsername = (osType) => {
+    if (!osType) return "root";
+
+    const normalized = osType.toUpperCase();
+
+    if (normalized === "WINDOWS") return "Administrator";
+
+    return "root";
+  };
+
   // Fetch VMs
   useEffect(() => {
     async function fetchVMs() {
@@ -710,7 +720,9 @@ export default function UserOrdersPage() {
                                         <User className="w-4 h-4" />
                                         <span>Username</span>
                                       </div>
-                                      <p className="text-white">root</p>
+                                      <p className="text-white">
+                                        {getDefaultUsername(order.os)}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>

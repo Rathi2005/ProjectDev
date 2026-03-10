@@ -19,16 +19,6 @@ export default function Sidebar() {
       
       {/* 🔥 Logo Section */}
       <div>
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-gray-700">
-          <img
-            src="/favicon.ico"
-            alt="Logo"
-            className="h-9 w-9 object-contain"
-          />
-          <h1 className="text-lg font-semibold text-white tracking-wide">
-            {APP_NAME}
-          </h1>
-        </div>
 
         {/* Navigation Links */}
         <nav className="px-4 py-6 space-y-2 text-sm">
