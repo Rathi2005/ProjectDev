@@ -37,10 +37,10 @@ export default function Sidebar() {
             <span>Orders</span>
           </NavLink>
 
-          <NavLink to="/dashboard/profile" className={linkClass}>
+          {/* <NavLink to="/dashboard/profile" className={linkClass}>
             <User size={18} />
             <span>Profile</span>
-          </NavLink>
+          </NavLink> */}
         </nav>
       </div>
 

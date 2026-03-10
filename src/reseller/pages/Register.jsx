@@ -126,7 +126,6 @@ export default function CreateAccount() {
 
   return (
     <div>
-      <Header />
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0e1525] text-white px-4">
         {!showOtpForm && !showBilling ? (
           <div className="w-full max-w-md bg-[#121a2a] rounded-2xl shadow-lg p-8 m-10">

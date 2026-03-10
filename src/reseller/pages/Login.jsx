@@ -120,7 +120,6 @@ export default function LoginPage() {
 
   return (
     <div>
-      <Header />
       <div className="min-h-[calc(100vh-60px)] flex flex-col items-center justify-center bg-[#0e1525] text-white px-4">
         {!resetPasswordMode && !showOtpForm ? (
           <div className="w-full max-w-md bg-[#121a2a] rounded-2xl shadow-lg p-8 m-8">

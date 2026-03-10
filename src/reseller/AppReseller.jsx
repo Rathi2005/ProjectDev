@@ -9,7 +9,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
-import Profile from "./components/Profile";
 
 // import Dashboard from "./pages/Dashboard";
 
@@ -30,14 +29,13 @@ export default function AppReseller() {
       <Route
         path="/dashboard"
         element={
-          // <ResellerProtectedRoute>
+          <ResellerProtectedRoute>
             <Dashboard />
-          // </ResellerProtectedRoute>
+          </ResellerProtectedRoute>
         }
       >
         <Route index element={<Orders />} />
         <Route path="orders" element={<Orders />} />
-        <Route path="profile" element={<Profile />} />
       </Route>
       {/* <Route
         path="/dashboard"
