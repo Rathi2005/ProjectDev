@@ -39,10 +39,7 @@ export default function UserOrdersPage() {
   const [selectedVM, setSelectedVM] = useState(null);
   const [selectedIso, setSelectedIso] = useState("");
   const [rebuildLoading, setRebuildLoading] = useState(false);
-
-  // Password visibility state
-  const [visiblePasswords, setVisiblePasswords] = useState({});
-  const [loadingPasswords, setLoadingPasswords] = useState({});
+  const [showPassword, setShowPassword] = useState({});
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -61,6 +58,13 @@ export default function UserOrdersPage() {
     if (expandedRow !== id) {
       fetchVmDetails(id);
     }
+  };
+
+  const togglePassword = (id) => {
+    setShowPassword((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   // Fetch VMs
@@ -121,35 +125,13 @@ export default function UserOrdersPage() {
           vmid: data.proxmoxVmid,
           os: data.os,
           ip: data.ipAddress,
+          password: data.password,
         },
       }));
     } catch {
       toast.error("Failed to fetch VM details");
     } finally {
       setLoadingDetails((prev) => ({ ...prev, [orderId]: false }));
-    }
-  };
-
-  // Fetch VM password
-  const fetchVmPassword = async (orderId) => {
-    if (visiblePasswords[orderId]) {
-      // Hide password
-      setVisiblePasswords((prev) => ({ ...prev, [orderId]: null }));
-      return;
-    }
-
-    try {
-      setLoadingPasswords((prev) => ({ ...prev, [orderId]: true }));
-      const data = await apiFetch(`/api/reseller/user/vms/${orderId}/password`);
-
-      setVisiblePasswords((prev) => ({
-        ...prev,
-        [orderId]: data.password || "No password set",
-      }));
-    } catch (err) {
-      toast.error(err.message || "Failed to fetch password");
-    } finally {
-      setLoadingPasswords((prev) => ({ ...prev, [orderId]: false }));
     }
   };
 
@@ -200,9 +182,12 @@ export default function UserOrdersPage() {
       });
 
       // update visible password if already shown
-      setVisiblePasswords((prev) => ({
+      setVmDetails((prev) => ({
         ...prev,
-        [order.id]: newPassword,
+        [order.id]: {
+          ...prev[order.id],
+          password: newPassword,
+        },
       }));
     } catch (err) {
       DarkSwal.fire({
@@ -660,23 +645,22 @@ export default function UserOrdersPage() {
                                     </div>
 
                                     <div className="bg-[#0e1525]/50 rounded-lg p-3 space-y-3">
-                                      {" "}
                                       <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
                                         <Key className="w-4 h-4" />
                                         <span>Password</span>
                                       </div>
+
                                       <div className="flex items-center justify-between">
-                                        {loadingPasswords[order.id] ? (
-                                          <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                                        ) : visiblePasswords[order.id] ? (
+                                        {showPassword[order.id] ? (
                                           <div className="flex items-center gap-2 flex-1">
                                             <code className="text-white font-mono text-sm break-all">
-                                              {visiblePasswords[order.id]}
+                                              {vmDetails[order.id]?.password}
                                             </code>
+
                                             <button
                                               onClick={() =>
                                                 copyToClipboard(
-                                                  visiblePasswords[order.id],
+                                                  vmDetails[order.id]?.password,
                                                 )
                                               }
                                               className="p-1 hover:bg-indigo-600/20 rounded"
@@ -689,19 +673,22 @@ export default function UserOrdersPage() {
                                             ••••••••
                                           </span>
                                         )}
+
                                         <button
                                           onClick={() =>
-                                            fetchVmPassword(order.id)
+                                            togglePassword(order.id)
                                           }
                                           className="p-1 hover:bg-indigo-600/20 rounded transition"
                                         >
-                                          {visiblePasswords[order.id] ? (
+                                          {showPassword[order.id] ? (
                                             <EyeOff className="w-4 h-4 text-indigo-300" />
                                           ) : (
                                             <Eye className="w-4 h-4 text-indigo-300" />
                                           )}
                                         </button>
                                       </div>
+
+                                      {/* CHANGE PASSWORD BUTTON */}
                                       <button
                                         onClick={() => updateVmPassword(order)}
                                         disabled={
@@ -709,9 +696,9 @@ export default function UserOrdersPage() {
                                           "running"
                                         }
                                         className="w-full flex items-center justify-center gap-2 px-3 py-2 
-  bg-indigo-600/20 hover:bg-indigo-600/40 
-  text-indigo-300 rounded-md text-xs transition
-  disabled:opacity-50 disabled:cursor-not-allowed"
+    bg-indigo-600/20 hover:bg-indigo-600/40 
+    text-indigo-300 rounded-md text-xs transition
+    disabled:opacity-50 disabled:cursor-not-allowed"
                                       >
                                         <Key className="w-4 h-4" />
                                         Change Password
@@ -740,7 +727,7 @@ export default function UserOrdersPage() {
                                   </div>
 
                                   <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                       <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                         <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
                                           <Calendar className="w-4 h-4" />
@@ -748,16 +735,6 @@ export default function UserOrdersPage() {
                                         </div>
                                         <p className="text-sm font-medium text-white">
                                           {formatDate(order.createdAt)}
-                                        </p>
-                                      </div>
-
-                                      <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                        <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
-                                          <Clock className="w-4 h-4" />
-                                          <span>Expires</span>
-                                        </div>
-                                        <p className="text-sm font-medium text-white">
-                                          {formatDate(order.expiresAt)}
                                         </p>
                                       </div>
                                     </div>
