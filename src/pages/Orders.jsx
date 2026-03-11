@@ -975,15 +975,22 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
   // Update openUpgradeModal to prepare payment config
   const openUpgradeModal = async (order) => {
     setUpgradeVm(order);
-    setUpgradeModalOpen(true); // OPEN FIRST
+    setUpgradeModalOpen(true);
 
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${BASE_URL}/api/pricing/upgrades/${order.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       const data = await res.json();
       setPricingOptions(data);
+
+      // ✅ Set default selections
+      setSelectedCpu(data.cpuOptions?.[0]?.tier?.id || null);
+      setSelectedRam(data.ramOptions?.[0]?.tier?.id || null);
+      setSelectedDisk(data.diskOptions?.[0]?.tier?.id || null);
+      setSelectedBandwidth(data.bandwidthOptions?.[0]?.tier?.id || null);
     } catch {
       toast.error("Failed to load pricing");
     }

@@ -351,7 +351,7 @@ export default function App() {
   const mainDomains = [
     "console.devai.in",
     "vps.hostheaven.in",
-    // "localhost",    
+    "localhost",    
     "127.0.0.1",
     "10.0.0.49",
     "project-dev-three.vercel.app"
