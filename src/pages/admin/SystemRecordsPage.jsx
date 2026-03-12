@@ -121,11 +121,11 @@ export default function SystemRecordsPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [pageType, page, size, searchTerm]);
+  }, [pageType, page, size, searchTerm, selectedFilter]);
 
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, pageType]);
+  }, [searchTerm, pageType, selectedFilter]);
 
   // Fetch ISOs when server is selected (Step 2)
   useEffect(() => {
@@ -348,9 +348,10 @@ export default function SystemRecordsPage() {
           const searchParam = searchTerm
             ? `search=${encodeURIComponent(searchTerm)}&`
             : "";
-          endpoint = `${BASE_URL}/api/admin/users/overview?search=${encodeURIComponent(
-            searchTerm,
-          )}&page=${page}&size=${size}&sortBy=id&sortDir=desc`;
+          const filterParam =
+            selectedFilter !== "all" ? `&filter=${selectedFilter}` : "";
+
+          endpoint = `${BASE_URL}/api/admin/users/overview?page=${page}&size=${size}&search=${encodeURIComponent(searchTerm)}${filterParam}&sortBy=id&sortDir=desc`;
           break;
         default:
           return;
@@ -372,46 +373,28 @@ export default function SystemRecordsPage() {
           const users = data.users || [];
 
           const adminToken = localStorage.getItem("adminToken");
-          processedData = await Promise.all(
-            users.map(async (user) => {
-              let isLocked = false;
+          processedData = users.map((user) => ({
+            id: user.userId || user.id,
+            firstName: user.firstName || "",
+            lastName: user.lastName || "",
+            email: user.email || "",
+            billingAddress: user.billingAddress || {},
+            vms: user.vms || [],
+            totalVMs: user.vms?.length || 0,
 
-              try {
-                const lockRes = await fetch(
-                  `${BASE_URL}/api/admin/users/${user.userId}/lock-status`,
-                  {
-                    headers: { Authorization: `Bearer ${adminToken}` },
-                  },
-                );
+            activeVMs:
+              user.vms?.filter(
+                (vm) => vm.status === "ACTIVE" || vm.liveState === "running",
+              ).length || 0,
 
-                if (lockRes.ok) {
-                  const lockData = await lockRes.json();
-                  isLocked = lockData.isLocked;
-                }
-              } catch (err) {
-                console.error("Lock status fetch failed", err);
-              }
+            totalSpent: calculateUserSpent(user.vms || []),
 
-              return {
-                id: user.userId || user.id,
-                firstName: user.firstName || "",
-                lastName: user.lastName || "",
-                email: user.email || "",
-                billingAddress: user.billingAddress || {},
-                vms: user.vms || [],
-                totalVMs: user.vms?.length || 0,
-                activeVMs:
-                  user.vms?.filter(
-                    (vm) =>
-                      vm.status === "ACTIVE" || vm.liveState === "running",
-                  ).length || 0,
-                totalSpent: calculateUserSpent(user.vms || []),
-                isLocked,
-                role: user.role,
-                reseller: user.reseller || false,
-              };
-            }),
-          );
+            // ✅ NEW (use API flag directly)
+            isLocked: user.locked,
+
+            role: user.role,
+            reseller: user.reseller || false,
+          }));
 
           setTotalItems(data.totalItems || 0);
           setTotalPages(data.totalPages || 0);
@@ -499,7 +482,7 @@ export default function SystemRecordsPage() {
   const calculateStats = (data) => {
     if (pageType === "users-overview") {
       setStats({
-        total: totalItems,
+        total: data.totalItems,
         active: data.filter((user) => user.activeVMs > 0).length,
         pending: 0,
         revenue: data.reduce((sum, user) => sum + user.totalSpent, 0),
@@ -1181,6 +1164,8 @@ export default function SystemRecordsPage() {
                   <option value="all">All Records</option>
                   <option value="recent">Recent (Last 7 days)</option>
                   <option value="old">Older than 7 days</option>
+                  <option value="LOCKED">Locked Users</option>
+                  <option value="RESELLER">Resellers</option>
                   {pageType === "deleted-vms" && (
                     <option value="manual">Manual Deletion</option>
                   )}
