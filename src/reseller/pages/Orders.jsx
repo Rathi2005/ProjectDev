@@ -134,6 +134,7 @@ export default function UserOrdersPage() {
           storage: data.storage,
           vmid: data.proxmoxVmid,
           os: data.os,
+          osType: data.osType,  
           ip: data.ipAddress,
           password: data.password,
         },
@@ -721,7 +722,7 @@ export default function UserOrdersPage() {
                                         <span>Username</span>
                                       </div>
                                       <p className="text-white">
-                                        {getDefaultUsername(order.os)}
+                                        {getDefaultUsername(vmDetails[order.id]?.osType)}
                                       </p>
                                     </div>
                                   </div>
