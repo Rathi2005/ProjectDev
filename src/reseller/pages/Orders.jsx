@@ -68,11 +68,11 @@ export default function UserOrdersPage() {
   };
 
   const getDefaultUsername = (osType) => {
-    if (!osType) return "root";
+    if (!osType) return "Loading...";
 
     const normalized = osType.toUpperCase();
 
-    if (normalized === "WINDOWS") return "Administrator";
+    if (normalized.includes("WINDOWS")) return "Administrator";
 
     return "root";
   };
@@ -134,7 +134,7 @@ export default function UserOrdersPage() {
           storage: data.storage,
           vmid: data.proxmoxVmid,
           os: data.os,
-          osType: data.osType,  
+          osType: data.osType,
           ip: data.ipAddress,
           password: data.password,
         },
@@ -722,7 +722,11 @@ export default function UserOrdersPage() {
                                         <span>Username</span>
                                       </div>
                                       <p className="text-white">
-                                        {getDefaultUsername(vmDetails[order.id]?.osType)}
+                                        {vmDetails[order.id]?.osType
+                                          ? getDefaultUsername(
+                                              vmDetails[order.id].osType,
+                                            )
+                                          : "Loading..."}
                                       </p>
                                     </div>
                                   </div>
