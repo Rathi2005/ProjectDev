@@ -284,6 +284,11 @@ export default function UserOrdersPage() {
   };
 
   const handleRebuild = async () => {
+    if (isRebuildBlockedTime()) {
+      toast.error("Rebuild is disabled between 9 AM and 11 AM IST");
+      return;
+    }
+
     if (!selectedIso) {
       toast.error("Please select an OS");
       return;
@@ -321,6 +326,18 @@ export default function UserOrdersPage() {
     } finally {
       setRebuildLoading(false);
     }
+  };
+
+  const isRebuildBlockedTime = () => {
+    const hourIST = Number(
+      new Intl.DateTimeFormat("en-IN", {
+        hour: "2-digit",
+        hour12: false,
+        timeZone: "Asia/Kolkata",
+      }).format(new Date()),
+    );
+
+    return hourIST >= 9 && hourIST < 11;
   };
 
   const formatDate = (date) => {
@@ -828,8 +845,28 @@ export default function UserOrdersPage() {
                                 </button>
 
                                 <button
-                                  onClick={() => openRebuildModal(order)}
-                                  className="flex-1 sm:flex-none px-4 py-2 border border-yellow-500/30 hover:bg-yellow-500/10 text-yellow-300 rounded-lg font-medium text-sm transition"
+                                  onClick={() => {
+                                    if (isRebuildBlockedTime()) {
+                                      DarkSwal.fire({
+                                        icon: "warning",
+                                        title: "Maintenance Window",
+                                        text: "Rebuild is disabled between 9 AM and 11 AM (IST)",
+                                      });
+                                      return;
+                                    }
+
+                                    openRebuildModal(order);
+                                  }}
+                                  disabled={
+                                    powerLoading[order.id] ||
+                                    isRebuildBlockedTime()
+                                  }
+                                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg font-medium text-sm transition
+  ${
+    isRebuildBlockedTime()
+      ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+      : "border border-yellow-500/30 hover:bg-yellow-500/10 text-yellow-300"
+  }`}
                                 >
                                   Rebuild
                                 </button>

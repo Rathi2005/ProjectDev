@@ -43,6 +43,7 @@ import ResellerApp from "./reseller/AppReseller";
 import ResellerProtectedRoute from "./pages/subusers/ResellerProtectedRoute";
 import SubUsers from "./pages/subusers/SubUsers";
 import ResellerSettings from "./pages/subusers/ResellerSettings";
+
 // ==========================================
 // 1. ALL YOUR EXISTING MAIN ROUTES
 // ==========================================
@@ -351,6 +352,7 @@ export default function App() {
   const mainDomains = [
     "console.devai.in",
     "vps.hostheaven.in",
+    "console.getwebup.in",
     // "localhost",    
     "127.0.0.1",
     "10.0.0.49",
