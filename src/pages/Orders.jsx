@@ -40,6 +40,7 @@ import {
   EyeOff,
   Lock,
   ShieldOff,
+  User
 } from "lucide-react";
 
 export default function UserOrdersPage() {
@@ -85,6 +86,19 @@ export default function UserOrdersPage() {
   const [priceLoading, setPriceLoading] = useState(false);
 
   const [copiedIp, setCopiedIp] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -171,23 +185,30 @@ export default function UserOrdersPage() {
       setLoading(false);
       return;
     }
+
     async function fetchUserOrders() {
       try {
+        setLoading(true);
+
         const token = localStorage.getItem("token");
 
-        if (!token) {
-          toast.error("No authentication token found");
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch(`${BASE_URL}/api/users/orders/my-orders`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+        const params = new URLSearchParams({
+          page: currentPage - 1,
+          size: itemsPerPage,
+          search: debouncedSearch || "",
+          sortBy: "createdAt",
+          sortDir: "desc",
         });
+
+        const res = await fetch(
+          `${BASE_URL}/api/users/orders/my-orders?${params}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "X-Reseller-Domain": window.location.hostname,
+            },
+          },
+        );
 
         if (res.status === 401) {
           localStorage.removeItem("token");
@@ -196,41 +217,43 @@ export default function UserOrdersPage() {
         }
 
         const data = await res.json();
-        // Transform the data to match our expected structure
-        const transformedOrders = Array.isArray(data)
-          ? data.map((item) => ({
-              id: item.vmId,
-              orderId: item.orderId,
-              vmName: item.vmName,
-              status: item.status,
-              liveState: item.liveState,
-              ipAddress: item.ipAddress,
-              createdAt: item.billing?.boughtAt,
-              planType: item.billing?.planType,
-              priceTotal: item.billing?.monthlyPlan,
-              cores: item.specs?.cores,
-              ramMb: item.specs?.ramMb,
-              diskGb: item.specs?.diskGb,
-              osType: item.specs?.osType,
-              expiresAt: item.billing?.expiresAt,
-              durationMonths: item.billing?.durationMonths,
-              serverLocation: item.serverLocation,
-              isProtected: item.isProtected,
-              originalData: item,
-              isoName: item.specs?.isoName,
-            }))
-          : [];
+
+        // NEW PAGINATION DATA
+        setTotalPages(data.totalPages);
+        setTotalItems(data.totalItems);
+
+        const transformedOrders = (data.orders || []).map((item) => ({
+          id: item.vmId,
+          orderId: item.orderId,
+          vmName: item.vmName,
+          status: item.status,
+          liveState: item.liveState,
+          ipAddress: item.ipAddress,
+          createdAt: item.billing?.boughtAt,
+          planType: item.billing?.planType,
+          priceTotal: item.billing?.monthlyPlan,
+          cores: item.specs?.cores,
+          ramMb: item.specs?.ramMb,
+          diskGb: item.specs?.diskGb,
+          osType: item.specs?.osType,
+          expiresAt: item.billing?.expiresAt,
+          durationMonths: item.billing?.durationMonths,
+          serverLocation: item.serverLocation,
+          isProtected: item.isProtected,
+          originalData: item,
+          isoName: item.specs?.isoName,
+        }));
 
         setOrders(transformedOrders);
       } catch (err) {
-        toast.error("Error fetching user orders");
+        toast.error("Error fetching orders");
       } finally {
         setLoading(false);
       }
     }
 
     fetchUserOrders();
-  }, [BASE_URL, statusLoading, accountStatus]);
+  }, [BASE_URL, statusLoading, accountStatus, currentPage, debouncedSearch]);
 
   // Filter orders based on selected status
   const filteredOrders = useMemo(() => {
@@ -516,14 +539,7 @@ export default function UserOrdersPage() {
   };
 
   // Derived values for pagination
-  const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-
-  const currentOrders = sortedItems.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
+  const currentOrders = sortedItems;
 
   useEffect(() => {
     if (!expandedRow) return;
@@ -1141,6 +1157,20 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
+                {/* Search Box - MOVED HERE */}
+                <div className="flex items-center gap-2 bg-[#151c2f] border border-indigo-900/50 rounded-lg px-3 py-2">
+                  <input
+                    type="text"
+                    placeholder="Search by name, IP, VMID..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="bg-transparent text-sm text-white outline-none w-48 placeholder-gray-500"
+                  />
+                </div>
+
                 {/* Status Filter */}
                 <div className="flex items-center gap-2 bg-[#151c2f] border border-indigo-900/50 rounded-lg px-3 py-2">
                   <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
@@ -1192,8 +1222,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                       Virtual Machines
                     </h2>
                     <p className="text-xs sm:text-sm text-gray-400 mt-1">
-                      {sortedItems.length} server
-                      {sortedItems.length !== 1 ? "s" : ""} •
+                      {totalItems} servers
+                      {totalItems} server{totalItems !== 1 ? "s" : ""}
                       {
                         filteredOrders.filter(
                           (o) => o.status?.toUpperCase() === "ACTIVE",
@@ -1209,9 +1239,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                     </p>
                   </div>
                   <div className="text-xs text-gray-400">
-                    Showing {Math.min(startIndex + 1, sortedItems.length)}-
-                    {Math.min(startIndex + itemsPerPage, sortedItems.length)}
-                    of {sortedItems.length}
+                    Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                    {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
+                    {totalItems} servers
                   </div>
                 </div>
               </div>
@@ -1604,6 +1634,30 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                     "Unknown"}
                                                 </span>
                                               </div>
+
+                                              {order.originalData
+                                                ?.assignedTo && (
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                    <User className="w-4 h-4 text-indigo-400" />
+                                                    <span>Assigned To</span>
+                                                  </div>
+
+                                                  <div className="text-sm text-white font-medium">
+                                                    {
+                                                      order.originalData
+                                                        .assignedTo.name
+                                                    }
+                                                  </div>
+
+                                                  <div className="text-xs text-gray-400">
+                                                    {
+                                                      order.originalData
+                                                        .assignedTo.email
+                                                    }
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                         </div>
@@ -1966,12 +2020,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                     <div className="p-4 sm:p-6 border-t border-indigo-900/30">
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                         <p className="text-sm text-gray-400">
-                          Showing {startIndex + 1} to{" "}
-                          {Math.min(
-                            startIndex + itemsPerPage,
-                            sortedItems.length,
-                          )}{" "}
-                          of {sortedItems.length} servers
+                          Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                          {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
+                          {totalItems} servers
                         </p>
 
                         <div className="flex items-center gap-2">
