@@ -40,7 +40,7 @@ import {
   EyeOff,
   Lock,
   ShieldOff,
-  User
+  User,
 } from "lucide-react";
 
 export default function UserOrdersPage() {
@@ -92,13 +92,10 @@ export default function UserOrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 400);
-
-    return () => clearTimeout(t);
-  }, [searchTerm]);
+  const handleSearch = () => {
+    setDebouncedSearch(searchTerm);
+    setCurrentPage(1);
+  };
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -191,11 +188,11 @@ export default function UserOrdersPage() {
         setLoading(true);
 
         const token = localStorage.getItem("token");
-
+        console.log("Search sent:", debouncedSearch);
         const params = new URLSearchParams({
           page: currentPage - 1,
           size: itemsPerPage,
-          search: debouncedSearch || "",
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
           sortBy: "createdAt",
           sortDir: "desc",
         });
@@ -1158,17 +1155,24 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
               <div className="flex flex-col sm:flex-row gap-3">
                 {/* Search Box - MOVED HERE */}
-                <div className="flex items-center gap-2 bg-[#151c2f] border border-indigo-900/50 rounded-lg px-3 py-2">
+                <div className="flex items-center bg-[#151c2f] border border-indigo-900/50 rounded-lg overflow-hidden">
                   <input
                     type="text"
                     placeholder="Search by name, IP, VMID..."
                     value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setCurrentPage(1);
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSearch();
                     }}
-                    className="bg-transparent text-sm text-white outline-none w-48 placeholder-gray-500"
+                    className="bg-transparent text-sm text-white outline-none px-3 py-2 w-48 placeholder-gray-500"
                   />
+
+                  <button
+                    onClick={handleSearch}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-1"
+                  >
+                    Search
+                  </button>
                 </div>
 
                 {/* Status Filter */}
