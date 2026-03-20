@@ -971,6 +971,12 @@ export default function UserOrdersPage() {
                             >
                               Reboot
                             </button>
+                            <button
+                              onClick={() => openRebuildModal(order)}
+                              className="px-3 py-1 bg-yellow-600 rounded text-xs"
+                            >
+                              Rebuild
+                            </button>
                           </div>
                         </div>
                       </div>
