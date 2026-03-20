@@ -38,6 +38,12 @@ export default function ManageResourcesPage({
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [progress, setProgress] = useState(0);
+  const [totalIps, setTotalIps] = useState(0);
+  const [processedIps, setProcessedIps] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [failedIps, setFailedIps] = useState([]);
+
   const handleBack = () => {
     if (endpoint === "/ips") {
       // IPS → go to zones list
@@ -54,7 +60,7 @@ export default function ManageResourcesPage({
     } else {
       navigate(-1);
     }
-  };  
+  };
 
   // 🌐 IP-RELATED CONSTANTS
   const ipSingleFields = [
@@ -219,6 +225,28 @@ export default function ManageResourcesPage({
     return numberToIp(mask);
   };
 
+  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+  const safeFetch = async (url, options, retries = 3) => {
+    try {
+      const res = await fetch(url, options);
+
+      if (res.status === 503) {
+        throw new Error("Server busy");
+      }
+
+      if (!res.ok) throw new Error(await res.text());
+
+      return res;
+    } catch (err) {
+      if (retries > 0) {
+        await delay(1000); // longer wait for server recovery
+        return safeFetch(url, options, retries - 1);
+      }
+      throw err;
+    }
+  };
+
   // 🚀 SUBMIT HANDLER FOR ALL RESOURCE TYPES
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -311,53 +339,68 @@ export default function ManageResourcesPage({
 
             const cidr = row.cidr.startsWith("/") ? row.cidr : `/${row.cidr}`;
             const subnetMask = cidrToSubnet(cidr);
-            const totalIps = end - start + 1;
+            const total = end - start + 1;
 
-            if (totalIps > 256) {
-              const confirm = await Swal.fire({
-                title: "Large IP Range",
-                text: `You are about to create ${totalIps} IPs. This may take a while. Continue?`,
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Continue",
-                cancelButtonText: "Cancel",
-                background: "#1e2640",
-                color: "#fff",
-              });
+            setTotalIps(total);
+            setProcessedIps(0);
+            setProgress(0);
+            setFailedIps([]);
+            setIsProcessing(true);
 
-              if (!confirm.isConfirmed) continue;
-            }
+            const batchSize = 15;
+            let processed = 0;
+            const failed = [];
 
-            // Create IPs in batches
-            const batchSize = 50;
             for (let i = start; i <= end; i += batchSize) {
               const batchEnd = Math.min(i + batchSize - 1, end);
-              const batchPromises = [];
+              const promises = [];
 
               for (let j = i; j <= batchEnd; j++) {
                 const ip = numberToIp(j);
+
                 const payload = {
-                  ip: ip,
-                  cidr: cidr,
-                  subnetMask: subnetMask,
+                  ip,
+                  cidr,
+                  subnetMask,
                   gateway: row.gateway.trim(),
                   mac: null,
                   inUse: false,
                 };
 
-                batchPromises.push(
-                  fetch(`${BASE_URL}/api/admin/zones/${id}/ips`, {
+                const request = (async () => {
+                  await delay(Math.random() * 300); // spread load
+                  return safeFetch(`${BASE_URL}/api/admin/zones/${id}/ips`, {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
                       Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify(payload),
-                  }),
-                );
+                  });
+                })().catch(() => {
+                  failed.push(ip);
+                });
+
+                promises.push(request);
               }
 
-              await Promise.all(batchPromises);
+              await Promise.all(promises);
+
+              processed += batchEnd - i + 1;
+              setProcessedIps(processed);
+              setProgress(Math.round((processed / total) * 100));
+
+              // small delay between batches
+              await delay(800);
+            }
+
+            setFailedIps(failed);
+            setIsProcessing(false);
+
+            if (failed.length > 0) {
+              toast.error(`${failed.length} IPs failed`);
+            } else {
+              toast.success(`All ${total} IPs created successfully`);
             }
           }
         }
@@ -394,7 +437,7 @@ export default function ManageResourcesPage({
       setRows([getEmptyRow()]);
       toast.success(`${title} added successfully!`);
     } catch (err) {
-      toast.error("Error adding item:", err);
+      setIsProcessing(false);
       toast.error(err.message || `Failed to add ${title}`);
     } finally {
       setSaving(false);
@@ -544,6 +587,28 @@ export default function ManageResourcesPage({
   // Get fields for display
   const currentFields = resolvedFields;
 
+  const getPagination = () => {
+    const pages = [];
+    const maxVisible = 5;
+
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, currentPage + 2);
+
+    if (currentPage <= 3) {
+      end = Math.min(5, totalPages);
+    }
+
+    if (currentPage > totalPages - 3) {
+      start = Math.max(1, totalPages - 4);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  };
+
   return (
     <div className="bg-[#0e1525] text-gray-100 min-h-screen flex flex-col">
       <style>{`
@@ -579,6 +644,28 @@ export default function ManageResourcesPage({
             {title} for {endpoint === "/ips" ? "Zone" : "Server"} #{id}
           </h1>
         </div>
+
+        {isProcessing && (
+          <div className="bg-[#0e1525] border border-indigo-900/40 rounded-xl p-4 mb-4">
+            <div className="flex justify-between text-sm text-gray-300 mb-2">
+              <span>
+                Creating IPs... ({processedIps}/{totalIps})
+              </span>{" "}
+              <span>{progress}%</span>
+            </div>
+
+            <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-indigo-500 h-2 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+
+            <div className="mt-2 text-xs text-gray-400">
+              {processedIps} / {totalIps} processed
+            </div>
+          </div>
+        )}
 
         {/* ADD FORM SECTION */}
         {showAddForm && (
@@ -782,7 +869,7 @@ export default function ManageResourcesPage({
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || isProcessing}
                   className={`flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-xl text-white shadow-md transition-all duration-300 w-full sm:w-auto ${
                     saving
                       ? "bg-indigo-700 cursor-not-allowed"
@@ -1085,17 +1172,17 @@ export default function ManageResourcesPage({
                       Previous
                     </button>
 
-                    {Array.from({ length: totalPages }, (_, i) => (
+                    {getPagination().map((page) => (
                       <button
-                        key={i}
-                        onClick={() => setCurrentPage(i + 1)}
-                        className={`px-2 py-1 md:px-3 md:py-1 rounded-md border text-xs md:text-sm ${
-                          currentPage === i + 1
-                            ? "bg-indigo-600 border-indigo-500 text-white"
-                            : "bg-[#1a2035] border-indigo-800 text-gray-300 hover:bg-indigo-700/40"
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 rounded-md ${
+                          currentPage === page
+                            ? "bg-indigo-600 text-white"
+                            : "bg-[#1a2035] text-gray-300"
                         }`}
                       >
-                        {i + 1}
+                        {page}
                       </button>
                     ))}
 
