@@ -9,6 +9,9 @@ import TypeSelector from "../components/user/server/TypeSelector";
 import ResourcesSelector from "../components/user/server/ResourcesSelector";
 import SummarySidebar from "../components/user/server/SummarySidebar";
 import Footer from "../components/user/Footer";
+import { usePayment } from "../hooks/usePayment";
+import PaymentMethodSelector from "../components/payment/PaymentMethodSelector";
+import PaytmQRModal from "../components/payment/PaytmQRModal";
 import { Menu, X, ListChecks, User, Settings } from "lucide-react";
 
 export default function Dashboard() {
@@ -25,6 +28,9 @@ export default function Dashboard() {
   const [isMobileSummaryOpen, setIsMobileSummaryOpen] = useState(false);
   const [isMobileUserMenuOpen, setIsMobileUserMenuOpen] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState(false);
+
+  const { startPayment, qrData, setQrData, stopPolling } = usePayment();
+  const [gateway, setGateway] = useState("CASHFREE");
 
   const mainContentRef = useRef(null);
 
@@ -517,6 +523,10 @@ export default function Dashboard() {
             <Footer />
           </div>
 
+          {qrData && (
+            <PaytmQRModal qrData={qrData} onClose={() => setQrData(null)} stopPolling={stopPolling} />
+          )}
+
           {/* 📊 Summary Sidebar - Responsive Implementation */}
 
           {/* Desktop Version (LG and above) - Only shows when showSidebar is true */}
@@ -541,8 +551,12 @@ export default function Dashboard() {
                 onMobileCreate={() => {
                   alert("Server creation would proceed here!");
                 }}
-                onPaymentStart={handlePayment}
+                onPaymentStart={(config, selectedGateway) =>
+                  startPayment(config, selectedGateway, handlePayment)
+                }
                 isMobile={false}
+                gateway={gateway}
+                setGateway={setGateway}
               />
             </aside>
           )}
@@ -592,7 +606,11 @@ export default function Dashboard() {
                       selectedResources={selectedResources}
                       zoneId={zoneId}
                       isMobile={true}
-                      onPaymentStart={handlePayment}
+                      onPaymentStart={(config, selectedGateway) =>
+                        startPayment(config, selectedGateway, handlePayment)
+                      }
+                      gateway={gateway}
+                      setGateway={setGateway}
                     />
                   </div>
                 </div>
