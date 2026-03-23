@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Header from "../components/user/Header";
 import PaymentFlow from "../components/payment/PaymentFlow";
 import CouponAndWallet from "../components/payment/CouponAndWallet";
 import UpgradeModal from "../components/payment/UpgradeModal";
 import PaymentModal from "../components/payment/PaymentModal";
+import PaytmQRModal from "../components/payment/PaytmQRModal";
+import { verifyPayment } from "../services/PaymentService";
 import SortIcon from "../components/SortIcon";
 import Swal from "sweetalert2";
 import toast, { Toaster } from "react-hot-toast";
@@ -92,6 +94,9 @@ export default function UserOrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
 
+  const [qrData, setQrData] = useState(null);
+  const pollRef = useRef(null);
+
   const handleSearch = () => {
     setDebouncedSearch(searchTerm);
     setCurrentPage(1);
@@ -174,6 +179,12 @@ export default function UserOrdersPage() {
       window.location.href = `ssh://${username}@${order.ipAddress}`;
     }
   };
+
+  useEffect(() => {
+    return () => {
+      stopPolling(); 
+    };
+  }, []);
 
   // Fetch User Orders from API
   useEffect(() => {
@@ -459,12 +470,12 @@ export default function UserOrdersPage() {
     setCurrentPage(1);
   }, [sortConfig]);
 
-  const createRetryPaymentSession = async (order) => {
+  const createRetryPaymentSession = async (order, gateway, useWallet) => {
     const token = localStorage.getItem("token");
     const paymentOrderId = order.orderId ?? order.originalData?.orderId;
 
     const res = await fetch(
-      `${BASE_URL}/api/user/payments/${paymentOrderId}/retry`,
+      `${BASE_URL}/api/user/payments/${paymentOrderId}/retry?gateway=${gateway}&useWalletBalance=${useWallet}`,
       {
         method: "POST",
         headers: {
@@ -473,18 +484,13 @@ export default function UserOrdersPage() {
       },
     );
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Unable to retry payment");
-    }
-
     const data = await res.json();
 
-    if (!data.paymentSessionId) {
-      throw new Error("Payment session not received");
+    if (!res.ok) {
+      throw new Error(data.error || "Unable to retry payment");
     }
 
-    return data.paymentSessionId; // ✅ IMPORTANT
+    return data; // ✅ FULL OBJECT
   };
 
   const calculateRenewalPrice = async (couponCode = null) => {
@@ -1085,6 +1091,41 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       }, 150);
 
       return null;
+    }
+  };
+
+  const startPolling = (paymentId) => {
+    if (pollRef.current) return;
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    pollRef.current = setInterval(async () => {
+      try {
+        attempts++;
+
+        const res = await verifyPayment(paymentId, "PAYTM");
+
+        if (res.status === "PAID_AND_PROVISIONING") {
+          stopPolling(); // ✅ use stop here
+          toast.success("Payment successful");
+          setQrData(null);
+          window.location.reload();
+        }
+
+        if (attempts >= maxAttempts) {
+          stopPolling(); // ✅ stop after timeout
+          toast("Payment not confirmed yet. You can retry.");
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, 3000);
+  };
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
     }
   };
 
@@ -2179,15 +2220,31 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
             <div className="p-6">
               <PaymentFlow
-                onCreateSession={() => createRetryPaymentSession(retryOrder)}
+                onCreateSession={({ gateway, useWallet }) =>
+                  createRetryPaymentSession(retryOrder, gateway, useWallet)
+                }
                 onClose={() => {
                   setShowRetryPayment(false);
-                  window.location.reload(); // optional
+                  window.location.reload();
+                }}
+                onShowQR={(data) => {
+                  setQrData(data);
+
+                  startPolling(data.paymentId);
                 }}
               />
             </div>
           </div>
         </div>
+      )}
+      {qrData && (
+        <PaytmQRModal
+          qrData={qrData}
+          onClose={() => {
+            stopPolling();
+            setQrData(null);
+          }}
+        />
       )}
     </div>
   );
