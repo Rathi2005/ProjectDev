@@ -524,7 +524,14 @@ export default function Dashboard() {
           </div>
 
           {qrData && (
-            <PaytmQRModal qrData={qrData} onClose={() => setQrData(null)} stopPolling={stopPolling} />
+            <PaytmQRModal
+              qrData={qrData}
+              onClose={() => {
+                stopPolling();
+                setQrData(null);
+              }}
+              stopPolling={stopPolling}
+            />
           )}
 
           {/* 📊 Summary Sidebar - Responsive Implementation */}

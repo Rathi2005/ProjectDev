@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Header from "./../components/user/Header";
 import Footer from "./../components/user/Footer";
-import PaymentFlow from "./../components/payment/PaymentFlow";
+import toast from "react-hot-toast";
+// import PaymentFlow from "./../components/payment/PaymentFlow";
+
+import { walletTopUp, verifyPayment } from "../services/PaymentService";
+import PaytmQRModal from "../components/payment/PaytmQRModal";
+import { useRef } from "react";
 
 import {
   CreditCard,
@@ -41,6 +46,11 @@ export default function WalletPage() {
   const recentTransactions = transactions.slice(0, 10);
   const [showAllTxModal, setShowAllTxModal] = useState(false);
 
+  const [gateway, setGateway] = useState("CASHFREE");
+  const [qrData, setQrData] = useState(null);
+  const pollRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
   // Fetch wallet data from API
@@ -75,46 +85,99 @@ export default function WalletPage() {
     }
   };
 
-  const createWalletTopUpSession = async () => {
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const startPolling = (paymentId) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = null;
+
+    let attempts = 0;
+    const maxAttempts = 40;
+
+    pollRef.current = setInterval(async () => {
+      try {
+        attempts++;
+        const res = await verifyPayment(paymentId, "PAYTM");
+
+        if (
+          res.status === "PAID_AND_PROVISIONING" ||
+          res.status === "WALLET_TOPPED_UP"
+        ) {
+          stopPolling();
+          setQrData(null);
+          toast.success("Wallet topped up successfully!");
+          fetchWalletData();
+          fetchWalletLogs();
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          stopPolling();
+          setQrData(null);
+          toast("Payment not confirmed yet. You can retry.");
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+        stopPolling();
+      }
+    }, 3000);
+  };
+
+  const handleAddFunds = async () => {
     if (!amount || Number(amount) <= 0) {
-      throw new Error("Invalid amount");
+      toast.error("Please enter a valid amount");
+      return;
     }
 
-    const res = await fetch(`${BASE_URL}/api/wallet/top-up`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({
-        amount: Number(amount),
-      }),
-    });
+    try {
+      setLoading(true); // add loading state if not present: const [loading, setLoading] = useState(false);
+      const data = await walletTopUp(amount, gateway);
 
-    if (!res.ok) {
-      throw new Error("Unable to start payment");
+      // Case 1: Paytm QR
+      if (data.paymentUrl === "PAYTM_QR_FLOW") {
+        setShowAddFunds(false);
+        setQrData({
+          upiString: data.upiString,
+          paymentId: data.paymentId,
+          amount: Number(amount),
+        });
+        startPolling(data.paymentId);
+        return;
+      }
+
+      // Case 2: Cashfree
+      if (data.paymentSessionId) {
+        const cashfree = window.Cashfree({
+          mode:
+            import.meta.env.VITE_CASHFREE_MODE === "production"
+              ? "production"
+              : "sandbox",
+        });
+        cashfree.checkout({
+          paymentSessionId: data.paymentSessionId,
+          redirectTarget: "_self",
+          onClose: handlePaymentClose,
+        });
+        setShowAddFunds(false);
+      }
+
+      // Case 3: Wallet fully covered (shouldn't happen for top-up but handle anyway)
+      if (data.status === "COMPLETED") {
+        toast.success("Wallet topped up successfully!");
+        fetchWalletData();
+        fetchWalletLogs();
+        setShowAddFunds(false);
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to initiate payment");
+    } finally {
+      setLoading(false);
     }
-
-    const data = await res.json();
-
-    // Store for tracking (optional)
-    setPendingOrderId(data.orderId);
-
-    // Optimistically add pending transaction
-    setTransactions((prev) => [
-      {
-        id: data.paymentId,
-        type: "deposit",
-        amount: Number(amount),
-        description: "Wallet Top-up",
-        date: new Date().toISOString().split("T")[0],
-        status: "pending",
-        method: "Cashfree",
-      },
-      ...prev,
-    ]);
-
-    return data.paymentSessionId;
   };
 
   const handlePaymentClose = () => {
@@ -439,21 +502,54 @@ export default function WalletPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-3 mt-8">
-                    <PaymentFlow
-                      onCreateSession={createWalletTopUpSession}
-                      onClose={handlePaymentClose}
-                    />
-                    <button
-                      onClick={() => setShowAddFunds(false)}
-                      className="flex-1 px-4 py-3 rounded-xl border border-gray-700 hover:bg-gray-800 transition-colors"
-                    >
-                      Cancel
-                    </button>
+                  <div className="mt-6 space-y-4">
+                    {/* Gateway Selector */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {["CASHFREE", "PAYTM"].map((gw) => (
+                        <button
+                          key={gw}
+                          onClick={() => setGateway(gw)}
+                          className={`py-2 rounded-xl border text-sm font-medium transition-all ${
+                            gateway === gw
+                              ? "border-indigo-500 bg-indigo-900/30 text-indigo-300"
+                              : "border-gray-700 text-gray-400 hover:bg-gray-800"
+                          }`}
+                        >
+                          {gw === "CASHFREE" ? "💳 Cashfree" : "📱 Paytm / UPI"}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleAddFunds}
+                        disabled={loading}
+                        className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold transition-colors"
+                      >
+                        {loading ? "Processing..." : `Pay ₹${amount || "0"}`}
+                      </button>
+                      <button
+                        onClick={() => setShowAddFunds(false)}
+                        className="flex-1 px-4 py-3 rounded-xl border border-gray-700 hover:bg-gray-800 transition-colors text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+          )}
+
+          {qrData && (
+            <PaytmQRModal
+              qrData={qrData}
+              onClose={() => {
+                stopPolling();
+                setQrData(null);
+              }}
+              stopPolling={stopPolling}
+            />
           )}
 
           {showAllTxModal && (
