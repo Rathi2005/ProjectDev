@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
-const GATEWAYS = ["CASHFREE", "RAZORPAY", "STRIPE"];
+const GATEWAYS = ["CASHFREE", "PAYTM", "RAZORPAY", "STRIPE"];
 
 export default function AdminPaymentGatewaySettings() {
   const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -46,7 +46,7 @@ export default function AdminPaymentGatewaySettings() {
   useEffect(() => {
     if (Object.keys(initialForm).length > 0) {
       const changed = Object.keys(form).some(
-        (key) => form[key] !== initialForm[key]
+        (key) => form[key] !== initialForm[key],
       );
       setUnsavedChanges(changed);
     }
@@ -64,7 +64,7 @@ export default function AdminPaymentGatewaySettings() {
         `${BASE_URL}/api/admin/settings/gateway/${activeGateway}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Failed to fetch gateway");
@@ -117,7 +117,7 @@ export default function AdminPaymentGatewaySettings() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Update failed");
@@ -197,7 +197,9 @@ export default function AdminPaymentGatewaySettings() {
             {/* Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
-                label="Client ID"
+                label={
+                  activeGateway === "PAYTM" ? "Merchant ID (MID)" : "Client ID"
+                }
                 value={form.clientId}
                 onChange={(v) => setForm({ ...form, clientId: v })}
                 icon={Key}
@@ -206,7 +208,7 @@ export default function AdminPaymentGatewaySettings() {
               {/* Secret */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">
-                  Client Secret
+                  {activeGateway === "PAYTM" ? "Merchant Key" : "Client Secret"}
                 </label>
                 <div className="relative">
                   <input
@@ -227,21 +229,21 @@ export default function AdminPaymentGatewaySettings() {
                 </div>
               </div>
 
-              <Input
-                label="API Version"
-                value={form.apiVersion}
-                onChange={(v) => setForm({ ...form, apiVersion: v })}
-                icon={Settings}
-              />
+              {activeGateway !== "PAYTM" && (
+                <Input
+                  label="API Version"
+                  value={form.apiVersion}
+                  onChange={(v) => setForm({ ...form, apiVersion: v })}
+                  icon={Settings}
+                />
+              )}
             </div>
 
             {/* Mode + Active */}
             <div className="flex gap-6 items-center">
               <select
                 value={form.mode}
-                onChange={(e) =>
-                  setForm({ ...form, mode: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, mode: e.target.value })}
                 className="bg-[#1a2335] border border-indigo-900/40 rounded-xl px-4 py-3 text-gray-200"
               >
                 <option value="SANDBOX">SANDBOX</option>
@@ -249,9 +251,7 @@ export default function AdminPaymentGatewaySettings() {
               </select>
 
               <button
-                onClick={() =>
-                  setForm({ ...form, active: !form.active })
-                }
+                onClick={() => setForm({ ...form, active: !form.active })}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
                   form.active
                     ? "bg-green-600/20 text-green-400"
