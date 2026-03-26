@@ -1,6 +1,7 @@
-import React, { memo } from "react";
+import React, { memo, useState, useCallback } from "react";
 import { IndianRupee } from "lucide-react";
 import CouponAndWallet from "./CouponAndWallet";
+import PaymentMethodSelector from "./PaymentMethodSelector";
 
 const PaymentModal = memo(function PaymentModal({
   open,
@@ -10,6 +11,20 @@ const PaymentModal = memo(function PaymentModal({
   onCreateSession,
   onCouponApply,
 }) {
+  // ✅ ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURN
+  const [gateway, setGateway] = useState("CASHFREE");
+
+  const handleCreateSessionWithGateway = useCallback(
+    (data) => {
+      return onCreateSession({
+        ...data,
+        gateway,
+      });
+    },
+    [onCreateSession, gateway],
+  );
+
+  // ✅ Early return AFTER all hooks
   if (!open || !priceBreakdown) return null;
 
   return (
@@ -57,12 +72,12 @@ const PaymentModal = memo(function PaymentModal({
         <div className="p-6">
           {/* Payment Summary */}
           {priceBreakdown && (
-            <div className="mt-3 space-y-1 text-xs text-gray-400 mb-4">
+            <div className="mt-3 space-y-2 text-sm text-gray-400 mb-4">
+              {" "}
               <div className="flex justify-between">
                 <span>Original Amount</span>
                 <span>₹{priceBreakdown.originalAmount.toFixed(2)}</span>
               </div>
-
               {priceBreakdown.discountAmount > 0 && (
                 <div className="flex justify-between text-green-400">
                   <span>
@@ -73,7 +88,6 @@ const PaymentModal = memo(function PaymentModal({
                   <span>- ₹{priceBreakdown.discountAmount.toFixed(2)}</span>
                 </div>
               )}
-
               {priceBreakdown.unusedCreditAdjusted > 0 && (
                 <div className="flex justify-between text-indigo-300">
                   <span>Wallet Credit</span>
@@ -82,12 +96,11 @@ const PaymentModal = memo(function PaymentModal({
                   </span>
                 </div>
               )}
-
-              <div className="flex justify-between font-semibold text-white border-t border-indigo-900/30 pt-2">
+              <div className="flex justify-between font-bold text-base text-white border-t border-indigo-900/30 pt-3">
+                {" "}
                 <span>Final Payable</span>
                 <span>₹{priceBreakdown.payableAmount.toFixed(2)}</span>
               </div>
-
               {priceBreakdown.couponStatus === "APPLIED" && (
                 <p className="text-green-400 text-xs mt-1">
                   Coupon applied successfully
@@ -97,14 +110,15 @@ const PaymentModal = memo(function PaymentModal({
           )}
 
           {/* CouponAndWallet Component */}
-          <div className="p-6">
-            <CouponAndWallet
-              totalAmount={priceBreakdown.originalAmount}
-              disabled={priceLoading}
-              onCouponApply={onCouponApply}
-              onCreateSession={onCreateSession}
-            />
-          </div>
+          <CouponAndWallet
+            totalAmount={priceBreakdown.originalAmount}
+            disabled={priceLoading}
+            onCouponApply={onCouponApply}
+            gateway={gateway}
+            setGateway={setGateway}
+            onCreateSession={handleCreateSessionWithGateway}
+            onClose={onClose}
+          />
         </div>
       </div>
     </div>
