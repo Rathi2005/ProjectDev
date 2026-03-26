@@ -40,8 +40,7 @@ export const usePayment = () => {
         const res = await verifyPayment(paymentId, gateway);
 
         if (
-          res.status === "PAID_AND_PROVISIONING" ||
-          res.status === "RENEWAL_SUCCESS"
+          res.status !== "PENDING"
         ) {
           stopPolling();
           setQrData(null);
@@ -49,7 +48,7 @@ export const usePayment = () => {
           navigate("/orders");
           return;
         }
-
+        
         if (attempts >= maxAttempts) {
           stopPolling();
           setQrData(null);

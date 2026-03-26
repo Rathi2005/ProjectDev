@@ -340,7 +340,7 @@ export default function UserOrdersPage() {
         try {
           attempts++;
           const res = await verifyPayment(paymentId, "PAYTM");
-          if (res.status === "PAID_AND_PROVISIONING") {
+          if (res.status !== "PENDING") {
             stopPolling();
             toast.success("Payment successful");
             setQrData(null);

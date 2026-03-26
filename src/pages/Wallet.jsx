@@ -105,7 +105,7 @@ export default function WalletPage() {
         const res = await verifyPayment(paymentId, "PAYTM");
 
         if (
-          res.status === "PAID_AND_PROVISIONING" ||
+          res.status !== "PENDING" ||
           res.status === "WALLET_TOPPED_UP"
         ) {
           stopPolling();
