@@ -25,8 +25,7 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
 
   // Memoize gateway details function to prevent recreation
   const getGatewayDetails = useCallback((gateway) => {
-    const gatewayLower = gateway.toLowerCase();
-
+    const gatewayLower = (gateway.type || "").toLowerCase();
     if (gatewayLower.includes("stripe") || gatewayLower.includes("card")) {
       return {
         icon: CreditCard,
@@ -104,13 +103,13 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
       color: "text-gray-400",
       bgColor: "bg-gray-800",
       borderColor: "hover:border-gray-500",
-      label: gateway,
+      label: gateway.name || gateway.type,
     };
   }, []);
 
   // Memoize description text getter
   const getDescriptionText = useCallback((gateway) => {
-    const gatewayLower = gateway.toLowerCase();
+    const gatewayLower = (gateway.type || "").toLowerCase();
     if (gatewayLower.includes("card")) return "Pay with credit/debit card";
     if (gatewayLower.includes("paypal")) return "Fast & secure payments";
     if (gatewayLower.includes("phone")) return "Scan & pay with UPI";
@@ -139,6 +138,7 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
     if (gateways.length === 0) return null;
 
     return gateways.map((gateway) => {
+      const gatewayType = gateway.type;
       const {
         icon: Icon,
         color,
@@ -146,13 +146,13 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
         borderColor,
         label,
       } = getGatewayDetails(gateway);
-      const isSelected = selected === gateway;
-      const isHovered = hoveredGateway === gateway;
+      const isSelected = selected === gatewayType;
+      const isHovered = hoveredGateway === gatewayType;
       const descriptionText = getDescriptionText(gateway);
 
       return (
         <label
-          key={gateway}
+          key={gatewayType}
           className={`
             relative flex items-center gap-3 p-4 rounded-xl cursor-pointer
             transition-all duration-200 ease-in-out
@@ -166,17 +166,17 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
             ${isHovered && !isSelected ? "border-gray-600 bg-gray-800/50" : ""}
             hover:scale-[1.02] active:scale-[0.98]
           `}
-          onMouseEnter={() => handleMouseEnter(gateway)}
+          onMouseEnter={() => handleMouseEnter(gatewayType)}
           onMouseLeave={handleMouseLeave}
         >
           <div className="relative">
             <input
               type="radio"
               name="payment-method"
-              value={gateway}
+              value={gatewayType}
               checked={isSelected}
               onChange={() => {}}
-              onClick={() => handleGatewayChange(gateway)}
+              onClick={() => handleGatewayChange(gatewayType)}
               className="peer sr-only"
             />
             <div
