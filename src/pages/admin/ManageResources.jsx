@@ -20,6 +20,7 @@ import {
   Server,
   Database,
   ArrowLeft,
+  PieChart,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -1205,63 +1206,101 @@ export default function ManageResourcesPage({
 
       <Footer />
       {editingItem && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#151c2f] to-[#1a2138] w-full max-w-3xl rounded-2xl border border-indigo-900/50 shadow-2xl overflow-hidden">
-            {/* Header with gradient and decorative elements */}
-            <div className="relative px-6 py-5 border-b border-indigo-900/30 bg-gradient-to-r from-[#151c2f] via-[#1a2138] to-[#1e2640] overflow-hidden">
-              {/* Decorative background elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-600/5 rounded-full blur-3xl -ml-20 -mb-20"></div>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          {/* Scoped premium CSS */}
+          <style>{`
+            .edit-modal {
+              font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            }
+            .edit-modal-input {
+              background: rgba(13, 17, 23, 0.8);
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 0 transparent;
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .edit-modal-input:hover {
+              border-color: rgba(255, 255, 255, 0.15);
+            }
+            .edit-modal-input:focus {
+              border-color: rgba(99, 102, 241, 0.5);
+              box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(99, 102, 241, 0.12), 0 0 20px rgba(99, 102, 241, 0.1);
+              outline: none;
+            }
+            .edit-modal-icon {
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .edit-modal-field:hover .edit-modal-icon {
+              transform: scale(1.1);
+            }
+            .edit-modal-save {
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .edit-modal-save:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 12px 30px -8px rgba(99, 102, 241, 0.4);
+              filter: brightness(1.1);
+            }
+            .edit-modal-save:active {
+              transform: translateY(0);
+            }
+            @keyframes subtlePulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.5; }
+            }
+            .edit-status-dot {
+              animation: subtlePulse 2s ease-in-out infinite;
+            }
+          `}</style>
 
-              <div className="relative flex items-center justify-between">
+          <div className="edit-modal bg-[#111827] w-full max-w-2xl rounded-2xl border border-white/[0.06] overflow-hidden"
+               style={{ boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 40px -10px rgba(99, 102, 241, 0.08)' }}>
+
+            {/* ── Header ── */}
+            <div className="px-7 py-5 border-b border-white/[0.06]"
+                 style={{ background: 'linear-gradient(135deg, #111827 0%, #0f172a 100%)' }}>
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-2.5 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg shadow-indigo-600/30">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
+                  <div className="edit-modal-icon p-2.5 rounded-xl text-white"
+                       style={{
+                         background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                         boxShadow: '0 8px 20px -4px rgba(99, 102, 241, 0.35)'
+                       }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">
+                    <h2 className="text-xl font-semibold text-white tracking-tight">
                       Edit {title}
                     </h2>
-                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                      <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
-                      Update the details below
+                    <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5 font-normal">
+                      <span className="w-1 h-1 rounded-full bg-indigo-500/60"></span>
+                      Manage Resource Details
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setEditingItem(null)}
-                  className="p-2 hover:bg-indigo-500/10 rounded-lg transition-colors group"
+                  className="p-2 rounded-full hover:bg-white/[0.05] transition-all duration-300 group"
                 >
-                  <X className="w-5 h-5 text-gray-400 group-hover:text-gray-300 group-hover:rotate-90 transition-all duration-300" />
+                  <X className="w-5 h-5 text-gray-500 group-hover:text-gray-300 group-hover:rotate-90 transition-all duration-300" />
                 </button>
               </div>
             </div>
 
-            {/* Form with beautiful grid layout */}
+            {/* ── Form Body ── */}
             <form
               onSubmit={handleEditSubmit}
-              className="p-6 max-h-[70vh] overflow-y-auto"
+              className="p-7 max-h-[70vh] overflow-y-auto"
+              style={{ background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)' }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {resolvedFields.map((field, index) => {
                   const value = editFormData[field.name];
                   const isRequired =
                     field.name !== "mac" && field.name !== "inUse";
 
-                  // Define icons and colors for each field type
+                  // ── Premium icon mapping ──
                   const getFieldIcon = (fieldName) => {
                     const icons = {
                       ip: <Globe className="w-4 h-4" />,
@@ -1272,68 +1311,73 @@ export default function ManageResourcesPage({
                       startIp: <Globe className="w-4 h-4" />,
                       endIp: <Globe className="w-4 h-4" />,
                       diskName: <HardDrive className="w-4 h-4" />,
-                      maxVms: <Server className="w-4 h-4" />,
-                      usableDiskPercentage: <Database className="w-4 h-4" />,
+                      maxVms: <Layers className="w-4 h-4" />,
+                      usableDiskPercentage: <PieChart className="w-4 h-4" />,
                     };
-                    return (
-                      icons[fieldName] || (
-                        <div className="w-4 h-4 bg-gradient-to-br from-gray-500 to-gray-600 rounded-full"></div>
-                      )
-                    );
+                    return icons[fieldName] || <Database className="w-4 h-4" />;
                   };
 
-                  const getFieldColor = (fieldName) => {
-                    const colors = {
-                      ip: "from-blue-500 to-cyan-500",
-                      cidr: "from-purple-500 to-pink-500",
-                      gateway: "from-amber-500 to-orange-500",
-                      mac: "from-emerald-500 to-teal-500",
-                      inUse: "from-green-500 to-emerald-500",
-                      startIp: "from-blue-500 to-indigo-500",
-                      endIp: "from-indigo-500 to-purple-500",
-                      diskName: "from-cyan-500 to-blue-500",
-                      maxVms: "from-violet-500 to-purple-500",
-                      usableDiskPercentage: "from-rose-500 to-pink-500",
+                  // ── Gradient colors per field ──
+                  const getFieldGradient = (fieldName) => {
+                    const gradients = {
+                      ip: { bg: 'linear-gradient(135deg, #3b82f6, #06b6d4)', shadow: 'rgba(59, 130, 246, 0.3)' },
+                      cidr: { bg: 'linear-gradient(135deg, #8b5cf6, #ec4899)', shadow: 'rgba(139, 92, 246, 0.3)' },
+                      gateway: { bg: 'linear-gradient(135deg, #f59e0b, #f97316)', shadow: 'rgba(245, 158, 11, 0.3)' },
+                      mac: { bg: 'linear-gradient(135deg, #10b981, #14b8a6)', shadow: 'rgba(16, 185, 129, 0.3)' },
+                      inUse: { bg: 'linear-gradient(135deg, #10b981, #22c55e)', shadow: 'rgba(16, 185, 129, 0.3)' },
+                      startIp: { bg: 'linear-gradient(135deg, #3b82f6, #6366f1)', shadow: 'rgba(59, 130, 246, 0.3)' },
+                      endIp: { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', shadow: 'rgba(99, 102, 241, 0.3)' },
+                      diskName: { bg: 'linear-gradient(135deg, #3b82f6, #22d3ee)', shadow: 'rgba(59, 130, 246, 0.3)' },
+                      maxVms: { bg: 'linear-gradient(135deg, #8b5cf6, #a855f7)', shadow: 'rgba(139, 92, 246, 0.3)' },
+                      usableDiskPercentage: { bg: 'linear-gradient(135deg, #f43f5e, #ec4899)', shadow: 'rgba(244, 63, 94, 0.3)' },
                     };
-                    return colors[fieldName] || "from-gray-500 to-gray-600";
+                    return gradients[fieldName] || { bg: 'linear-gradient(135deg, #6b7280, #9ca3af)', shadow: 'rgba(107, 114, 128, 0.3)' };
                   };
 
-                  // Special handling for inUse field to span full width on mobile
-                  const fieldClassName =
-                    field.name === "inUse" ? "md:col-span-2" : "";
+                  // ── Grid balancing ──
+                  const isFullWidthField =
+                    field.name === "inUse" ||
+                    field.name === "diskName" ||
+                    (fields.length === 3 && index === 0);
+
+                  const fieldClassName = isFullWidthField ? "md:col-span-2" : "";
+                  const gradient = getFieldGradient(field.name);
 
                   return (
                     <div
                       key={field.name}
-                      className={`group ${fieldClassName} transition-all duration-300 hover:translate-y-[-1px]`}
+                      className={`edit-modal-field group ${fieldClassName}`}
                     >
-                      <div className="flex items-center gap-2 mb-2">
+                      {/* ── Label Row ── */}
+                      <div className="flex items-center gap-3 mb-3">
                         <div
-                          className={`p-1.5 rounded-lg bg-gradient-to-br ${getFieldColor(field.name)} bg-opacity-10 shadow-sm`}
+                          className="edit-modal-icon p-2 rounded-xl text-white"
+                          style={{
+                            background: gradient.bg,
+                            boxShadow: `0 6px 16px -4px ${gradient.shadow}`
+                          }}
                         >
-                          <div className="text-white">
-                            {getFieldIcon(field.name)}
-                          </div>
+                          {getFieldIcon(field.name)}
                         </div>
-                        <label className="text-sm font-medium text-gray-300 group-hover:text-indigo-400 transition-colors duration-200">
+                        <label className="text-[13px] font-medium text-gray-400 group-hover:text-gray-200 transition-colors duration-300">
                           {field.label}
                           {isRequired && (
-                            <span className="text-red-400 ml-1">*</span>
+                            <span className="text-indigo-400 ml-1">*</span>
                           )}
                         </label>
 
-                        {/* Status badge for inUse field */}
+                        {/* Status badge for inUse */}
                         {field.name === "inUse" && (
                           <div className="ml-auto">
                             <span
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                                 value
-                                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                  : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                                  : "bg-gray-500/15 text-gray-400 border border-gray-500/20"
                               }`}
                             >
                               <span
-                                className={`w-1.5 h-1.5 rounded-full ${value ? "bg-green-400 animate-pulse" : "bg-gray-400"}`}
+                                className={`w-1.5 h-1.5 rounded-full ${value ? "bg-emerald-400 edit-status-dot" : "bg-gray-500"}`}
                               ></span>
                               {value ? "Active" : "Inactive"}
                             </span>
@@ -1341,8 +1385,13 @@ export default function ManageResourcesPage({
                         )}
                       </div>
 
+                      {/* ── Input / Toggle ── */}
                       {field.type === "checkbox" ? (
-                        <div className="flex items-center gap-3 p-3 bg-[#0e1525] border border-indigo-900/30 rounded-xl hover:border-indigo-700 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-indigo-600/10">
+                        <div className="flex items-center gap-3 p-4 rounded-xl transition-all duration-300"
+                             style={{
+                               background: 'rgba(13, 17, 23, 0.6)',
+                               border: '1px solid rgba(255, 255, 255, 0.06)'
+                             }}>
                           <button
                             type="button"
                             onClick={() =>
@@ -1351,23 +1400,23 @@ export default function ManageResourcesPage({
                                 [field.name]: !value,
                               })
                             }
-                            className={`relative w-14 h-7 rounded-full transition-all duration-300 ease-in-out ${
-                              value
-                                ? "bg-gradient-to-r from-green-500 to-emerald-500 shadow-lg shadow-green-600/30"
-                                : "bg-gray-700"
-                            }`}
+                            className="relative w-14 h-7 rounded-full transition-all duration-300 ease-in-out"
+                            style={{
+                              background: value
+                                ? 'linear-gradient(135deg, #10b981, #22c55e)'
+                                : '#374151',
+                              boxShadow: value ? '0 4px 12px -2px rgba(16, 185, 129, 0.4)' : 'none'
+                            }}
                           >
                             <span
                               className={`absolute left-1 top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ease-in-out ${
-                                value ? "transform translate-x-7" : ""
+                                value ? "translate-x-7" : ""
                               }`}
                             />
                           </button>
                           <div className="flex flex-col">
-                            <span className="text-sm text-gray-300">
-                              {value
-                                ? "Resource is in use"
-                                : "Resource is available"}
+                            <span className="text-sm text-gray-300 font-medium">
+                              {value ? "Resource is in use" : "Resource is available"}
                             </span>
                             <span className="text-xs text-gray-500">
                               Toggle to change status
@@ -1375,17 +1424,7 @@ export default function ManageResourcesPage({
                           </div>
                         </div>
                       ) : (
-                        <div className="relative group/input">
-                          {/* Decorative background gradient */}
-                          <div
-                            className={`absolute -inset-0.5 bg-gradient-to-r ${getFieldColor(field.name)} rounded-xl opacity-0 group-hover/input:opacity-20 blur transition-opacity duration-300`}
-                          ></div>
-
-                          {/* Colored left accent with gradient */}
-                          <div
-                            className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-gradient-to-b ${getFieldColor(field.name)}`}
-                          ></div>
-
+                        <div className="relative">
                           <input
                             type={field.type}
                             value={value ?? ""}
@@ -1395,18 +1434,18 @@ export default function ManageResourcesPage({
                                 [field.name]: e.target.value,
                               })
                             }
-                            className="relative w-full bg-[#0e1525] border border-indigo-900/40 text-gray-200 rounded-xl pl-5 pr-20 py-3 text-sm 
-                               focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 
-                               placeholder:text-gray-600 transition-all duration-200
-                               group-hover/input:border-indigo-800"
+                            className="edit-modal-input w-full text-gray-200 rounded-xl px-4 py-3.5 text-sm placeholder:text-gray-600/80"
                             placeholder={`Enter ${field.label.toLowerCase()}`}
                             required={isRequired}
                           />
-
-                          {/* Optional field indicator with icon */}
+                          {/* Optional badge */}
                           {!isRequired && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs">
-                              <span className="px-2 py-0.5 bg-gray-800/80 rounded-full text-gray-400 border border-gray-700">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                              <span className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-gray-500 rounded-md"
+                                    style={{
+                                      background: 'rgba(31, 41, 55, 0.8)',
+                                      border: '1px solid rgba(255, 255, 255, 0.06)'
+                                    }}>
                                 optional
                               </span>
                             </div>
@@ -1418,12 +1457,12 @@ export default function ManageResourcesPage({
                 })}
               </div>
 
-              {/* Footer with gradient and actions */}
-              <div className="flex items-center justify-between gap-3 mt-8 pt-5 border-t border-indigo-900/30 bg-gradient-to-r from-transparent via-indigo-900/5 to-transparent">
+              {/* ── Footer ── */}
+              <div className="flex items-center justify-between gap-3 mt-8 pt-6" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                  <span className="text-xs text-gray-400">
-                    All changes are saved automatically
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full edit-status-dot"></span>
+                  <span className="text-xs text-gray-500 font-normal">
+                    Unsaved changes
                   </span>
                 </div>
 
@@ -1431,29 +1470,18 @@ export default function ManageResourcesPage({
                   <button
                     type="button"
                     onClick={() => setEditingItem(null)}
-                    className="px-5 py-2.5 text-sm bg-[#252e42] hover:bg-[#2f3a52] text-gray-300 rounded-xl transition-all duration-300 font-medium flex items-center gap-2 border border-gray-700/50 hover:border-gray-600 group"
+                    className="px-5 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-200 rounded-xl hover:bg-white/[0.04] transition-all duration-300"
                   >
-                    <X className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 font-medium shadow-lg shadow-indigo-600/30 flex items-center gap-2 transform hover:scale-[1.02] active:scale-[0.98] group"
+                    className="edit-modal-save px-7 py-2.5 text-sm font-semibold text-white rounded-xl"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      boxShadow: '0 8px 20px -6px rgba(99, 102, 241, 0.35)'
+                    }}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 group-hover:rotate-12 transition-transform duration-300"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
                     Save Changes
                   </button>
                 </div>
@@ -1462,6 +1490,7 @@ export default function ManageResourcesPage({
           </div>
         </div>
       )}
+
     </div>
   );
 }
