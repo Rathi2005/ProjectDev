@@ -15,6 +15,7 @@ import {
   Search,
   Eye,
 } from "lucide-react";
+import { useDebounce } from "../../hooks/useDebounce";
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
@@ -26,6 +27,7 @@ export default function InvoicesPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const [paymentStats, setPaymentStats] = useState({
     totalPayments: 0,
@@ -42,7 +44,7 @@ export default function InvoicesPage() {
   } = useAdminInvoices({
     page,
     size,
-    searchTerm,
+    searchTerm: debouncedSearchTerm,
   });
 
   const { data: statsData, isLoading: statsLoading } = useAdminPaymentStats();
@@ -113,7 +115,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [searchTerm]);
+  }, [debouncedSearchTerm]);
 
   const isPaidStatus = (status) => {
     if (!status) return false;

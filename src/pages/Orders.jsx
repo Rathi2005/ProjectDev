@@ -48,6 +48,7 @@ import {
 export default function UserOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [expandedRow, setExpandedRow] = useState(null);
   const [powerLoading, setPowerLoading] = useState({});
   const [selectedStatus, setSelectedStatus] = useState("ALL");
@@ -344,7 +345,7 @@ export default function UserOrdersPage() {
             stopPolling();
             toast.success("Payment successful");
             setQrData(null);
-            window.location.reload();
+            setRefreshTrigger((prev) => prev + 1);
           }
           if (attempts >= maxAttempts) {
             stopPolling();
@@ -1008,9 +1009,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       return;
     }
 
-    async function fetchUserOrders() {
+    let isSubscribed = true;
+
+    async function fetchUserOrders(isBackground = false) {
       try {
-        setLoading(true);
+        if (!isBackground) setLoading(true);
         const token = localStorage.getItem("token");
         const params = new URLSearchParams({
           page: currentPage - 1,
@@ -1034,39 +1037,51 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           return;
         }
         const data = await res.json();
-        setTotalPages(data.totalPages);
-        setTotalItems(data.totalItems);
-        const transformedOrders = (data.orders || []).map((item) => ({
-          id: item.vmId,
-          orderId: item.orderId,
-          vmName: item.vmName,
-          status: item.status,
-          liveState: item.liveState,
-          ipAddress: item.ipAddress,
-          createdAt: item.billing?.boughtAt,
-          planType: item.billing?.planType,
-          priceTotal: item.billing?.monthlyPlan,
-          cores: item.specs?.cores,
-          ramMb: item.specs?.ramMb,
-          diskGb: item.specs?.diskGb,
-          osType: item.specs?.osType,
-          expiresAt: item.billing?.expiresAt,
-          durationMonths: item.billing?.durationMonths,
-          serverLocation: item.serverLocation,
-          isProtected: item.isProtected,
-          originalData: item,
-          isoName: item.specs?.isoName,
-        }));
-        setOrders(transformedOrders);
+        
+        if (isSubscribed) {
+          setTotalPages(data.totalPages);
+          setTotalItems(data.totalItems);
+          const transformedOrders = (data.orders || []).map((item) => ({
+            id: item.vmId,
+            orderId: item.orderId,
+            vmName: item.vmName,
+            status: item.status,
+            liveState: item.liveState,
+            ipAddress: item.ipAddress,
+            createdAt: item.billing?.boughtAt,
+            planType: item.billing?.planType,
+            priceTotal: item.billing?.monthlyPlan,
+            cores: item.specs?.cores,
+            ramMb: item.specs?.ramMb,
+            diskGb: item.specs?.diskGb,
+            osType: item.specs?.osType,
+            expiresAt: item.billing?.expiresAt,
+            durationMonths: item.billing?.durationMonths,
+            serverLocation: item.serverLocation,
+            isProtected: item.isProtected,
+            originalData: item,
+            isoName: item.specs?.isoName,
+          }));
+          setOrders(transformedOrders);
+        }
       } catch (err) {
-        toast.error("Error fetching orders");
+        if (!isBackground) toast.error("Error fetching orders");
       } finally {
-        setLoading(false);
+        if (!isBackground && isSubscribed) setLoading(false);
       }
     }
 
-    fetchUserOrders();
-  }, [BASE_URL, statusLoading, accountStatus, currentPage, debouncedSearch]);
+    fetchUserOrders(false);
+
+    const intervalId = setInterval(() => {
+      fetchUserOrders(true);
+    }, 10000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(intervalId);
+    };
+  }, [BASE_URL, statusLoading, accountStatus, currentPage, debouncedSearch, refreshTrigger]);
 
   // Fetch VM lock statuses whenever orders change
   useEffect(() => {

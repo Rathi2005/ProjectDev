@@ -79,9 +79,14 @@ export default function UserOrdersPage() {
 
   // Fetch VMs
   useEffect(() => {
-    async function fetchVMs() {
+    let isSubscribed = true;
+
+    async function fetchVMs(isBackground = false) {
       try {
+        if (!isBackground) setLoading(true);
         const data = await apiFetch("/api/reseller/user/vms");
+        
+        if (!isSubscribed) return;
 
         const formatted = data.map((vm) => ({
           vmid: vm.vmid,
@@ -111,13 +116,22 @@ export default function UserOrdersPage() {
 
         setOrders(formatted);
       } catch {
-        toast.error("Failed to fetch servers");
+        if (!isBackground) toast.error("Failed to fetch servers");
       } finally {
-        setLoading(false);
+        if (!isBackground && isSubscribed) setLoading(false);
       }
     }
 
-    fetchVMs();
+    fetchVMs(false);
+
+    const intervalId = setInterval(() => {
+      fetchVMs(true);
+    }, 10000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(intervalId);
+    };
   }, []);
 
   // Fetch VM details

@@ -40,6 +40,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Swal from "sweetalert2";
+import { useDebounce } from "../../hooks/useDebounce";
 
 export default function AdminLogsPage() {
   const [activeTab, setActiveTab] = useState("operations");
@@ -52,7 +53,7 @@ export default function AdminLogsPage() {
     totalElements: 0,
   });
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500);
   const [sortConfig, setSortConfig] = useState({
     field: "timestamp",
     direction: "desc",
@@ -187,14 +188,6 @@ export default function AdminLogsPage() {
       gradient: "from-purple-600 to-pink-600",
     },
   ];
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   // Fetch logs
   useEffect(() => {
@@ -334,7 +327,6 @@ export default function AdminLogsPage() {
 
   const clearSearch = () => {
     setSearch("");
-    setDebouncedSearch("");
   };
 
   const handleViewDetails = (log) => {

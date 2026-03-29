@@ -13,5 +13,6 @@ export const useAdminOrders = ({
       fetchAdminOrders({ page, size, statusFilter, search }),
     keepPreviousData: true,
     staleTime: 60 * 1000,
+    refetchInterval: 10000,
   });
 };
