@@ -38,9 +38,9 @@ import {
   Phone,
   MapPin,
   CreditCard,
-  Shield,
   Eye,
 } from "lucide-react";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const DarkSwal = Swal.mixin({
   background: "#1e2640",
@@ -55,6 +55,7 @@ export default function SystemRecordsPage() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [stats, setStats] = useState({
     total: 0,
@@ -121,11 +122,11 @@ export default function SystemRecordsPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [pageType, page, size, searchTerm, selectedFilter]);
+  }, [pageType, page, size, debouncedSearchTerm, selectedFilter]);
 
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, pageType, selectedFilter]);
+  }, [debouncedSearchTerm, pageType, selectedFilter]);
 
   // Fetch ISOs when server is selected (Step 2)
   useEffect(() => {
@@ -327,8 +328,8 @@ export default function SystemRecordsPage() {
       let endpoint = "";
       switch (pageType) {
         case "deleted-vms": {
-          const searchParam = searchTerm
-            ? `&search=${encodeURIComponent(searchTerm)}`
+          const searchParam = debouncedSearchTerm
+            ? `&search=${encodeURIComponent(debouncedSearchTerm)}`
             : "";
 
           endpoint = `${BASE_URL}/api/admin/records/deleted-vms?page=${page}&size=${size}${searchParam}&sortBy=deletionTimestamp&sortDir=desc`;
@@ -336,8 +337,8 @@ export default function SystemRecordsPage() {
         }
 
         case "garbage-records": {
-          const searchParam = searchTerm
-            ? `&search=${encodeURIComponent(searchTerm)}`
+          const searchParam = debouncedSearchTerm
+            ? `&search=${encodeURIComponent(debouncedSearchTerm)}`
             : "";
 
           endpoint = `${BASE_URL}/api/admin/garbage/records?page=${page}&size=${size}${searchParam}&sortBy=failureTimestamp&sortDir=desc`;
@@ -345,13 +346,13 @@ export default function SystemRecordsPage() {
         }
 
         case "users-overview":
-          const searchParam = searchTerm
-            ? `search=${encodeURIComponent(searchTerm)}&`
+          const searchParam = debouncedSearchTerm
+            ? `search=${encodeURIComponent(debouncedSearchTerm)}&`
             : "";
           const filterParam =
             selectedFilter !== "all" ? `&filter=${selectedFilter}` : "";
 
-          endpoint = `${BASE_URL}/api/admin/users/overview?page=${page}&size=${size}&search=${encodeURIComponent(searchTerm)}${filterParam}&sortBy=id&sortDir=desc`;
+          endpoint = `${BASE_URL}/api/admin/users/overview?page=${page}&size=${size}&search=${encodeURIComponent(debouncedSearchTerm)}${filterParam}&sortBy=id&sortDir=desc`;
           break;
         default:
           return;

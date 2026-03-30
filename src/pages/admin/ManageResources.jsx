@@ -23,6 +23,7 @@ import {
   PieChart,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useDebounce } from "../../hooks/useDebounce";
 import Swal from "sweetalert2";
 
 export default function ManageResourcesPage({
@@ -87,6 +88,7 @@ export default function ManageResourcesPage({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
   const [inUseFilter, setInUseFilter] = useState("all");
   const [editingItem, setEditingItem] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -545,7 +547,7 @@ export default function ManageResourcesPage({
   const filteredExisting = useMemo(() => {
     let data = Array.isArray(existing) ? [...existing] : [];
 
-    const q = searchQuery.trim().toLowerCase();
+    const q = debouncedSearchQuery.trim().toLowerCase();
 
     // 🔍 SEARCH FILTER
     if (q) {
@@ -574,10 +576,11 @@ export default function ManageResourcesPage({
     }
 
     return data;
-  }, [existing, searchQuery, inUseFilter, endpoint]);
+  }, [existing, debouncedSearchQuery, inUseFilter, endpoint]);
+  
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, inUseFilter]);
+  }, [debouncedSearchQuery, inUseFilter]);
   // UI RENDERING
   const totalPages = Math.ceil(filteredExisting.length / itemsPerPage);
   const displayed = filteredExisting.slice(

@@ -24,10 +24,10 @@ import {
   Hash,
   FileText,
   Server,
-  IndianRupee,
   Globe,
   Clock,
 } from "lucide-react";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const GET_USERS_API = `${BASE_URL}/api/reseller/admin/users`;
@@ -40,6 +40,7 @@ const SubUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
@@ -81,11 +82,11 @@ const SubUsers = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [page, size, searchTerm]);
+  }, [page, size, debouncedSearchTerm]);
 
   useEffect(() => {
     setPage(0);
-  }, [searchTerm]);
+  }, [debouncedSearchTerm]);
 
   const fetchUserCount = async () => {
     const token = localStorage.getItem("token");
@@ -153,8 +154,8 @@ const SubUsers = () => {
       params.append("sortBy", "createdAt");
       params.append("direction", "desc");
 
-      if (searchTerm) {
-        params.append("search", searchTerm);
+      if (debouncedSearchTerm) {
+        params.append("search", debouncedSearchTerm);
       }
 
       const response = await fetch(`${GET_USERS_API}?${params.toString()}`, {
