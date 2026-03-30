@@ -244,7 +244,12 @@ const SummarySidebar = ({
     try {
       const res = await apiRequest(
         `${import.meta.env.VITE_BASE_URL}/api/wallet`,
-        { method: "GET" },
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
       );
       const data = await res.json();
       setWalletBalance(Number(data.balance || 0));
@@ -500,7 +505,6 @@ const SummarySidebar = ({
           </div>
 
           {/* Configuration Details */}
-
 
           {/* Pricing Summary */}
           <div className="bg-gradient-to-br from-gray-900/50 to-gray-800/30 rounded-xl p-4 border border-gray-700/50 shadow-lg">
