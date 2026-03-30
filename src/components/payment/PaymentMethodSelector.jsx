@@ -26,84 +26,58 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
   // Memoize gateway details function to prevent recreation
   const getGatewayDetails = useCallback((gateway) => {
     const gatewayLower = (gateway.type || "").toLowerCase();
-    if (gatewayLower.includes("stripe") || gatewayLower.includes("card")) {
+
+    const common = {
+      label: gateway.name, // 🔥 always show backend name
+    };
+
+    if (gatewayLower.includes("stripe")) {
       return {
+        ...common,
         icon: CreditCard,
         color: "text-blue-400",
         bgColor: "bg-blue-900/20",
         borderColor: "hover:border-blue-500",
-        label: "Credit/Debit Card",
       };
     }
-    if (gatewayLower.includes("paypal")) {
-      return {
-        icon: CircleDollarSign,
-        color: "text-blue-500",
-        bgColor: "bg-blue-900/20",
-        borderColor: "hover:border-blue-500",
-        label: "PayPal",
-      };
-    }
+
     if (gatewayLower.includes("razorpay")) {
       return {
+        ...common,
         icon: Zap,
         color: "text-indigo-400",
         bgColor: "bg-indigo-900/20",
         borderColor: "hover:border-indigo-500",
-        label: "Razorpay",
       };
     }
-    if (gatewayLower.includes("phonepe")) {
-      return {
-        icon: Smartphone,
-        color: "text-purple-400",
-        bgColor: "bg-purple-900/20",
-        borderColor: "hover:border-purple-500",
-        label: "PhonePe",
-      };
-    }
-    if (gatewayLower.includes("googlepay") || gatewayLower.includes("gpay")) {
-      return {
-        icon: Smartphone,
-        color: "text-green-400",
-        bgColor: "bg-green-900/20",
-        borderColor: "hover:border-green-500",
-        label: "Google Pay",
-      };
-    }
+
     if (gatewayLower.includes("paytm")) {
       return {
+        ...common,
         icon: Wallet,
         color: "text-cyan-400",
         bgColor: "bg-cyan-900/20",
         borderColor: "hover:border-cyan-500",
-        label: "Paytm",
       };
     }
-    if (gatewayLower.includes("bank") || gatewayLower.includes("netbanking")) {
+
+    if (gatewayLower.includes("cashfree")) {
       return {
-        icon: Banknote,
-        color: "text-emerald-400",
-        bgColor: "bg-emerald-900/20",
-        borderColor: "hover:border-emerald-500",
-        label: "Net Banking",
+        ...common,
+        icon: Smartphone,
+        color: "text-green-400",
+        bgColor: "bg-green-900/20",
+        borderColor: "hover:border-green-500",
       };
     }
-    if (gatewayLower.includes("crypto")) {
-      return {
-        icon: Shield,
-        color: "text-yellow-400",
-        bgColor: "bg-yellow-900/20",
-        borderColor: "hover:border-yellow-500",
-        label: "Cryptocurrency",
-      };
-    }
+
+    // fallback
     return {
+      ...common,
       icon: CreditCard,
       color: "text-gray-400",
       bgColor: "bg-gray-800",
       borderColor: "hover:border-gray-500",
-      label: gateway.name || gateway.type,
     };
   }, []);
 
