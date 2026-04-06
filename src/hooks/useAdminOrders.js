@@ -7,12 +7,14 @@ export const useAdminOrders = ({
   statusFilter,
   search,
 }) => {
+  const isSearching = Boolean(search);
+
   return useQuery({
     queryKey: ["admin-orders", page, size, statusFilter, search],
-    queryFn: () =>
-      fetchAdminOrders({ page, size, statusFilter, search }),
+    queryFn: ({ signal }) =>
+      fetchAdminOrders({ page, size, statusFilter, search, signal }),
     keepPreviousData: true,
     staleTime: 60 * 1000,
-    refetchInterval: 10000,
+    refetchInterval: isSearching ? false : 10_000,
   });
 };

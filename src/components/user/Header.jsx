@@ -7,6 +7,7 @@ import {
   User,
   Wallet,
   ShoppingBag,
+  FileText,
 } from "lucide-react";
 import useLogout from "./Logout";
 import { jwtDecode } from "jwt-decode";
@@ -107,6 +108,13 @@ const Header = () => {
             >
               <ShoppingBag className="w-4 h-4" />
               <span>Orders</span>
+            </a>
+            <a
+              href="/past-orders"
+              className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Past Orders</span>
             </a>
             {isReseller && (
               <a

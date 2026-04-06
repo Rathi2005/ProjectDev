@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useDebounce } from "../../hooks/useDebounce";
 import { Link } from "react-router-dom";
 import { useAdminOrders } from "../../hooks/useAdminOrders";
 import { useAdminStats } from "../../hooks/useAdminStats";
@@ -50,7 +51,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebounce(searchQuery.trim(), 400);
 
   const {
     data: ordersData,
@@ -151,13 +152,7 @@ export default function OrdersPage() {
     this_month: 0,
   });
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchQuery.trim());
-    }, 400);
-
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
+  // Debounce is now handled by useDebounce hook above (line 53)
 
   const toggleRow = (id) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -1247,17 +1242,24 @@ export default function OrdersPage() {
                 {/* STATUS FILTER */}
                 <div className="flex flex-wrap items-center gap-3">
                   {/* SEARCH INPUT */}
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search VM, IP, Email, Order ID, VMID..."
-                    className="bg-[#0e1525] border border-indigo-900/40
-        rounded-lg px-3 py-2 text-sm text-white
-        focus:outline-none focus:ring-2 focus:ring-indigo-500
-        hover:border-indigo-500/60 transition-colors
-        min-w-[260px]"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search VM, IP, Email, Order ID, VMID..."
+                      className="bg-[#0e1525] border border-indigo-900/40
+          rounded-lg px-3 py-2 text-sm text-white
+          focus:outline-none focus:ring-2 focus:ring-indigo-500
+          hover:border-indigo-500/60 transition-colors
+          min-w-[260px] pr-[140px]"
+                    />
+                    {searchQuery && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-amber-400/80 flex items-center gap-1 pointer-events-none">
+                        <Clock className="w-3 h-3" /> Live refresh paused
+                      </span>
+                    )}
+                  </div>
 
                   {/* STATUS FILTER (UNCHANGED) */}
                   <select
