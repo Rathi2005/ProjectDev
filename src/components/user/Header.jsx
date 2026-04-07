@@ -110,11 +110,11 @@ const Header = () => {
               <span>Orders</span>
             </a>
             <a
-              href="/past-orders"
+              href="/invoices"
               className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
             >
               <FileText className="w-4 h-4" />
-              <span>Past Orders</span>
+              <span>Invoices</span>
             </a>
             {isReseller && (
               <a

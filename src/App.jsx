@@ -71,7 +71,7 @@ function MainRoutes() {
         }
       />
       <Route
-        path="/past-orders"
+        path="/invoices"
         element={
           <ProtectedRoute>
             <PastOrders />

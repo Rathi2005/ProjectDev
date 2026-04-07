@@ -211,7 +211,7 @@ export default function PastOrders() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-wide">
-              Past Orders
+              Invoices
             </h1>
             <p className="text-gray-400 mt-1 text-sm">
               View your order history and download invoices
@@ -241,7 +241,7 @@ export default function PastOrders() {
           <div className="bg-red-900/20 border border-red-700/50 text-red-300 px-4 py-3 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <span className="flex-1">
-              {error.message || "Failed to load past orders"}
+              {error.message || "Failed to load invoices"}
             </span>
             <button
               onClick={refetch}
@@ -357,7 +357,7 @@ export default function PastOrders() {
                     <div className="flex flex-col items-center justify-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500" />
                       <p className="mt-4 text-gray-400">
-                        Loading past orders...
+                        Loading invoices...
                       </p>
                     </div>
                   </td>
@@ -370,7 +370,7 @@ export default function PastOrders() {
                   >
                     <div className="flex flex-col items-center gap-3">
                       <AlertCircle className="w-12 h-12 text-red-400/60" />
-                      <p>{error.message || "Failed to load past orders"}</p>
+                      <p>{error.message || "Failed to load invoices"}</p>
                       <button
                         onClick={refetch}
                         className="text-sm text-indigo-400 hover:text-indigo-300 underline"
@@ -386,7 +386,7 @@ export default function PastOrders() {
                     <div className="flex flex-col items-center justify-center">
                       <Server className="w-16 h-16 text-gray-600 mb-4" />
                       <p className="text-gray-400 text-lg">
-                        No past orders found
+                        No invoices found
                       </p>
                       <p className="text-gray-500 text-sm mt-1">
                         {hasActiveFilters
