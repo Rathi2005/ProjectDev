@@ -39,7 +39,7 @@ export const useUserPastOrders = ({
         sortDir,
         signal,
       }),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000, // 5 min — past orders are historical, rarely change
   });
 };

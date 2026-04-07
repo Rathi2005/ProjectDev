@@ -63,6 +63,7 @@ export default function OrdersPage() {
     size,
     statusFilter,
     search: debouncedSearch,
+    rawSearch: searchQuery,
   });
 
   useEffect(() => {

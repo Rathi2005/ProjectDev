@@ -174,7 +174,7 @@ export default function PastOrders() {
     setPage(0);
   }, [debouncedSearch, month, year]);
 
-  // ── Invoice download (use orderId as primary, paymentId as fallback) ──
+  // ── Invoice download (use paymentId as primary, orderId as fallback) ──
   const handleDownloadInvoice = async (order) => {
     const invoiceId = order.paymentId || order.orderId;
     if (!invoiceId) return;
