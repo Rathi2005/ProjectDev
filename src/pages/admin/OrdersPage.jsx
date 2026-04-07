@@ -1255,7 +1255,7 @@ export default function OrdersPage() {
           hover:border-indigo-500/60 transition-colors
           min-w-[260px] pr-[140px]"
                     />
-                    {searchQuery && (
+                    {searchQuery.trim() && (
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-amber-400/80 flex items-center gap-1 pointer-events-none">
                         <Clock className="w-3 h-3" /> Live refresh paused
                       </span>

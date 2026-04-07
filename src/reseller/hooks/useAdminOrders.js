@@ -8,7 +8,7 @@ export const useAdminOrders = ({
   search,
   rawSearch = "",
 }) => {
-  const isSearching = Boolean(rawSearch);
+  const isSearching = Boolean(rawSearch.trim());
 
   return useQuery({
     queryKey: ["admin-orders", page, size, statusFilter, search],

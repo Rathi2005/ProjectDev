@@ -8,8 +8,8 @@ export const useAdminOrders = ({
   search,
   rawSearch = "",
 }) => {
-  // Pause polling as soon as user starts typing (raw), not after debounce
-  const isSearching = Boolean(rawSearch);
+  // Pause polling as soon as user starts typing a real search term, not after debounce
+  const isSearching = Boolean(rawSearch.trim());
 
   return useQuery({
     queryKey: ["admin-orders", page, size, statusFilter, search],
