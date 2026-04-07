@@ -12,6 +12,7 @@ import {
 import useLogout from "./Logout";
 import { jwtDecode } from "jwt-decode";
 import toast from "react-hot-toast";
+import { useSettings } from "/src/context/AppSettingsContext.jsx";
 
 const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -23,6 +24,7 @@ const Header = () => {
 
   // ✅ Call your hook here — this gives you the logout function
   const logout = useLogout();
+  const { settings } = useSettings();
 
   // ✅ Check login state and decode token on mount
   useEffect(() => {
@@ -89,7 +91,7 @@ const Header = () => {
             className="flex items-center space-x-2 cursor-pointer hover:opacity-90 transition"
           >
             <img
-              src="/favicon.ico"
+              src={settings?.logoUrl || "/favicon.ico"}
               alt="Logo"
               className="h-9 w-9 object-contain"
             />
@@ -124,7 +126,7 @@ const Header = () => {
                 <User className="w-4 h-4" />
                 <span>Users</span>
               </a>
-            )} 
+            )}
             {isReseller && (
               <a
                 href="/settings"
@@ -133,7 +135,7 @@ const Header = () => {
                 <Settings className="w-4 h-4" />
                 <span>Settings</span>
               </a>
-            )} 
+            )}
           </nav>
         )}
 
