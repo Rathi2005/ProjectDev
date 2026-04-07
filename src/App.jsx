@@ -9,7 +9,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Credits from "./pages/Credits";
 import Orders from "./pages/Orders";
-import PastOrders from "./pages/PastOrders";
+import Invoices from "./pages/Invoices";
 import Profile from "./components/Profile";
 import UserVMPerformancePage from "./pages/VmPerformancePage";
 import Wallet from "./pages/Wallet";
@@ -74,7 +74,7 @@ function MainRoutes() {
         path="/invoices"
         element={
           <ProtectedRoute>
-            <PastOrders />
+            <Invoices />
           </ProtectedRoute>
         }
       />

@@ -77,7 +77,7 @@ export const downloadUserInvoice = async (orderOrPaymentId) => {
   );
 
   if (!res.ok) {
-    if (res.status === 401) throw new Error("Session expired");
+    if (res.status === 401) throw new Error("Session expired. Please login again.");
     if (res.status === 404) throw new Error("Invoice not found");
     throw new Error("Failed to download invoice");
   }

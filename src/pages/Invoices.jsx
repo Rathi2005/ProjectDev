@@ -107,7 +107,7 @@ const formatCurrency = (amount) =>
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export default function PastOrders() {
+export default function Invoices() {
   // ── Filters ──
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm.trim(), 500);
@@ -474,31 +474,31 @@ export default function PastOrders() {
                       {(() => {
                         const invoiceId = order.paymentId || order.orderId;
                         const hasPayment = order.amount > 0;
+                        const invoiceTitle = !hasPayment
+                          ? "No payment recorded for this order"
+                          : !invoiceId
+                            ? "No invoice available"
+                            : "Download Invoice";
                         return (
-                          <button
-                            onClick={() => handleDownloadInvoice(order)}
-                            disabled={!invoiceId || !hasPayment || downloadingId === invoiceId}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all
-                              ${
-                                invoiceId && hasPayment
-                                  ? "bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-lg hover:shadow-indigo-600/20"
-                                  : "bg-gray-700/50 text-gray-500 cursor-not-allowed"
-                              }`}
-                            title={
-                              !hasPayment
-                                ? "No payment recorded for this order"
-                                : !invoiceId
-                                  ? "No invoice available"
-                                  : "Download Invoice"
-                            }
-                          >
-                            {downloadingId === invoiceId ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Download className="w-4 h-4" />
-                            )}
-                            {!hasPayment ? "No Payment" : "Invoice"}
-                          </button>
+                          <span className="inline-block" title={invoiceTitle}>
+                            <button
+                              onClick={() => handleDownloadInvoice(order)}
+                              disabled={!invoiceId || !hasPayment || downloadingId === invoiceId}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all
+                                ${
+                                  invoiceId && hasPayment
+                                    ? "bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-lg hover:shadow-indigo-600/20"
+                                    : "bg-gray-700/50 text-gray-500 cursor-not-allowed"
+                                }`}
+                            >
+                              {downloadingId === invoiceId ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Download className="w-4 h-4" />
+                              )}
+                              {!hasPayment ? "No Payment" : "Invoice"}
+                            </button>
+                          </span>
                         );
                       })()}
                     </td>
