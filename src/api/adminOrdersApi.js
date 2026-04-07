@@ -5,6 +5,7 @@ export const fetchAdminOrders = async ({
   size,
   statusFilter,
   search,
+  signal,
 }) => {
   const adminToken = localStorage.getItem("adminToken");
 
@@ -25,6 +26,7 @@ export const fetchAdminOrders = async ({
         "Content-Type": "application/json",
         Authorization: `Bearer ${adminToken}`,
       },
+      signal,
     }
   );
 
