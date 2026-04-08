@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { Link } from "react-router-dom";
 import { useAdminOrders } from "../../hooks/useAdminOrders";
 import { useAdminStats } from "../../hooks/useAdminStats";
+import { useQueryClient } from "@tanstack/react-query";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
@@ -39,24 +40,22 @@ import {
 } from "lucide-react";
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState([]);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [ipChangeLoading, setIpChangeLoading] = useState({});
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [page, setPage] = useState(0); // 0-based
   const [size, setSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
   const [statusFilter, setStatusFilter] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery.trim(), 400);
+  const debouncedSearch = useDebounce(searchQuery.trim(), 500);
 
   const {
     data: ordersData,
     isLoading: ordersLoading,
-    isFetching: tableLoading,
+    isFetching,
     refetch: refetchOrders,
   } = useAdminOrders({
     page,
@@ -66,12 +65,18 @@ export default function OrdersPage() {
     rawSearch: searchQuery,
   });
 
-  useEffect(() => {
-    if (!ordersData) return;
+  // ── User-intent loader tracking ──────────────────────────────────────
+  // Set to true ONLY by explicit user actions (page change, search, filter).
+  // Background polls (refetchInterval) never touch this ref.
+  // Auto-clears when fetch completes.
+  const fetchIntentRef = useRef(false);
+  if (!isFetching) fetchIntentRef.current = false;
+  const showTableLoader = isFetching && fetchIntentRef.current;
 
-    const vmList = ordersData.vms || [];
-
-    const transformedOrders = vmList.map((order) => ({
+  // Derive orders from React Query data — no useState copy, no re-render cascade
+  const orders = useMemo(() => {
+    const vmList = ordersData?.vms || [];
+    return vmList.map((order) => ({
       id: order.dbOrderId,
       dbOrderId: order.dbOrderId,
       serverId: order.serverId,
@@ -101,39 +106,26 @@ export default function OrdersPage() {
       },
       originalData: order,
     }));
-
-    setOrders(transformedOrders);
-    setTotalItems(ordersData.totalItems || 0);
-    setTotalPages(ordersData.totalPages || 0);
   }, [ordersData]);
+
+  const totalItems = ordersData?.totalItems || 0;
+  const totalPages = ordersData?.totalPages || 0;
 
   const { data: statsData } = useAdminStats();
 
-  useEffect(() => {
-    if (!statsData) return;
-
-    setStats({
-      totalOrders: statsData.orders?.totalOrders || 0,
-      activeOrders: statsData.orders?.activeOrders || 0,
-      pendingOrders: statsData.orders?.pendingOrders || 0,
-      failedOrders: statsData.failed?.totalFailedOrders || 0,
-      totalDeletedVms: statsData.deleted?.totalDeletedVms || 0,
-      totalUsers: statsData.users?.totalUsers || 0,
-    });
-  }, [statsData]);
+  // Derive stats from React Query data — same pattern, no useState copy
+  const stats = useMemo(() => ({
+    totalOrders: statsData?.orders?.totalOrders || 0,
+    activeOrders: statsData?.orders?.activeOrders || 0,
+    pendingOrders: statsData?.orders?.pendingOrders || 0,
+    failedOrders: statsData?.failed?.totalFailedOrders || 0,
+    totalDeletedVms: statsData?.deleted?.totalDeletedVms || 0,
+    totalUsers: statsData?.users?.totalUsers || 0,
+  }), [statsData]);
 
   const { sortedItems, requestSort, sortConfig } = useSortableData(orders);
   const [expandedRow, setExpandedRow] = useState(null);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
-
-  const [stats, setStats] = useState({
-    totalOrders: 0,
-    activeOrders: 0,
-    pendingOrders: 0,
-    failedOrders: 0,
-    totalDeletedVms: 0,
-    totalUsers: 0,
-  });
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -164,11 +156,11 @@ export default function OrdersPage() {
     direction: sortConfig?.direction,
   };
 
-  useEffect(() => {
-    setPage(0);
-  }, [debouncedSearch]);
+  // Search page-reset: reset in onChange handler instead of useEffect
+  // to avoid the double-API-call race condition
 
   const handleStatusChange = (e) => {
+    fetchIntentRef.current = true;
     setStatusFilter(e.target.value);
     setPage(0); // reset pagination
   };
@@ -593,9 +585,8 @@ export default function OrdersPage() {
     }
   };
 
-  useEffect(() => {
-    setExpandedRow(null);
-  }, [orders]);
+  // expandedRow is intentionally NOT reset on data change — keeps admin's
+  // context stable during 10s polling cycles and pagination transitions
 
   const handleUpdateExpiry = async (order) => {
     const adminToken = localStorage.getItem("adminToken");
@@ -861,11 +852,19 @@ export default function OrdersPage() {
       case "STOP":
         return "text-gray-400 bg-gray-400/10 border border-gray-400/20";
       case "REBOOT":
+      case "REBOOTING":
         return "text-purple-400 bg-purple-400/10 border border-purple-400/20";
       case "HIBERNATE":
         return "text-indigo-400 bg-indigo-400/10 border border-indigo-400/20";
       case "RESUME":
         return "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20";
+      case "STARTING":
+      case "STOPPING":
+      case "MIGRATING":
+      case "REBUILDING":
+        return "text-blue-400 bg-blue-400/10 border border-blue-400/20";
+      case "SUSPENDED":
+        return "text-orange-400 bg-orange-400/10 border border-orange-400/20";
       default:
         return "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20";
     }
@@ -879,8 +878,16 @@ export default function OrdersPage() {
     if (s === "running") return "START";
     if (s === "stopped") return "STOP";
     if (s === "not_provisioned") return "NOT_PROVISIONED";
-    if (s === "hibernated/paused") return "HIBERNATE";
-    return "UNKNOWN";
+    if (s === "hibernated/paused" || s === "hibernated" || s === "paused") return "HIBERNATE";
+    // Transitional states — no longer silently dropped to UNKNOWN
+    if (s === "starting") return "STARTING";
+    if (s === "stopping") return "STOPPING";
+    if (s === "rebooting") return "REBOOTING";
+    if (s === "migrating") return "MIGRATING";
+    if (s === "suspended") return "SUSPENDED";
+    if (s === "rebuilding") return "REBUILDING";
+    // Fallback: return actual status in uppercase instead of hiding it as UNKNOWN
+    return status.toUpperCase();
   };
 
   const canAction = (liveStatus, action) => {
@@ -891,7 +898,14 @@ export default function OrdersPage() {
       STOP: ["start"],
       HIBERNATE: ["resume"],
       RESUME: ["stop"],
-      REBOOT: ["start", "stop", "hibernate", "reboot", "resume"],
+      REBOOT: [],
+      // Transitional states — all actions blocked until transition completes
+      STARTING: [],
+      STOPPING: [],
+      REBOOTING: [],
+      MIGRATING: [],
+      REBUILDING: [],
+      SUSPENDED: ["start"],
       NOT_PROVISIONED: [],
     };
 
@@ -1093,15 +1107,20 @@ export default function OrdersPage() {
         throw new Error(await res.text());
       }
 
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === order.id
-            ? {
-                ...o,
-                ipAddress: ips.find((ip) => ip.id === Number(newIpId))?.ip,
-              }
-            : o,
-        ),
+      // Optimistic cache update — mutate React Query cache directly
+      queryClient.setQueryData(
+        ["admin-orders", page, size, statusFilter, debouncedSearch],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            vms: old.vms.map((vm) =>
+              vm.dbOrderId === order.id
+                ? { ...vm, ipAddress: ips.find((ip) => ip.id === Number(newIpId))?.ip }
+                : vm
+            ),
+          };
+        },
       );
 
       toast.success(
@@ -1247,7 +1266,11 @@ export default function OrdersPage() {
                     <input
                       type="text"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => {
+                        fetchIntentRef.current = true;
+                        setSearchQuery(e.target.value);
+                        setPage(0);
+                      }}
                       placeholder="Search VM, IP, Email, Order ID, VMID..."
                       className="bg-[#0e1525] border border-indigo-900/40
           rounded-lg px-3 py-2 text-sm text-white
@@ -1284,12 +1307,14 @@ export default function OrdersPage() {
 
               {/* Responsive Table */}
               <div className="relative w-full overflow-x-auto">
-                {tableLoading && (
-                  <div className="absolute inset-0 z-20 bg-[#0e1525]/70 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="animate-spin h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                {/* Loader shown ONLY for explicit user actions (pagination/search/filter).
+                     Background 10s polls never set fetchIntentRef, so this stays hidden. */}
+                {showTableLoader && (
+                  <div className="absolute inset-0 z-20 bg-[#0e1525]/40 flex items-center justify-center backdrop-blur-[1px] transition-opacity">
+                    <div className="flex items-center gap-2 bg-[#151c2f]/90 px-4 py-2 rounded-lg border border-indigo-900/40">
+                      <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
                       <span className="text-xs text-gray-400">
-                        Fetching Records…
+                        Loading...
                       </span>
                     </div>
                   </div>
@@ -2103,7 +2128,7 @@ export default function OrdersPage() {
               <Pagination
                 currentPage={page + 1} // UI is 1-based
                 totalPages={totalPages}
-                onPageChange={(p) => setPage(p - 1)}
+                onPageChange={(p) => { fetchIntentRef.current = true; setPage(p - 1); }}
                 showingFrom={page * size + 1}
                 showingTo={Math.min((page + 1) * size, totalItems)}
                 totalItems={totalItems}
