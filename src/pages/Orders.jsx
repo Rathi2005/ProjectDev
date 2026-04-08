@@ -278,7 +278,7 @@ export default function UserOrdersPage() {
 
   const canShowDropdown = useCallback((status) => {
     const s = status?.toUpperCase();
-    return s === "ACTIVE" || s === "STOPPED" || s === "ERROR";
+    return s === "ACTIVE" || s === "STOPPED" || s === "ERROR" || s === "SUSPENDED";
   }, []);
 
   const isRebuildBlockedTime = useCallback(() => {
