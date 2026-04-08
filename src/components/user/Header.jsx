@@ -8,10 +8,13 @@ import {
   Wallet,
   ShoppingBag,
   FileText,
+  LinkedinIcon,
 } from "lucide-react";
 import useLogout from "./Logout";
 import { jwtDecode } from "jwt-decode";
 import toast from "react-hot-toast";
+import { useSettings } from "/src/context/AppSettingsContext.jsx";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -23,6 +26,7 @@ const Header = () => {
 
   // ✅ Call your hook here — this gives you the logout function
   const logout = useLogout();
+  const { settings } = useSettings();
 
   // ✅ Check login state and decode token on mount
   useEffect(() => {
@@ -84,69 +88,69 @@ const Header = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          <a
-            href="/dashboard"
+          <Link
+            to="/dashboard"
             className="flex items-center space-x-2 cursor-pointer hover:opacity-90 transition"
           >
             <img
-              src="/favicon.ico"
+              src={settings?.logoUrl || "/favicon.ico"}
               alt="Logo"
               className="h-9 w-9 object-contain"
             />
             <h1 className="text-lg font-semibold text-white tracking-wide">
               {APP_NAME}
             </h1>
-          </a>
+          </Link>
         </div>
 
         {/* Navigation */}
         {isLoggedIn && (
           <nav className="hidden md:flex items-center space-x-8 text-sm">
-            <a
-              href="/orders"
+            <Link
+              to="/orders"
               className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
             >
               <ShoppingBag className="w-4 h-4" />
               <span>Orders</span>
-            </a>
-            <a
-              href="/invoices"
+            </Link>
+            <Link
+              to="/invoices"
               className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
             >
               <FileText className="w-4 h-4" />
               <span>Invoices</span>
-            </a>
+            </Link>
             {isReseller && (
-              <a
-                href="/sub-users"
+              <Link
+                to="/sub-users"
                 className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
               >
                 <User className="w-4 h-4" />
                 <span>Users</span>
-              </a>
-            )} 
+              </Link>
+            )}
             {isReseller && (
-              <a
-                href="/settings"
+              <Link
+                to="/settings"
                 className="flex items-center space-x-1 hover:text-[#4f46e5] transition"
               >
                 <Settings className="w-4 h-4" />
                 <span>Settings</span>
-              </a>
-            )} 
+              </Link>
+            )}
           </nav>
         )}
 
         {/* Right Section */}
         <div className="flex items-center space-x-4 relative">
           {isLoggedIn && (
-            <a
-              href="/wallet"
+            <Link
+              to="/wallet"
               className="flex items-center gap-2 p-2 border border-gray-600 rounded-full hover:border-[#4f46e5] hover:text-[#4f46e5] transition"
               title="Wallet"
             >
               <Wallet className="w-5 h-5" />
-            </a>
+            </Link>
           )}
 
           {/* User Dropdown */}
@@ -171,8 +175,8 @@ const Header = () => {
                 {isLoggedIn ? (
                   <>
                     {/* Menu Items */}
-                    <a
-                      href="/profile"
+                    <Link
+                      to="/profile"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
                       onClick={() => setIsDropdownOpen(false)}
                     >
@@ -180,10 +184,10 @@ const Header = () => {
                         account_circle
                       </span>
                       <span>Profile</span>
-                    </a>
+                    </Link>
 
-                    <a
-                      href="/dashboard"
+                    <Link
+                      to="/dashboard"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-gray-700"
                       onClick={() => setIsDropdownOpen(false)}
                     >
@@ -191,7 +195,7 @@ const Header = () => {
                         dashboard
                       </span>
                       <span>Dashboard</span>
-                    </a>
+                    </Link>
 
                     <button
                       onClick={handleLogout}
@@ -203,16 +207,16 @@ const Header = () => {
                   </>
                 ) : (
                   <>
-                    <a
-                      href="/login"
+                    <Link
+                      to="/login"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition border-b border-gray-700"
                       onClick={() => setIsDropdownOpen(false)}
                     >
                       <span className="material-icons text-[18px]">login</span>
                       <span>Login</span>
-                    </a>
-                    <a
-                      href="/register"
+                    </Link>
+                    <Link
+                      to="/register"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#1e293b] hover:text-[#4f46e5] transition"
                       onClick={() => setIsDropdownOpen(false)}
                     >
@@ -220,7 +224,7 @@ const Header = () => {
                         person_add
                       </span>
                       <span>Sign Up</span>
-                    </a>
+                    </Link>
                   </>
                 )}
               </div>

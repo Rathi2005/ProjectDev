@@ -72,6 +72,7 @@ export default function AdminPaymentGatewaySettings() {
       const data = await res.json();
 
       setForm({
+        name: data.name,
         clientId: data.clientId,
         clientSecret: data.clientSecret,
         apiVersion: data.apiVersion,
@@ -80,6 +81,7 @@ export default function AdminPaymentGatewaySettings() {
       });
 
       setInitialForm({
+        name: data.name || "",
         clientId: data.clientId,
         clientSecret: data.clientSecret,
         apiVersion: data.apiVersion,
@@ -98,7 +100,11 @@ export default function AdminPaymentGatewaySettings() {
       setSaving(true);
 
       const payload = {
-        clientId: form.clientId,
+        name: form.name,
+        clientId:
+          form.clientId === "" || form.clientId.includes("*")
+            ? form.clientId
+            : form.clientId,
         clientSecret:
           form.clientSecret === "" || form.clientSecret === "******"
             ? "******"
@@ -127,7 +133,7 @@ export default function AdminPaymentGatewaySettings() {
       setInitialForm(updated);
       setUnsavedChanges(false);
 
-      toast.success("Gateway updated successfully 🚀");
+      toast.success("Gateway updated successfully.");
     } catch (err) {
       toast.error("Failed to update gateway");
     } finally {
@@ -196,6 +202,12 @@ export default function AdminPaymentGatewaySettings() {
           <div className="bg-[#0f1425] border border-indigo-900/40 rounded-2xl p-8 space-y-8">
             {/* Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Display Name"
+                value={form.name}
+                onChange={(v) => setForm({ ...form, name: v })}
+              />
+
               <Input
                 label={
                   activeGateway === "PAYTM" ? "Merchant ID (MID)" : "Client ID"

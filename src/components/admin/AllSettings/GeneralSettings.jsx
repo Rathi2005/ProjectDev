@@ -42,9 +42,12 @@ export default function AdminGeneralSettings() {
     gracePeriodDays: 3,
     expiryAction: "SUSPEND",
     terminationDays: 2,
+    logoUrl: "",
   });
 
   const [initialForm, setInitialForm] = useState({});
+
+  const isInvalidLogo = form.logoUrl && !form.logoUrl.startsWith("http");
 
   // Track unsaved changes
   useEffect(() => {
@@ -73,8 +76,17 @@ export default function AdminGeneralSettings() {
       if (!res.ok) throw new Error("Failed to fetch settings");
 
       const data = await res.json();
-      setForm(data);
-      setInitialForm(data);
+      const { id, ...rest } = data;
+
+      setForm({
+        ...rest,
+        logoUrl: rest.logoUrl || "",
+      });
+
+      setInitialForm({
+        ...rest,
+        logoUrl: rest.logoUrl || "",
+      });
     } catch (err) {
       toast.error("Unable to load settings");
     } finally {
@@ -86,7 +98,19 @@ export default function AdminGeneralSettings() {
   const handleSave = async () => {
     try {
       setSaving(true);
+
       const { id, ...payload } = form;
+
+      // ✅ Remove empty logoUrl
+      if (!payload.logoUrl) {
+        delete payload.logoUrl;
+      }
+
+      if (form.logoUrl && !form.logoUrl.startsWith("http")) {
+        toast.error("Logo URL must start with http:// or https://");
+        setSaving(false);
+        return;
+      }
 
       const res = await fetch(`${BASE_URL}/api/admin/settings/general`, {
         method: "PUT",
@@ -94,14 +118,23 @@ export default function AdminGeneralSettings() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload), // ✅ use payload not form
       });
 
       if (!res.ok) throw new Error("Update failed");
 
       const updated = await res.json();
-      setForm(updated);
-      setInitialForm(updated);
+
+      const { id: updatedId, ...rest } = updated;
+      setForm({
+        ...rest,
+        logoUrl: rest.logoUrl || "",
+      });
+
+      setInitialForm({
+        ...rest,
+        logoUrl: rest.logoUrl || "",
+      });
       setUnsavedChanges(false);
 
       toast.success("Settings updated successfully");
@@ -251,6 +284,14 @@ export default function AdminGeneralSettings() {
                       placeholder="+91 9999999999"
                       type="tel"
                       required
+                    />
+
+                    <Input
+                      label="Company Logo URL"
+                      value={form.logoUrl}
+                      onChange={(v) => handleInputChange("logoUrl", v)}
+                      icon={Globe}
+                      placeholder="https://example.com/logo.png"
                     />
                   </div>
                 </div>
