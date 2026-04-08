@@ -18,5 +18,6 @@ export const useAdminOrders = ({
     placeholderData: (previousData) => previousData,
     staleTime: 60 * 1000,
     refetchInterval: isSearching ? false : 10_000,
+    refetchIntervalInBackground: false,
   });
 };
