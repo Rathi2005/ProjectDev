@@ -92,6 +92,14 @@ export default function ManageResourcesPage({
   const [inUseFilter, setInUseFilter] = useState("all");
   const [editingItem, setEditingItem] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopy = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success("Copied to clipboard!");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // 🔄 RESOLVE FIELDS BASED ON ENDPOINT AND MODE
   const resolvedFields = useMemo(() => {
@@ -671,10 +679,6 @@ export default function ManageResourcesPage({
           color: #e6e6e6;
           box-shadow: none;
         }
-        .swal2-select {
-          color: #000 !important;
-          background: #ffffff !important;
-        }
       `}</style>
 
       <div className="fixed top-0 left-0 right-0 z-50 bg-[#0e1525]/90 backdrop-blur-md border-b border-indigo-900/30">
@@ -1148,10 +1152,39 @@ export default function ManageResourcesPage({
                                 (Number(val) / 1024).toFixed(2) + " TB";
                             }
 
+                            if (key.toLowerCase().includes("ip") && val && !["startip", "endip"].includes(key.toLowerCase())) {
+                              return (
+                                <td
+                                  key={j}
+                                  className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 font-mono text-sm"
+                                >
+                                  <div className="group flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/5 border border-indigo-500/20 rounded-lg shadow-sm hover:border-indigo-500/30 transition-all">
+                                      <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span className="font-medium text-indigo-100">
+                                        {val}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleCopy(val, item.id + key)}
+                                      className="p-1.5 hover:bg-indigo-500/10 rounded-md text-gray-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all"
+                                      title="Copy"
+                                    >
+                                      {copiedId === item.id + key ? (
+                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                      ) : (
+                                        <Layers className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </td>
+                              );
+                            }
+
                             return (
                               <td
                                 key={j}
-                                className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 text-sm md:text-base"
+                                className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 text-sm md:text-base text-gray-300"
                               >
                                 {displayValue}
                               </td>
