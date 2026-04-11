@@ -49,6 +49,7 @@ import {
   Home,
   Phone,
 } from "lucide-react";
+import MacAddressManager from "./MacAddressManager";
 
 export default function OrderDetailsPage() {
   const { orderId } = useParams();
@@ -887,6 +888,10 @@ export default function OrderDetailsPage() {
                       <Globe className="w-4 h-4" />
                       Change IP
                     </button>
+                    <MacAddressManager 
+                      orderId={order.internalVmid} 
+                      onSuccess={fetchOrderDetails} 
+                    />
                     <button
                       onClick={() => {
                         /* Add destroy handler */

@@ -5,18 +5,24 @@ export const fetchAdminOrders = async ({
   size,
   statusFilter,
   search,
+  searchBy,
   signal,
+  sortBy = "createdAt",
+  sortDir = "desc",
 }) => {
   const adminToken = localStorage.getItem("adminToken");
 
   const params = new URLSearchParams({
     page,
     size,
-    sortBy: "createdAt",
-    sortDir: "desc",
+    sortBy,
+    sortDir,
   });
 
-  if (search) params.append("search", search);
+  if (search) {
+    params.append("search", search);
+    if (searchBy) params.append("searchBy", searchBy);
+  }
   if (statusFilter) params.append("status", statusFilter);
 
   const res = await fetch(

@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
-import { Link } from "react-router-dom";
 import { useAdminOrders } from "../../hooks/useAdminOrders";
 import { useAdminStats } from "../../hooks/useAdminStats";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,7 +9,6 @@ import Swal from "sweetalert2";
 import Pagination from "../../components/Pagination";
 import { useNavigate } from "react-router-dom";
 import SortIcon from "../../components/SortIcon";
-import useSortableData from "../../hooks/useSortableData";
 import toast from "react-hot-toast";
 import {
   Package,
@@ -37,6 +35,9 @@ import {
   Eye, // Add this import
   Edit,
   ShieldCheck,
+  Search,
+  Filter,
+  X,
 } from "lucide-react";
 
 export default function OrdersPage() {
@@ -50,7 +51,38 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchBy, setSearchBy] = useState("");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
   const debouncedSearch = useDebounce(searchQuery.trim(), 500);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    const handleEsc = (event) => {
+      if (event.key === "Escape") setIsFilterOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, []);
+
+  const [sortConfig, setSortConfig] = useState({ key: "createdAt", direction: "desc" });
+
+  const requestSort = (key) => {
+    let direction = "desc";
+    if (sortConfig.key === key && sortConfig.direction === "desc") {
+      direction = "asc";
+    }
+    setSortConfig({ key, direction });
+  };
 
   const {
     data: ordersData,
@@ -62,7 +94,10 @@ export default function OrdersPage() {
     size,
     statusFilter,
     search: debouncedSearch,
+    searchBy,
     rawSearch: searchQuery,
+    sortBy: sortConfig?.key || "createdAt",
+    sortDir: sortConfig?.direction || "desc",
   });
 
   // ── User-intent loader tracking ──────────────────────────────────────
@@ -122,8 +157,6 @@ export default function OrdersPage() {
     totalDeletedVms: statsData?.deleted?.totalDeletedVms || 0,
     totalUsers: statsData?.users?.totalUsers || 0,
   }), [statsData]);
-
-  const { sortedItems, requestSort, sortConfig } = useSortableData(orders);
   const [expandedRow, setExpandedRow] = useState(null);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
 
@@ -1250,7 +1283,7 @@ export default function OrdersPage() {
               <div className="p-4 sm:p-6 border-b border-indigo-900/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <h2 className="text-lg sm:text-xl font-semibold text-white">
-                    Order List
+                  Order List
                   </h2>
                   <p className="text-sm text-gray-400 mt-1">
                     Showing {totalItems === 0 ? 0 : page * size + 1}–
@@ -1259,49 +1292,110 @@ export default function OrdersPage() {
                   </p>
                 </div>
 
-                {/* STATUS FILTER */}
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* SEARCH INPUT */}
+                  {(() => {
+                    const searchOptions = [
+                      { value: "", label: "All Fields" },
+                      { value: "ip", label: "IP Address" },
+                      { value: "email", label: "Email Address" },
+                      { value: "user_name", label: "Full Name" },
+                      { value: "order_id", label: "Order ID" },
+                      { value: "vmid", label: "VM ID" },
+                      { value: "vm_name", label: "VM Name" },
+                    ];
+                    const activeLabel = searchOptions.find(o => o.value === searchBy)?.label || "All Fields";
+
+                    return (
+                      <div className="flex-1 min-w-[300px] relative group" ref={filterDropdownRef}>
+                        <div className="flex items-center bg-[#0e1525] border border-indigo-900/50 rounded-xl focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all duration-300">
+                          <div className="pl-4 text-gray-400">
+                            <Search className="w-4 h-4" />
+                          </div>
+
+                          <input
+                            type="text"
+                            placeholder={`Search by ${activeLabel.toLowerCase()}...`}
+                            value={searchQuery}
+                            onChange={(e) => {
+                              fetchIntentRef.current = true;
+                              setSearchQuery(e.target.value);
+                              setPage(0);
+                            }}
+                            className="bg-transparent border-none text-white focus:ring-0 px-4 py-2.5 flex-1 placeholder-gray-500 text-sm"
+                          />
+
+                          {searchQuery && (
+                            <button 
+                              onClick={() => {
+                                fetchIntentRef.current = true;
+                                setSearchQuery("");
+                                setPage(0);
+                              }}
+                              className="p-1 hover:bg-gray-700/50 rounded-full transition-colors mr-2 text-gray-400"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          <div className="relative border-l border-indigo-900/30">
+                            <button
+                              onClick={() => setIsFilterOpen(!isFilterOpen)}
+                              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-indigo-300 hover:text-white hover:bg-indigo-600/10 transition-all"
+                            >
+                              <span className="opacity-60 font-normal">Filter:</span> {activeLabel}
+                              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isFilterOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isFilterOpen && (
+                              <div className="absolute right-0 top-full mt-2 w-48 bg-[#0e1525] border border-indigo-900/50 rounded-xl shadow-2xl z-[60] py-1.5 animate-in fade-in zoom-in duration-200">
+                                <div className="px-3 pb-1.5 mb-1.5 border-b border-indigo-900/30 text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                                  Search Field
+                                </div>
+                                {searchOptions.map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => {
+                                      fetchIntentRef.current = true;
+                                      setSearchBy(opt.value);
+                                      setPage(0);
+                                      setIsFilterOpen(false);
+                                    }}
+                                    className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                                      searchBy === opt.value
+                                        ? "bg-indigo-600/20 text-indigo-300 font-medium"
+                                        : "text-gray-400 hover:bg-white/5 hover:text-gray-100"
+                                    }`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="relative">
-                    <input
-                      type="text"
-                      value={searchQuery}
+                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <select
+                      value={statusFilter}
                       onChange={(e) => {
                         fetchIntentRef.current = true;
-                        setSearchQuery(e.target.value);
-                        setPage(0);
+                        handleStatusChange(e);
                       }}
-                      placeholder="Search VM, IP, Email, Order ID, VMID..."
-                      className="bg-[#0e1525] border border-indigo-900/40
-          rounded-lg px-3 py-2 text-sm text-white
-          focus:outline-none focus:ring-2 focus:ring-indigo-500
-          hover:border-indigo-500/60 transition-colors
-          min-w-[260px] pr-[140px]"
-                    />
-                    {searchQuery.trim() && (
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-amber-400/80 flex items-center gap-1 pointer-events-none">
-                        <Clock className="w-3 h-3" /> Live refresh paused
-                      </span>
-                    )}
+                      className="bg-[#0e1525] border border-indigo-900/40 rounded-lg pl-10 pr-10 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-indigo-500/60 transition-colors min-w-[170px] appearance-none cursor-pointer"
+                    >
+                      <option className="bg-[#0f172a]" value="">All Statuses</option>
+                      <option className="bg-[#0f172a]" value="ACTIVE">ACTIVE</option>
+                  <option className="bg-[#0f172a]" value="SUSPENDED">SUSPENDED</option>
+                      <option className="bg-[#0f172a]" value="PENDING_PAYMENT">PENDING PAYMENT</option>
+                      <option className="bg-[#0f172a]" value="MAINTENANCE">MAINTENANCE</option>
+                      <option className="bg-[#0f172a]" value="ERROR">ERROR</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   </div>
-
-                  {/* STATUS FILTER (UNCHANGED) */}
-                  <select
-                    value={statusFilter}
-                    onChange={handleStatusChange}
-                    className="bg-[#0e1525] border border-indigo-900/40
-        rounded-lg px-3 py-2 text-sm text-white
-        focus:outline-none focus:ring-2 focus:ring-indigo-500
-        hover:border-indigo-500/60 transition-colors
-        min-w-[150px] appearance-none"
-                  >
-                    <option value="">All</option>
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="SUSPENDED">SUSPENDED</option>
-                    <option value="PENDING_PAYMENT">PENDING PAYMENT</option>
-                    <option value="MAINTENANCE">MAINTENANCE</option>
-                    <option value="ERROR">ERROR</option>
-                  </select>
                 </div>
               </div>
 
@@ -1380,12 +1474,11 @@ export default function OrdersPage() {
 
                         <th className="py-3 px-4 sm:px-6">Status</th>
                         <th className="py-3 px-4 sm:px-6">Live Status</th>
-                        <th className="py-3 px-4 sm:px-6">Actions</th>
                       </tr>
                     </thead>
 
                     <tbody>
-                      {sortedItems.map((order) => (
+                      {orders.map((order) => (
                         <React.Fragment key={order.dbOrderId}>
                           {/* CLICKABLE MAIN ROW */}
                           <tr
@@ -1510,41 +1603,6 @@ export default function OrdersPage() {
                               >
                                 {normalizeLiveStatus(order.liveState)}
                               </span>
-                            </td>
-                            <td className="py-3 px-4 sm:px-6">
-                              {(() => {
-                                const isVmRunning =
-                                  normalizeLiveStatus(order.liveState) ===
-                                  "START";
-
-                                return (
-                                  <button
-                                    onClick={() =>
-                                      navigate(
-                                        `/admin/vms/${order.internalVmid}/performance`,
-                                        {
-                                          state: {
-                                            vmid: order.internalVmid,
-                                            serverId: order.serverId,
-                                            vmName: order.vmName,
-                                          },
-                                        },
-                                      )
-                                    }
-                                    disabled={!isVmRunning}
-                                    className={`inline-flex items-center gap-2 px-3 py-1.5
-      rounded-md text-xs border transition
-      ${
-        isVmRunning
-          ? "bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border-indigo-500/30"
-          : "bg-gray-700/40 text-gray-500 border-gray-600 cursor-not-allowed"
-      }`}
-                                  >
-                                    <Activity className="w-4 h-4" />
-                                    Performance
-                                  </button>
-                                );
-                              })()}
                             </td>
                           </tr>
 
@@ -1877,6 +1935,32 @@ export default function OrdersPage() {
                                   {/* Action Buttons - Responsive */}
                                   <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
                                     <button
+                                      onClick={() => {
+                                        if (normalizeLiveStatus(order.liveState) === "START") {
+                                          navigate(
+                                            `/admin/vms/${order.internalVmid}/performance`,
+                                            {
+                                              state: {
+                                                vmid: order.internalVmid,
+                                                serverId: order.serverId,
+                                                vmName: order.vmName,
+                                              },
+                                            },
+                                          );
+                                        }
+                                      }}
+                                      disabled={normalizeLiveStatus(order.liveState) !== "START"}
+                                      className={`flex-1 sm:flex-none px-3 py-2 border disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm rounded-lg flex items-center justify-center gap-2 transition ${
+                                        normalizeLiveStatus(order.liveState) === "START"
+                                          ? "text-indigo-300 border-indigo-500/30 hover:bg-indigo-600/20 hover:text-white"
+                                          : "text-gray-500 border-gray-600 bg-gray-700/40"
+                                      }`}
+                                    >
+                                      <Activity className="w-4 h-4" />
+                                      Performance
+                                    </button>
+
+                                    <button
                                       onClick={() =>
                                         handlePowerAction(order.id, "start")
                                       }
@@ -2016,7 +2100,7 @@ export default function OrdersPage() {
                 {/* Mobile View */}
                 <div className="lg:hidden">
                   <div className="space-y-4 p-4">
-                    {sortedItems.map((order) => (
+                    {orders.map((order) => (
                       <div
                         key={order.dbOrderId}
                         className="bg-[#1a2337] border border-indigo-900/30 rounded-lg p-4"

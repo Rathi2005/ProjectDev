@@ -44,6 +44,7 @@ import {
   ShieldOff,
   User,
 } from "lucide-react";
+import MacAddressManager from "../components/admin/MacAddressManager";
 
 export default function UserOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -1909,6 +1910,15 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   </button>
                                                 </div>
                                               )}
+
+                                            {/* Utility Actions */}
+                                            <div className="pt-3 border-t border-indigo-900/30">
+                                              <MacAddressManager 
+                                                orderId={order.id} 
+                                                isAdmin={false} 
+                                                onSuccess={() => setRefreshTrigger(prev => prev + 1)} 
+                                              />
+                                            </div>
 
                                             {/* Power Controls */}
                                             <div className="pt-3 border-t border-indigo-900/30">
