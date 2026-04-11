@@ -3,6 +3,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { useAdminOrders } from "../../hooks/useAdminOrders";
 import { useAdminStats } from "../../hooks/useAdminStats";
 import { useQueryClient } from "@tanstack/react-query";
+import { useVmActions } from "../../hooks/admin/useVmActions";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
@@ -31,18 +32,30 @@ import {
   Wifi,
   HardDriveIcon,
   Trash2,
-  Users, // Add this import
-  Eye, // Add this import
+  Users,
+  Eye,
   Edit,
   ShieldCheck,
   Search,
   Filter,
   X,
 } from "lucide-react";
+import MacChangeModal from "../../components/admin/Orders/MacChangeModal";
+
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+const DarkSwal = Swal.mixin({
+  background: "#1e2640",
+  color: "#ffffff",
+  confirmButtonColor: "#6366f1",
+  cancelButtonColor: "#4b5563",
+  buttonsStyling: true,
+});
 
 export default function OrdersPage() {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [ipChangeLoading, setIpChangeLoading] = useState({});
+  const [macModal, setMacModal] = useState({ isOpen: false, order: null });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -128,6 +141,7 @@ export default function OrdersPage() {
       ramMb: order.ramMb,
       diskGb: order.diskGb,
       ipAddress: order.ipAddress || "",
+      macAddress: order.macAddress || "N/A",
       createdAt: order.createdAt,
       expiresAt: order.expiresAt,
       status: order.status,
@@ -142,6 +156,8 @@ export default function OrdersPage() {
       originalData: order,
     }));
   }, [ordersData]);
+
+  const { changeMac } = useVmActions(BASE_URL);
 
   const totalItems = ordersData?.totalItems || 0;
   const totalPages = ordersData?.totalPages || 0;
@@ -159,16 +175,14 @@ export default function OrdersPage() {
   }), [statsData]);
   const [expandedRow, setExpandedRow] = useState(null);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
+  const [copiedId, setCopiedId] = useState(null);
 
-  const BASE_URL = import.meta.env.VITE_BASE_URL;
-
-  const DarkSwal = Swal.mixin({
-    background: "#1e2640",
-    color: "#ffffff",
-    confirmButtonColor: "#6366f1",
-    cancelButtonColor: "#4b5563",
-    buttonsStyling: true,
-  });
+  const handleCopy = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success("Copied to clipboard!");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // State for additional insights
   const [revenueStats, setRevenueStats] = useState({
@@ -1042,10 +1056,9 @@ export default function OrdersPage() {
     }
   };
 
-  // ---------- FETCH AVAILABLE IPS FOR VMID CHANGE ----------
+  // ------- IP ADDRESS CHANGE HANDLER --------
   const fetchAvailableIps = async (serverId) => {
     const adminToken = localStorage.getItem("adminToken");
-
     const res = await fetch(
       `${BASE_URL}/api/admin/vms/${serverId}/available-ips`,
       {
@@ -1057,117 +1070,177 @@ export default function OrdersPage() {
     );
 
     if (!res.ok) {
-      throw new Error(await res.text());
+      const errText = await res.text();
+      throw new Error(errText || "Failed to fetch available IPs");
     }
 
     return await res.json();
   };
 
-  // ------- IP CHANGE HANDLER --------
   const handleChangeIp = async (order) => {
-    // ⛔ Prevent double click
     if (ipChangeLoading[order.id]) return;
-    setIpChangeLoading((p) => ({ ...p, [order.id]: true }));
+
     try {
       const adminToken = localStorage.getItem("adminToken");
-      if (!adminToken) return;
+      if (!adminToken) {
+        DarkSwal.fire({
+          icon: "error",
+          title: "Authentication Required",
+          text: "Admin not authenticated",
+          timer: 3000,
+          showConfirmButton: false,
+        });
+        return;
+      }
 
+      // Fetch available IPs for the server
       const ips = await fetchAvailableIps(order.serverId);
 
       if (!ips.length) {
         DarkSwal.fire({
           icon: "warning",
           title: "No IPs Available",
-          text: "No free IP addresses available on this server",
+          text: "No available IP addresses found for this server.",
         });
         return;
       }
 
-      const ipOptions = {};
-      ips.forEach((i) => {
-        ipOptions[i.id] = i.ip;
-      });
+      window._selectedIpId = null; // Reset selection state
 
-      const { value: newIpId } = await DarkSwal.fire({
+      const ipListHtml = `
+        <div class="text-left space-y-4">
+          <div class="flex items-center gap-3 p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-lg">
+            <div class="p-2 bg-indigo-500/10 rounded-lg">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Target Server</p>
+              <p class="text-sm font-semibold text-white">${order.vmName}</p>
+            </div>
+          </div>
+          
+          <div class="space-y-2">
+            <p class="text-[11px] font-bold text-gray-500 uppercase px-1">Available IP Addresses</p>
+            <div id="ip-picker-container" class="max-h-[240px] overflow-y-auto pr-2 space-y-1 custom-scrollbar">
+              ${ips.map(ip => `
+                <button 
+                  data-ip-id="${ip.id}" 
+                  data-ip-val="${ip.ip}"
+                  class="ip-picker-item w-full flex items-center justify-between p-4 rounded-lg bg-[#0e1525] border border-white/5 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all group"
+                >
+                  <span class="text-sm font-mono text-gray-400 group-hover:text-white transition-colors">${ip.ip}</span>
+                  <div class="w-4 h-4 rounded-full border border-white/10 group-hover:border-indigo-500 flex items-center justify-center">
+                    <div class="selection-indicator w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-0 transition-opacity"></div>
+                  </div>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const { value: selectedIpId } = await DarkSwal.fire({
         title: "Change IP Address",
-        html: `
-        <p class="text-sm text-gray-300 mb-2">
-          Current IP: <strong>${order.ipAddress || "N/A"}</strong>
-        </p>
-      `,
-        input: "select",
-        inputOptions: ipOptions,
-        inputPlaceholder: "Select new IP",
+        html: ipListHtml,
+        showConfirmButton: true,
         showCancelButton: true,
         confirmButtonText: "Change IP",
         cancelButtonText: "Cancel",
         confirmButtonColor: "#6366f1",
-        background: "#1e2640",
-        color: "#ffffff",
-
+        customClass: {
+          popup: "rounded-xl border border-white/10",
+          htmlContainer: "custom-swal-html",
+        },
         didOpen: () => {
-          const select = Swal.getInput();
-
-          if (select) {
-            select.style.backgroundColor = "#0e1525";
-            select.style.color = "#ffffff";
-            select.style.border = "1px solid rgba(255,255,255,0.15)";
-            select.style.borderRadius = "8px";
-            select.style.padding = "10px";
+          const container = document.getElementById('ip-picker-container');
+          const items = container.querySelectorAll('.ip-picker-item');
+          
+          items.forEach(item => {
+            item.addEventListener('click', () => {
+              // Remove active class from all
+              items.forEach(i => {
+                i.classList.remove('border-indigo-500', 'bg-indigo-500/20');
+                i.querySelector('.selection-indicator').classList.add('opacity-0');
+              });
+              
+              // Add active class to clicked
+              item.classList.add('border-indigo-500', 'bg-indigo-500/20');
+              item.querySelector('.selection-indicator').classList.remove('opacity-0');
+              
+              const ipId = item.getAttribute('data-ip-id');
+              window._selectedIpId = ipId;
+            });
+          });
+        },
+        preConfirm: () => {
+          if (!window._selectedIpId) {
+            Swal.showValidationMessage('Please select an IP address from the list above');
+            return false;
           }
-        },
-
-        inputValidator: (value) => {
-          if (!value) return "Please select an IP";
-        },
+          return window._selectedIpId;
+        }
       });
 
-      if (!newIpId) return;
+      if (!selectedIpId) return;
 
+      // Confirm change
+      const confirmResult = await DarkSwal.fire({
+        title: "Confirm IP Change",
+        text: `Are you sure you want to reassign the IP address for ${order.vmName}? The VM network configuration will be updated immediately.`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#ef4444",
+        cancelButtonColor: "#4b5563",
+        confirmButtonText: "Yes, Update IP",
+        cancelButtonText: "Cancel",
+      });
+
+      if (!confirmResult.isConfirmed) return;
+
+      setIpChangeLoading((prev) => ({ ...prev, [order.id]: true }));
+
+      // Call the API to change IP
       const res = await fetch(
         `${BASE_URL}/api/admin/vms/${order.internalVmid}/change-ip`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${adminToken}`,
             "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
           },
           body: JSON.stringify({ newIpId: Number(newIpId) }),
         },
       );
 
       if (!res.ok) {
-        throw new Error(await res.text());
+        const text = await res.text();
+        throw new Error(text || "IP change failed");
       }
 
-      // Optimistic cache update — mutate React Query cache directly
-      queryClient.setQueryData(
-        ["admin-orders", page, size, statusFilter, debouncedSearch],
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            vms: old.vms.map((vm) =>
-              vm.dbOrderId === order.id
-                ? { ...vm, ipAddress: ips.find((ip) => ip.id === Number(newIpId))?.ip }
-                : vm
-            ),
-          };
-        },
-      );
+      DarkSwal.fire({
+        icon: "success",
+        title: "Success",
+        text: "IP address changed successfully.",
+        timer: 3000,
+        showConfirmButton: false,
+      });
 
-      toast.success(
-        "IP address changed successfully! It will take 30 seconds to reflect.",
-      );
+      await refetchOrders();
     } catch (err) {
       DarkSwal.fire({
         icon: "error",
-        title: "IP Change Failed",
-        text: err.message || "Failed to change IP",
+        title: "Failed",
+        text: err.message || "Failed to change IP address",
       });
     } finally {
-      setIpChangeLoading((p) => ({ ...p, [order.id]: false }));
+      setIpChangeLoading((prev) => ({ ...prev, [order.id]: false }));
     }
+  };
+  // ------- MAC ADDRESS CHANGE HANDLER --------
+  const handleMacChangeTrigger = (order) => {
+    setMacModal({ isOpen: true, order });
   };
 
   return (
@@ -1565,11 +1638,26 @@ export default function OrdersPage() {
                             </td>
 
                             <td className="py-3 px-4 sm:px-6">
-                              <div className="flex items-center gap-1">
-                                <Wifi className="w-3 h-3 text-gray-400" />
-                                <code className="bg-indigo-900/30 px-2 py-1 rounded text-xs">
-                                  {order.ipAddress || "N/A"}
-                                </code>
+                              <div className="group flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/5 border border-indigo-500/20 rounded-lg shadow-sm hover:border-indigo-500/30 transition-all">
+                                  <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                                  <code className="text-xs font-mono font-medium text-indigo-100">
+                                    {order.ipAddress || "N/A"}
+                                  </code>
+                                </div>
+                                {order.ipAddress && (
+                                  <button
+                                    onClick={() => handleCopy(order.ipAddress, order.id)}
+                                    className="p-1.5 hover:bg-indigo-500/10 rounded-md text-gray-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all"
+                                    title="Copy IP Address"
+                                  >
+                                    {copiedId === order.id ? (
+                                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                    ) : (
+                                      <FileText className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             </td>
                             <td className="py-3 px-4 sm:px-6 text-xs sm:text-sm">
@@ -1638,7 +1726,7 @@ export default function OrdersPage() {
                                             </p>
                                           </div>
 
-                                          <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                          <div className="bg-white/5 border border-white/5 rounded-xl p-3 sm:p-4 hover:bg-white/10 transition-colors">
                                             <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                               <MemoryStick className="w-3 h-3 sm:w-4 sm:h-4" />
                                               <span>RAM</span>
@@ -1652,7 +1740,7 @@ export default function OrdersPage() {
                                           </div>
                                         </div>
 
-                                        <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                        <div className="bg-white/5 border border-white/5 rounded-xl p-3 sm:p-4 hover:bg-white/10 transition-colors">
                                           <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                             <HardDriveIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                                             <span>Storage</span>
@@ -1665,7 +1753,7 @@ export default function OrdersPage() {
                                           </p>
                                         </div>
 
-                                        <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                        <div className="bg-white/5 border border-white/5 rounded-xl p-3 sm:p-4 hover:bg-white/10 transition-colors">
                                           <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm mb-1">
                                             <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
                                             <span>Operating System</span>
@@ -1705,38 +1793,84 @@ export default function OrdersPage() {
                                             </div>
                                           )}
 
-                                        <div className="pt-4 border-t border-indigo-900/30">
-                                          <div className="flex items-center justify-between gap-2">
-                                            <span className="text-xs sm:text-sm text-gray-400">
-                                              IP Address
-                                            </span>
-
+                                        <div className="pt-4 border-t border-indigo-900/30 space-y-4">
+                                          {/* IP Address (MANAGED) */}
+                                          <div className="flex items-center justify-between gap-3 p-3 bg-indigo-500/5 rounded-xl border border-indigo-500/10 hover:border-indigo-500/30 transition-all group">
+                                            <div className="flex items-center gap-3">
+                                              <div className="p-2 bg-indigo-500/10 rounded-lg">
+                                                <Wifi className="w-4 h-4 text-emerald-400" />
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">IP ADDRESS</p>
+                                                <code className="text-sm font-mono font-medium text-white">
+                                                  {order.ipAddress || "N/A"}
+                                                </code>
+                                              </div>
+                                            </div>
                                             <div className="flex items-center gap-2">
-                                              <code className="bg-indigo-900/30 px-3 py-1 rounded text-xs sm:text-sm font-mono">
-                                                {order.ipAddress || "N/A"}
-                                              </code>
-
+                                              {order.ipAddress && (
+                                                <button
+                                                  onClick={() => handleCopy(order.ipAddress, order.id + "_IP")}
+                                                  className="p-2 hover:bg-indigo-500/10 rounded-lg text-gray-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0"
+                                                  title="Copy IP"
+                                                >
+                                                  {copiedId === order.id + "_IP" ? (
+                                                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                                  ) : (
+                                                    <FileText className="w-4 h-4" />
+                                                  )}
+                                                </button>
+                                              )}
                                               <button
-                                                onClick={() =>
-                                                  handleChangeIp(order)
-                                                }
-                                                disabled={
-                                                  ipChangeLoading[order.id]
-                                                }
-                                                className={`px-2 py-1 rounded-md text-xs transition
-        ${
-          ipChangeLoading[order.id]
-            ? "bg-gray-600/40 text-gray-400 cursor-not-allowed"
-            : "bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white"
-        }`}
+                                                onClick={() => handleChangeIp(order)}
+                                                disabled={ipChangeLoading[order.id]}
+                                                className={`px-3 py-1.5 rounded-lg text-xs transition font-bold uppercase tracking-tight shadow-lg shadow-indigo-600/10
+                                                  ${ipChangeLoading[order.id]
+                                                    ? "bg-gray-600/40 text-gray-400 cursor-not-allowed"
+                                                    : "bg-indigo-600 text-white hover:bg-indigo-500 active:scale-95"
+                                                  }`}
                                               >
-                                                {ipChangeLoading[order.id]
-                                                  ? "Changing..."
-                                                  : "Change"}
+                                                {ipChangeLoading[order.id] ? "..." : "Change"}
                                               </button>
                                             </div>
                                           </div>
-                                        </div>
+
+                                          {/* MAC Address (MANAGED) */}
+                                          <div className="flex items-center justify-between gap-3 p-3 bg-indigo-500/5 rounded-xl border border-indigo-500/10 hover:border-indigo-500/30 transition-all group">
+                                            <div className="flex items-center gap-3">
+                                              <div className="p-2 bg-indigo-500/10 rounded-lg">
+                                                <Activity className="w-4 h-4 text-indigo-400" />
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">MAC ADDRESS</p>
+                                                <code className="text-sm font-mono font-medium text-white">
+                                                  {order.macAddress || "N/A"}
+                                                </code>
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              {order.macAddress && order.macAddress !== "N/A" && (
+                                                <button
+                                                  onClick={() => handleCopy(order.macAddress, order.id + "_MAC")}
+                                                  className="p-2 hover:bg-indigo-500/10 rounded-lg text-gray-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0"
+                                                  title="Copy MAC"
+                                                >
+                                                  {copiedId === order.id + "_MAC" ? (
+                                                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                                  ) : (
+                                                    <FileText className="w-4 h-4" />
+                                                  )}
+                                                </button>
+                                              )}
+                                              <button
+                                                onClick={() => handleMacChangeTrigger(order)}
+                                                className="px-3 py-1.5 rounded-lg text-xs transition font-bold uppercase tracking-tight bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/10 active:scale-95"
+                                              >
+                                                Change
+                                              </button>
+                                            </div>
+                                          </div>
+                                         </div>
                                       </div>
                                     </div>
 
@@ -2179,7 +2313,6 @@ export default function OrdersPage() {
                           {/* Mobile Expanded View */}
                           {expandedRow === order.id && (
                             <div className="mt-4 pt-4 border-t border-indigo-900/30">
-                              {/* Add mobile expanded content here */}
                               <div className="space-y-3">
                                 <div>
                                   <span className="text-gray-400 text-sm">
@@ -2189,6 +2322,35 @@ export default function OrdersPage() {
                                     {order.user?.email}
                                   </p>
                                 </div>
+
+                                <div className="pt-2 border-t border-indigo-900/20 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-400 text-xs uppercase tracking-wider">IP Address</span>
+                                    <div className="flex items-center gap-2">
+                                      <code className="bg-white/5 px-2 py-0.5 rounded text-xs text-white border border-white/10">{order.ipAddress || "N/A"}</code>
+                                      <button 
+                                         onClick={() => handleChangeIp(order)}
+                                         className="text-indigo-400 text-xs font-semibold hover:text-indigo-300 transition-colors"
+                                      >
+                                        Change
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-400 text-xs uppercase tracking-wider">MAC Address</span>
+                                    <div className="flex items-center gap-2">
+                                      <code className="bg-white/5 px-2 py-0.5 rounded text-xs text-white border border-white/10">{order.macAddress || "N/A"}</code>
+                                      <button 
+                                         onClick={() => handleMacChangeTrigger(order)}
+                                         className="text-indigo-400 text-xs font-semibold hover:text-indigo-300 transition-colors"
+                                      >
+                                        Change
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
                                 <div>
                                   <span className="text-gray-400 text-sm">
                                     Created:
@@ -2197,7 +2359,6 @@ export default function OrdersPage() {
                                     {formatDate(order.createdAt)}
                                   </p>
                                 </div>
-                                {/* Add more mobile details as needed */}
                               </div>
                             </div>
                           )}
@@ -2238,6 +2399,14 @@ export default function OrdersPage() {
       </main>
 
       <Footer />
+      
+      {/* Infrastructure Modals */}
+      <MacChangeModal 
+        isOpen={macModal.isOpen}
+        onClose={() => setMacModal({ isOpen: false, order: null })}
+        order={macModal.order}
+        onSuccess={() => refetchOrders()}
+      />
     </div>
   );
 }

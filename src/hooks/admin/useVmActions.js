@@ -8,7 +8,7 @@ export function useVmActions(BASE_URL) {
     setLoading(p => ({ ...p, [orderId]: action }));
 
     const res = await fetch(
-      `${BASE_URL}/admin/vms/order/${orderId}/power?action=${action}`,
+      `${BASE_URL}/api/admin/vms/order/${orderId}/power?action=${action}`,
       { method: "POST", headers: { Authorization: `Bearer ${token}` } }
     );
 
@@ -22,7 +22,7 @@ export function useVmActions(BASE_URL) {
   async function destroy(orderId) {
     const token = localStorage.getItem("adminToken");
     const res = await fetch(
-      `${BASE_URL}/admin/vms/order/${orderId}/remove`,
+      `${BASE_URL}/api/admin/vms/order/${orderId}/remove`,
       { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
     );
 
@@ -32,33 +32,32 @@ export function useVmActions(BASE_URL) {
     }
   }
 
-  async function changeMac(orderId, isManual, macAddress) {
+  async function changeMac(vmId, isManual, macAddress) {
     const token = localStorage.getItem("adminToken");
-    setLoading(p => ({ ...p, [orderId]: "mac_change" }));
+    setLoading(p => ({ ...p, [vmId]: "mac_change" }));
 
+    // Prepare body only if manual is true
     const body = isManual && macAddress ? JSON.stringify({ mac: macAddress }) : null;
+    
     const res = await fetch(
-      `${BASE_URL}/admin/vms/${orderId}/mac/change?manual=${!!isManual}`,
+      `${BASE_URL}/api/admin/vms/${vmId}/mac/change?manual=${!!isManual}`,
       { 
         method: "POST", 
         headers: { 
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
           ...(body && { "Content-Type": "application/json" })
         },
         ...(body && { body })
       }
     );
 
-    setLoading(p => ({ ...p, [orderId]: null }));
+    setLoading(p => ({ ...p, [vmId]: null }));
     if (!res.ok) {
-      let errorData = {};
-      try { errorData = await res.json(); } catch (_) {}
+      const errorData = await res.json().catch(() => ({}));
       throw new Error(`${res.status}: ${errorData.error || "Failed to change MAC address"}`);
     }
     
-    let data = {};
-    try { data = await res.json(); } catch (_) {}
-    return data;
+    return await res.json().catch(() => ({}));
   }
 
   async function regenerateUserMac(orderId) {
@@ -68,7 +67,7 @@ export function useVmActions(BASE_URL) {
     setLoading(p => ({ ...p, [orderId]: "mac_regen" }));
 
     const res = await fetch(
-      `${BASE_URL}/users/vms/${orderId}/mac/regenerate`,
+      `${BASE_URL}/api/users/vms/${orderId}/mac/regenerate`,
       { 
         method: "POST", 
         headers: { Authorization: `Bearer ${token}` }
