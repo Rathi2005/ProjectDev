@@ -889,7 +889,7 @@ export default function OrderDetailsPage() {
                       Change IP
                     </button>
                     <MacAddressManager 
-                      orderId={order.internalVmid} 
+                      targetId={order.internalVmid} 
                       onSuccess={fetchOrderDetails} 
                     />
                     <button

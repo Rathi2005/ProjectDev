@@ -44,7 +44,6 @@ import {
   ShieldOff,
   User,
 } from "lucide-react";
-import MacAddressManager from "../components/admin/MacAddressManager";
 
 export default function UserOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -59,6 +58,8 @@ export default function UserOrdersPage() {
   const [vmLockStatus, setVmLockStatus] = useState({});
   const [passwordLoading, setPasswordLoading] = useState({});
   const [macLoading, setMacLoading] = useState({});
+  const [tableLoading, setTableLoading] = useState(false);
+  const isFirstLoad = useRef(true);
 
   const navigate = useNavigate();
 
@@ -278,10 +279,6 @@ export default function UserOrdersPage() {
     [getBillingState],
   );
 
-  const canShowDropdown = useCallback((status) => {
-    const s = status?.toUpperCase();
-    return s === "ACTIVE" || s === "STOPPED" || s === "ERROR";
-  }, []);
 
   const isRebuildBlockedTime = useCallback(() => {
     const hourIST = Number(
@@ -904,7 +901,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
               icon: "success",
               title: "Upgrade Successful",
               text: data.message,
-            }).then(() => window.location.reload());
+            }).then(() => {
+              setRefreshTrigger((prev) => prev + 1);
+            });
           }, 150);
           return null;
         }
@@ -940,7 +939,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       if (!data) return null;
       if (data.status === "COMPLETED") {
         toast.success("Payment successful");
-        window.location.reload();
+        setRefreshTrigger((prev) => prev + 1);
         return { status: "COMPLETED" };
       }
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
@@ -1094,7 +1093,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
     async function fetchUserOrders(isBackground = false) {
       try {
-        if (!isBackground) setLoading(true);
+        if (!isBackground) {
+          if (isFirstLoad.current) {
+            setLoading(true);
+          } else {
+            setTableLoading(true);
+          }
+        }
+        
         const token = localStorage.getItem("token");
         const params = new URLSearchParams({
           page: currentPage - 1,
@@ -1145,11 +1151,15 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
             macAddress: item.macAddress || item.mac_address || item.mac || (item.specs && item.specs.mac) || "Not available",
           }));
           setOrders(transformedOrders);
+          isFirstLoad.current = false;
         }
       } catch (err) {
         if (!isBackground) toast.error("Error fetching orders");
       } finally {
-        if (!isBackground && isSubscribed) setLoading(false);
+        if (!isBackground && isSubscribed) {
+          setLoading(false);
+          setTableLoading(false);
+        }
       }
     }
 
@@ -1311,10 +1321,10 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                   New Server
                 </button>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => setRefreshTrigger((prev) => prev + 1)}
                   className="px-4 py-2.5 border border-indigo-900/50 hover:bg-indigo-900/20 text-indigo-300 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className={`w-4 h-4 ${tableLoading ? 'animate-spin' : ''}`} />
                   Refresh
                 </button>
               </div>
@@ -1324,25 +1334,30 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
             <div className="bg-[#151c2f] border border-indigo-900/30 rounded-xl shadow-lg overflow-hidden">
               <div className="p-4 sm:p-6 border-b border-indigo-900/30">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-semibold text-white">
-                      Virtual Machines
-                    </h2>
-                    <p className="text-xs sm:text-sm text-gray-400 mt-1">
-                      {totalItems} server{totalItems !== 1 ? "s" : ""} •{" "}
-                      {
-                        filteredOrders.filter(
-                          (o) => o.status?.toUpperCase() === "ACTIVE",
-                        ).length
-                      }{" "}
-                      Active •{" "}
-                      {
-                        filteredOrders.filter(
-                          (o) => o.status?.toUpperCase() === "STOPPED",
-                        ).length
-                      }{" "}
-                      Stopped
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-semibold text-white">
+                        Virtual Machines
+                      </h2>
+                      <p className="text-xs sm:text-sm text-gray-400 mt-1">
+                        {totalItems} server{totalItems !== 1 ? "s" : ""} •{" "}
+                        {
+                          filteredOrders.filter(
+                            (o) => o.status?.toUpperCase() === "ACTIVE",
+                          ).length
+                        }{" "}
+                        Active •{" "}
+                        {
+                          filteredOrders.filter(
+                            (o) => o.status?.toUpperCase() === "STOPPED",
+                          ).length
+                        }{" "}
+                        Stopped
+                      </p>
+                    </div>
+                    {tableLoading && (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent"></div>
+                    )}
                   </div>
                   <div className="text-xs text-gray-400">
                     Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
@@ -1474,7 +1489,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
                               <td className="py-3 px-4 sm:px-6">
                                 <div className="flex items-center gap-2">
-                                  {order.status === "PENDING_PAYMENT" ? (
+                                  {order.status === "PENDING_PAYMENT" && (
                                     <button
                                       onClick={() => {
                                         setRetryOrder(order);
@@ -1484,7 +1499,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                     >
                                       Make Payment
                                     </button>
-                                  ) : isVmLocked(order) ? (
+                                  )}
+                                  
+                                  {isVmLocked(order) && (
                                     <div
                                       title={
                                         vmLockStatus[
@@ -1495,30 +1512,29 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                     >
                                       <Lock className="w-4 h-4 text-red-400" />
                                     </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => toggleRow(order.id)}
-                                      className="p-1.5 hover:bg-indigo-900/30 rounded-lg transition-colors"
-                                      title={
-                                        expandedRow === order.id
-                                          ? "Collapse"
-                                          : "Expand"
-                                      }
-                                    >
-                                      {expandedRow === order.id ? (
-                                        <ChevronUp className="w-4 h-4 text-indigo-400" />
-                                      ) : (
-                                        <ChevronDown className="w-4 h-4 text-indigo-400" />
-                                      )}
-                                    </button>
                                   )}
+
+                                  <button
+                                    onClick={() => toggleRow(order.id)}
+                                    className="p-1.5 hover:bg-indigo-900/30 rounded-lg transition-colors"
+                                    title={
+                                      expandedRow === order.id
+                                        ? "Collapse"
+                                        : "Expand"
+                                    }
+                                  >
+                                    {expandedRow === order.id ? (
+                                      <ChevronUp className="w-4 h-4 text-indigo-400" />
+                                    ) : (
+                                      <ChevronDown className="w-4 h-4 text-indigo-400" />
+                                    )}
+                                  </button>
                                 </div>
                               </td>
                             </tr>
 
                             {/* Expanded Details */}
-                            {canShowDropdown(order.status) &&
-                              expandedRow === order.id && (
+                            {expandedRow === order.id && (
                                 <tr className="bg-[#0f172a] border-t border-indigo-900/30">
                                   <td colSpan="7" className="p-0">
                                     <div className="p-4 sm:p-6">
@@ -1557,8 +1573,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                 </div>
                                                 <p className="text-xl font-bold text-white">
                                                   {order.ramMb
-                                                    ? `${order.ramMb / 1024}`
-                                                    : 0}
+                                                    ? `${Math.round(order.ramMb / 1024)}`
+                                                    : "N/A"}
                                                   <span className="text-sm text-gray-400 ml-1">
                                                     GB
                                                   </span>
@@ -1572,7 +1588,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                 <span>Storage</span>
                                               </div>
                                               <p className="text-xl font-bold text-white">
-                                                {order.diskGb || 0}
+                                                {order.diskGb ?? "N/A"}
                                                 <span className="text-sm text-gray-400 ml-1">
                                                   GB SSD
                                                 </span>
@@ -1686,7 +1702,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               <FileText className="w-5 h-5 text-indigo-400" />
                                             </div>
                                             <h3 className="text-lg font-semibold text-indigo-300">
-                                              Billing Details
+                                              Billing & Location
                                             </h3>
                                           </div>
 
@@ -2036,14 +2052,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                 </div>
                                               )}
 
-                                            {/* Utility Actions */}
-                                            <div className="pt-3 border-t border-indigo-900/30">
-                                              <MacAddressManager 
-                                                orderId={order.id} 
-                                                isAdmin={false} 
-                                                onSuccess={() => setRefreshTrigger(prev => prev + 1)} 
-                                              />
-                                            </div>
 
                                             {/* Power Controls */}
                                             <div className="pt-3 border-t border-indigo-900/30">
@@ -2062,13 +2070,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                     !canAction(
                                                       order.liveState,
                                                       "start",
-                                                    ) ||
+                                                    ) || order.status !== "ACTIVE" ||
                                                     !!powerLoading[
                                                       order.originalData?.vmId ||
                                                         order.id
                                                     ]
                                                   }
-                                                  className="flex items-center justify-center gap-2 p-2 bg-green-900/30 hover:bg-green-900/50 disabled:opacity-50 text-green-300 rounded text-sm transition-colors"
+                                                  className="flex items-center justify-center gap-2 p-2 bg-green-900/30 hover:bg-green-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-green-300 rounded text-sm transition-colors"
                                                 >
                                                   <Play className="w-4 h-4" />
                                                   Start
@@ -2085,13 +2093,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                     !canAction(
                                                       order.liveState,
                                                       "stop",
-                                                    ) ||
+                                                    ) || order.status !== "ACTIVE" ||
                                                     !!powerLoading[
                                                       order.originalData?.vmId ||
                                                         order.id
                                                     ]
                                                   }
-                                                  className="flex items-center justify-center gap-2 p-2 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-50 text-red-300 rounded text-sm transition-colors"
+                                                  className="flex items-center justify-center gap-2 p-2 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-red-300 rounded text-sm transition-colors"
                                                 >
                                                   <Square className="w-4 h-4" />
                                                   Stop
@@ -2108,13 +2116,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                     !canAction(
                                                       order.liveState,
                                                       "reboot",
-                                                    ) ||
+                                                    ) || order.status !== "ACTIVE" ||
                                                     !!powerLoading[
                                                       order.originalData?.vmId ||
                                                         order.id
                                                     ]
                                                   }
-                                                  className="flex items-center justify-center gap-2 p-2 bg-purple-900/30 hover:bg-purple-900/50 disabled:opacity-50 text-purple-300 rounded text-sm transition-colors"
+                                                  className="flex items-center justify-center gap-2 p-2 bg-purple-900/30 hover:bg-purple-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-purple-300 rounded text-sm transition-colors"
                                                 >
                                                   <RefreshCw className="w-4 h-4" />
                                                   Reboot
@@ -2335,7 +2343,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                 }
                 onClose={() => {
                   setShowRetryPayment(false);
-                  window.location.reload();
+                  setRefreshTrigger((prev) => prev + 1);
                 }}
                 onShowQR={(data) => {
                   setQrData(data);

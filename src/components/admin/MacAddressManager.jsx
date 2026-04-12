@@ -4,10 +4,10 @@ import toast from 'react-hot-toast';
 import { Network } from 'lucide-react';
 import { useVmActions } from '../../hooks/admin/useVmActions';
 
-export default function MacAddressManager({ orderId, onSuccess, isAdmin = true }) {
+export default function MacAddressManager({ targetId, onSuccess, isAdmin = true }) {
   const BASE_URL = import.meta.env.VITE_BASE_URL;
   const { changeMac, regenerateUserMac, loading } = useVmActions(`${BASE_URL}/api`);
-  const isLoading = loading[orderId] === "mac_change" || loading[orderId] === "mac_regen";
+  const isLoading = loading[targetId] === "mac_change" || loading[targetId] === "mac_regen";
 
   const DarkSwal = Swal.mixin({
     background: "#1e2640",
@@ -96,9 +96,9 @@ export default function MacAddressManager({ orderId, onSuccess, isAdmin = true }
 
       let responseData;
       if (isAdmin) {
-        responseData = await changeMac(orderId, isManual, manualMac);
+        responseData = await changeMac(targetId, isManual, manualMac);
       } else {
-        responseData = await regenerateUserMac(orderId);
+        responseData = await regenerateUserMac(targetId);
       }
 
       DarkSwal.fire({

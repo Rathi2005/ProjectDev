@@ -43,6 +43,7 @@ export const fetchUserPastOrders = async ({
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        "X-Reseller-Domain": window.location.hostname,
       },
       signal,
     }
@@ -72,6 +73,7 @@ export const downloadUserInvoice = async (orderOrPaymentId) => {
     {
       headers: {
         Authorization: `Bearer ${token}`,
+        "X-Reseller-Domain": window.location.hostname,
       },
     }
   );

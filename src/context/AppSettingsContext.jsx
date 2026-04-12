@@ -6,30 +6,27 @@ export const SettingsProvider = ({ children }) => {
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
   const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token"); // or adminToken
-
-    fetch(`${BASE_URL}/api/admin/settings/general`, {
-      headers: {
-        Authorization: `Bearer ${token}`, // ✅ IMPORTANT
-      },
-    })
+    fetch(`${BASE_URL}/api/public/settings/general`)
       .then((res) => {
-        if (!res.ok) throw new Error("Unauthorized or failed");
+        if (!res.ok) throw new Error("Failed to load settings");
         return res.json();
       })
       .then((data) => {
-        console.log("SETTINGS DATA:", data); // ✅ debug
         setSettings(data);
       })
       .catch((err) => {
         console.error("Failed to load settings", err);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
 
   return (
-    <SettingsContext.Provider value={{ settings }}>
+    <SettingsContext.Provider value={{ settings, loading }}>
       {children}
     </SettingsContext.Provider>
   );

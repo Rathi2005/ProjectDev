@@ -4,6 +4,7 @@ import { useAdminOrders } from "../../hooks/useAdminOrders";
 import { useAdminStats } from "../../hooks/useAdminStats";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVmActions } from "../../hooks/admin/useVmActions";
+import { fetchAvailableIps, changeVmIp } from "../../api/admin";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
@@ -39,6 +40,7 @@ import {
   Search,
   Filter,
   X,
+  Key,
 } from "lucide-react";
 import MacChangeModal from "../../components/admin/Orders/MacChangeModal";
 
@@ -56,6 +58,7 @@ export default function OrdersPage() {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [ipChangeLoading, setIpChangeLoading] = useState({});
   const [macModal, setMacModal] = useState({ isOpen: false, order: null });
+  const [pollInterval, setPollInterval] = useState(10000); // Default 10s
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -111,6 +114,7 @@ export default function OrdersPage() {
     rawSearch: searchQuery,
     sortBy: sortConfig?.key || "createdAt",
     sortDir: sortConfig?.direction || "desc",
+    pollInterval: pollInterval,
   });
 
   // ── User-intent loader tracking ──────────────────────────────────────
@@ -146,6 +150,7 @@ export default function OrdersPage() {
       expiresAt: order.expiresAt,
       status: order.status,
       liveState: order.liveState,
+      password: order.password || "N/A",
       isLocked: order.status?.toUpperCase() === "LOCKED",
       user: {
         firstName: order.customerName || "—",
@@ -1057,25 +1062,6 @@ export default function OrdersPage() {
   };
 
   // ------- IP ADDRESS CHANGE HANDLER --------
-  const fetchAvailableIps = async (serverId) => {
-    const adminToken = localStorage.getItem("adminToken");
-    const res = await fetch(
-      `${BASE_URL}/api/admin/vms/${serverId}/available-ips`,
-      {
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(errText || "Failed to fetch available IPs");
-    }
-
-    return await res.json();
-  };
 
   const handleChangeIp = async (order) => {
     if (ipChangeLoading[order.id]) return;
@@ -1202,28 +1188,22 @@ export default function OrdersPage() {
       setIpChangeLoading((prev) => ({ ...prev, [order.id]: true }));
 
       // Call the API to change IP
-      const res = await fetch(
-        `${BASE_URL}/api/admin/vms/${order.internalVmid}/change-ip`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${adminToken}`,
-          },
-          body: JSON.stringify({ newIpId: Number(newIpId) }),
-        },
-      );
+      await changeVmIp(order.internalVmid, selectedIpId);
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "IP change failed");
-      }
+      // Invalidate cache immediately
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+
+      // Trigger Fast Polling (3s interval for 30s)
+      setPollInterval(3000);
+      setTimeout(() => {
+        setPollInterval(10000);
+      }, 30000);
 
       DarkSwal.fire({
         icon: "success",
         title: "Success",
-        text: "IP address changed successfully.",
-        timer: 3000,
+        text: "IP change request sent. Table will refresh automatically to show the new IP.",
+        timer: 5000,
         showConfirmButton: false,
       });
 
@@ -1934,6 +1914,36 @@ export default function OrdersPage() {
                                           <p className="text-xl sm:text-2xl font-bold text-emerald-300">
                                             {formatCurrency(order.priceTotal)}
                                           </p>
+                                        </div>
+
+                                        {/* VM Password */}
+                                        <div className="flex items-center justify-between gap-3 p-3 bg-indigo-500/5 rounded-xl border border-indigo-500/10 hover:border-indigo-500/30 transition-all group">
+                                          <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-indigo-500/10 rounded-lg">
+                                              <Key className="w-4 h-4 text-indigo-400" />
+                                            </div>
+                                            <div>
+                                              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">VM PASSWORD</p>
+                                              <code className="text-sm font-mono font-medium text-white">
+                                                {order.password}
+                                              </code>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {order.password && order.password !== "N/A" && (
+                                              <button
+                                                onClick={() => handleCopy(order.password, order.id + "_PWD")}
+                                                className="p-2 hover:bg-indigo-500/10 rounded-lg text-gray-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0"
+                                                title="Copy Password"
+                                              >
+                                                {copiedId === order.id + "_PWD" ? (
+                                                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                                ) : (
+                                                  <FileText className="w-4 h-4" />
+                                                )}
+                                              </button>
+                                            )}
+                                          </div>
                                         </div>
 
                                         <div className="pt-3 border-t border-indigo-900/30">
