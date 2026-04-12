@@ -49,3 +49,40 @@ export const exportAuditLogs = async () => {
 
   return res.blob();
 };
+
+export const fetchAvailableIps = async (serverId) => {
+  const res = await fetch(
+    `${BASE_URL}/api/admin/vms/${serverId}/available-ips`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(errText || "Failed to fetch available IPs");
+  }
+
+  return res.json();
+};
+
+export const changeVmIp = async (internalVmid, newIpId) => {
+  const res = await fetch(
+    `${BASE_URL}/api/admin/vms/${internalVmid}/change-ip`,
+    {
+      method: "POST",
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ newIpId: Number(newIpId) }),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "IP change failed");
+  }
+
+  return res.json();
+};

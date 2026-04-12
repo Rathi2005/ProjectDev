@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { createVM, verifyPayment } from "../services/PaymentService";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 export const usePayment = () => {
   const [qrData, setQrData] = useState(null);
@@ -66,13 +67,35 @@ export const usePayment = () => {
     try {
       const data = await createVM(serverConfig, gateway);
 
-      // Case 1: Wallet full
+      // Scenario B: Fully Paid (Zero Payment Flow)
       if (data.status === "COMPLETED") {
-        navigate("/orders");
+        Swal.fire({
+          icon: "success",
+          title: "Order Placed",
+          text: data.message || "VM provisioning started successfully.",
+          background: "#0e1525",
+          color: "#e5e7eb",
+          confirmButtonColor: "#6366f1",
+        }).then(() => {
+          navigate("/orders");
+        });
         return;
       }
 
-      // Case 2: Paytm QR
+      // Handle Idempotent Retry or Generic Gateway Redirection (Scenario A & C)
+      if (data.paymentUrl && data.paymentUrl !== "PAYTM_QR_FLOW") {
+        // If it's Cashfree AND we have a sessionId, use the SDK
+        if (gateway === "CASHFREE" && data.paymentSessionId) {
+          onCashfreePay(data.paymentSessionId);
+          return;
+        }
+        
+        // Otherwise, redirect to the payment URL directly
+        window.location.href = data.paymentUrl;
+        return;
+      }
+
+      // Scenario A: Paytm QR Flow
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
         setQrData({
           upiString: data.upiString,
@@ -82,11 +105,15 @@ export const usePayment = () => {
         return;
       }
 
-      // Case 3: Cashfree
+      // Fallback for Cashfree with SessionId but no paymentUrl field
       if (gateway === "CASHFREE" && data.paymentSessionId) {
         onCashfreePay(data.paymentSessionId);
+        return;
       }
+
+      throw new Error("Unexpected payment response format");
     } catch (e) {
+      console.error("Payment Start Error:", e);
       toast.error(showError(e));
     } finally {
       setLoading(false);

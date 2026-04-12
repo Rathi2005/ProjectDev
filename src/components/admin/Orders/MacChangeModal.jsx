@@ -21,7 +21,7 @@ export default function MacChangeModal({ isOpen, onClose, order, onSuccess }) {
       setManualMac('');
       setValidationError('');
     }
-  }, [isOpen, order?.id]);
+  }, [isOpen, order?.internalVmid]);
 
   if (!isOpen || !order) return null;
 
@@ -41,7 +41,7 @@ export default function MacChangeModal({ isOpen, onClose, order, onSuccess }) {
       setIsSubmitting(true);
       setValidationError('');
 
-      await changeMac(order.id, mode === 'manual', manualMac);
+      await changeMac(order.internalVmid, mode === 'manual', manualMac);
 
       toast.success(`MAC Address updated for ${order.vmName || 'VM'}. The system is now rebooting.`);
       if (onSuccess) onSuccess();

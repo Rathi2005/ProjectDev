@@ -6,31 +6,15 @@ import OtpVerification from "../components/user/OtpVerification";
 import ResetPassword from "../components/user/ResetPassword";
 import { toast } from "react-hot-toast";
 import { jwtDecode } from "jwt-decode";
+import { useSettings } from "../context/AppSettingsContext";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const LOGIN_API = `${BASE_URL}/api/login`;
 const OTP_INITIATE_API = `${BASE_URL}/api/login/otp/initiate`;
 const FORGET_PASSWORD_API = `${BASE_URL}/api/password/forgot`;
 
-const LogoIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="48"
-    height="48"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="text-indigo-400"
-  >
-    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-    <path d="M2 17l10 5 10-5"></path>
-    <path d="M2 12l10 5 10-5"></path>
-  </svg>
-);
 export default function LoginPage() {
+  const { settings } = useSettings();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -161,11 +145,23 @@ export default function LoginPage() {
         {!resetPasswordMode && !showOtpForm ? (
           <div className="w-full max-w-md bg-[#121a2a] rounded-2xl shadow-lg p-8 m-8">
             <div className="flex flex-col items-center mb-6">
-              <div className="bg-indigo-600 p-3 rounded-lg mb-3">
-                <LogoIcon />
+              <div className="bg-indigo-600/10 p-4 rounded-xl mb-3 border border-indigo-500/20 shadow-inner">
+                {settings?.logoUrl ? (
+                  <img
+                    src={settings.logoUrl}
+                    alt={settings.companyName}
+                    className="w-12 h-12 object-contain"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-indigo-600 rounded flex items-center justify-center font-bold text-white">
+                    {settings?.companyName?.charAt(0) || "S"}
+                  </div>
+                )}
               </div>
               <h1 className="text-2xl font-bold">
-                {loginWithOtp ? "Login with OTP" : "Login to Your Account"}
+                {loginWithOtp 
+                  ? "Login with OTP" 
+                  : `Welcome to ${settings?.companyName || "Our Platform"}`}
               </h1>
               <p className="text-gray-400 text-center text-sm mt-1">
                 {loginWithOtp

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import useLogout from "./logout";
+import { useSettings } from "../../context/AppSettingsContext";
 
 const AdminHeader = () => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const AdminHeader = () => {
 
   const token = localStorage.getItem("adminToken");
   const logout = useLogout();
+  const { settings } = useSettings();
 
   const handleLogout = async () => {
     await logout();
@@ -87,11 +89,19 @@ const AdminHeader = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
         {/* Logo */}
         <Link to="/admin/dashboard" className="flex items-center space-x-2">
-          <div className="bg-[#22c55e] p-2 rounded-lg">
-            <LayoutDashboard className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-lg font-semibold text-white tracking-wide">
-            ADMIN <span className="text-[#22c55e]">PANEL</span>
+          {settings?.logoUrl ? (
+            <img
+              src={settings.logoUrl}
+              alt="Logo"
+              className="h-9 w-9 object-contain"
+            />
+          ) : (
+            <div className="bg-[#22c55e] p-2 rounded-lg">
+              <LayoutDashboard className="h-5 w-5 text-white" />
+            </div>
+          )}
+          <h1 className="text-lg font-semibold text-white tracking-wide uppercase">
+            {settings?.companyName || "Admin"} <span className="text-[#22c55e]">Panel</span>
           </h1>
         </Link>
 
