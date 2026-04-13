@@ -46,7 +46,7 @@ export default function WalletPage() {
   const recentTransactions = transactions.slice(0, 10);
   const [showAllTxModal, setShowAllTxModal] = useState(false);
 
-  const [gateway, setGateway] = useState("CASHFREE");
+  const [gateway, setGateway] = useState(null);
   const [qrData, setQrData] = useState(null);
   const pollRef = useRef(null);
   const [loading, setLoading] = useState(false);
@@ -104,10 +104,7 @@ export default function WalletPage() {
         attempts++;
         const res = await verifyPayment(paymentId, "PAYTM");
 
-        if (
-          res.status !== "PENDING" ||
-          res.status === "WALLET_TOPPED_UP"
-        ) {
+        if (res.status !== "PENDING" || res.status === "WALLET_TOPPED_UP") {
           stopPolling();
           setQrData(null);
           toast.success("Wallet topped up successfully!");
@@ -136,7 +133,7 @@ export default function WalletPage() {
 
     try {
       setLoading(true); // add loading state if not present: const [loading, setLoading] = useState(false);
-      const data = await walletTopUp(amount, gateway);
+      const data = await walletTopUp(amount, gateway?.type);
 
       // Case 1: Paytm QR
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
@@ -153,10 +150,7 @@ export default function WalletPage() {
       // Case 2: Cashfree
       if (data.paymentSessionId) {
         const cashfree = window.Cashfree({
-          mode:
-            import.meta.env.VITE_CASHFREE_MODE === "production"
-              ? "production"
-              : "sandbox",
+          mode: gateway?.mode?.toLowerCase() || "sandbox",
         });
         cashfree.checkout({
           paymentSessionId: data.paymentSessionId,
@@ -508,9 +502,15 @@ export default function WalletPage() {
                       {["CASHFREE", "PAYTM"].map((gw) => (
                         <button
                           key={gw}
-                          onClick={() => setGateway(gw)}
+                          onClick={() =>
+                            setGateway({
+                              type: gw,
+                              mode:
+                                gw === "CASHFREE" ? "SANDBOX" : "PRODUCTION",
+                            })
+                          }
                           className={`py-2 rounded-xl border text-sm font-medium transition-all ${
-                            gateway === gw
+                            gateway?.type === gw
                               ? "border-indigo-500 bg-indigo-900/30 text-indigo-300"
                               : "border-gray-700 text-gray-400 hover:bg-gray-800"
                           }`}

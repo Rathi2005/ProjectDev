@@ -26,99 +26,111 @@ export const usePayment = () => {
     }
   }, []);
 
-  const startPolling = useCallback((paymentId, gateway) => {
-    // Guard against duplicate intervals
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = null;
+  const startPolling = useCallback(
+    (paymentId, gateway) => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
 
-    let attempts = 0;
-    const maxAttempts = 40; // ~2 min (40 × 3 sec)
+      let attempts = 0;
+      const maxAttempts = 40;
 
-    pollRef.current = setInterval(async () => {
-      try {
-        attempts++;
+      pollRef.current = setInterval(async () => {
+        try {
+          // ✅ Check limit BEFORE making the network call
+          if (attempts >= maxAttempts) {
+            stopPolling();
+            setQrData(null);
+            toast("Payment not confirmed yet. You can retry.");
+            return;
+          }
 
-        const res = await verifyPayment(paymentId, gateway);
+          attempts++;
+          const res = await verifyPayment(paymentId, gateway);
 
-        if (
-          res.status !== "PENDING"
-        ) {
+          if (res.status !== "PENDING") {
+            stopPolling();
+            setQrData(null);
+            toast.success("Payment successful");
+            navigate("/orders");
+            return;
+          }
+        } catch (err) {
+          console.error("Polling error:", err);
           stopPolling();
-          setQrData(null);
-          toast.success("Payment successful");
-          navigate("/orders");
+        }
+      }, 3000);
+    },
+    [stopPolling, navigate],
+  );
+
+  const startPayment = useCallback(
+    async (serverConfig, gateway, onCashfreePay) => {
+      setLoading(true);
+      console.log(
+        "Starting payment with config:",
+        serverConfig,
+        "and gateway:",
+        gateway.type,
+      );
+      try {
+        const data = await createVM(serverConfig, gateway.type);
+
+        // Case 1: Wallet full
+        if (data.status === "COMPLETED") {
+          Swal.fire({
+            icon: "success",
+            title: "Order Placed",
+            text: data.message || "VM provisioning started successfully.",
+            background: "#0e1525",
+            color: "#e5e7eb",
+            confirmButtonColor: "#6366f1",
+          }).then(() => {
+            navigate("/orders");
+          });
           return;
         }
-        
-        if (attempts >= maxAttempts) {
-          stopPolling();
-          setQrData(null);
-          toast("Payment not confirmed yet. You can retry.");
+
+        // Handle Idempotent Retry or Generic Gateway Redirection (Scenario A & C)
+        if (data.paymentUrl && data.paymentUrl !== "PAYTM_QR_FLOW") {
+          // If it's Cashfree AND we have a sessionId, use the SDK
+          if (gateway.type === "CASHFREE" && data.paymentSessionId) {
+            onCashfreePay(data.paymentSessionId);
+            return;
+          }
+
+          // Otherwise, redirect to the payment URL directly
+          window.location.href = data.paymentUrl;
+          return;
         }
-      } catch (err) {
-        console.error("Polling error:", err);
-        stopPolling();
-      }
-    }, 3000);
-  }, [stopPolling, navigate]);
 
-  const startPayment = useCallback(async (serverConfig, gateway, onCashfreePay) => {
-    setLoading(true);
-    try {
-      const data = await createVM(serverConfig, gateway);
+        // Scenario A: Paytm QR Flow
+        if (data.paymentUrl === "PAYTM_QR_FLOW") {
+          setQrData({
+            upiString: data.upiString,
+            paymentId: data.paymentId,
+            // ✅ amount added — PaytmQRModal needs this to display ₹ value
+            amount: data.remainingToPay ?? data.amount,
+          });
+          startPolling(data.paymentId, "PAYTM");
+          return;
+        }
 
-      // Scenario B: Fully Paid (Zero Payment Flow)
-      if (data.status === "COMPLETED") {
-        Swal.fire({
-          icon: "success",
-          title: "Order Placed",
-          text: data.message || "VM provisioning started successfully.",
-          background: "#0e1525",
-          color: "#e5e7eb",
-          confirmButtonColor: "#6366f1",
-        }).then(() => {
-          navigate("/orders");
-        });
-        return;
-      }
-
-      // Handle Idempotent Retry or Generic Gateway Redirection (Scenario A & C)
-      if (data.paymentUrl && data.paymentUrl !== "PAYTM_QR_FLOW") {
-        // If it's Cashfree AND we have a sessionId, use the SDK
-        if (gateway === "CASHFREE" && data.paymentSessionId) {
+        // Case 3: Cashfree
+      if (gateway.type === "CASHFREE" && data.paymentSessionId){
           onCashfreePay(data.paymentSessionId);
           return;
         }
-        
-        // Otherwise, redirect to the payment URL directly
-        window.location.href = data.paymentUrl;
-        return;
-      }
 
-      // Scenario A: Paytm QR Flow
-      if (data.paymentUrl === "PAYTM_QR_FLOW") {
-        setQrData({
-          upiString: data.upiString,
-          paymentId: data.paymentId,
-        });
-        startPolling(data.paymentId, "PAYTM");
-        return;
+        throw new Error("Unexpected payment response format");
+      } catch (e) {
+        console.error("Payment Start Error:", e);
+        toast.error(showError(e));
+      } finally {
+        setLoading(false);
       }
-
-      // Fallback for Cashfree with SessionId but no paymentUrl field
-      if (gateway === "CASHFREE" && data.paymentSessionId) {
-        onCashfreePay(data.paymentSessionId);
-        return;
-      }
-
-      throw new Error("Unexpected payment response format");
-    } catch (e) {
-      console.error("Payment Start Error:", e);
-      toast.error(showError(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate, startPolling, showError]);
+    },
+    [navigate, startPolling, showError],
+  );
 
   return {
     startPayment,
