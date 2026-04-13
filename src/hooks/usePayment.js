@@ -26,33 +26,31 @@ export const usePayment = () => {
   }, []);
 
   const startPolling = useCallback((paymentId, gateway) => {
-    // Guard against duplicate intervals
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = null;
 
     let attempts = 0;
-    const maxAttempts = 40; // ~2 min (40 × 3 sec)
+    const maxAttempts = 40;
 
     pollRef.current = setInterval(async () => {
       try {
-        attempts++;
+        // ✅ Check limit BEFORE making the network call
+        if (attempts >= maxAttempts) {
+          stopPolling();
+          setQrData(null);
+          toast("Payment not confirmed yet. You can retry.");
+          return;
+        }
 
+        attempts++;
         const res = await verifyPayment(paymentId, gateway);
 
-        if (
-          res.status !== "PENDING"
-        ) {
+        if (res.status !== "PENDING") {
           stopPolling();
           setQrData(null);
           toast.success("Payment successful");
           navigate("/orders");
           return;
-        }
-        
-        if (attempts >= maxAttempts) {
-          stopPolling();
-          setQrData(null);
-          toast("Payment not confirmed yet. You can retry.");
         }
       } catch (err) {
         console.error("Polling error:", err);
@@ -63,10 +61,11 @@ export const usePayment = () => {
 
   const startPayment = useCallback(async (serverConfig, gateway, onCashfreePay) => {
     setLoading(true);
+    console.log("Starting payment with config:", serverConfig, "and gateway:", gateway.type);
     try {
-      const data = await createVM(serverConfig, gateway);
+      const data = await createVM(serverConfig, gateway.type);
 
-      // Case 1: Wallet full
+      // Case 1: Wallet full payment
       if (data.status === "COMPLETED") {
         navigate("/orders");
         return;
@@ -77,13 +76,15 @@ export const usePayment = () => {
         setQrData({
           upiString: data.upiString,
           paymentId: data.paymentId,
+          // ✅ amount added — PaytmQRModal needs this to display ₹ value
+          amount: data.remainingToPay ?? data.amount,
         });
         startPolling(data.paymentId, "PAYTM");
         return;
       }
 
-      // Case 3: Cashfree
-      if (gateway === "CASHFREE" && data.paymentSessionId) {
+      // Case 3: Cashfree — ✅ gateway.type instead of gateway
+      if (gateway?.type === "CASHFREE" && data.paymentSessionId) {
         onCashfreePay(data.paymentSessionId);
       }
     } catch (e) {
