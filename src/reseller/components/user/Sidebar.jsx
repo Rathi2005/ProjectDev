@@ -2,10 +2,11 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { Package, User, LogOut } from "lucide-react";
 import useLogout from "./Logout";
+import { useSettings } from "../../../context/AppSettingsContext";
 
 export default function Sidebar() {
   const logout = useLogout();
-  const APP_NAME = import.meta.env.VITE_APP_NAME;
+  const { settings } = useSettings();
 
   const linkClass = ({ isActive }) =>
     `flex items-center gap-3 px-4 py-2 rounded-md transition-colors ${
@@ -18,6 +19,23 @@ export default function Sidebar() {
     <aside className="bg-[#121a2a] text-gray-300 h-full flex flex-col justify-between w-64 border-r border-indigo-900/30">
       
       {/* 🔥 Logo Section */}
+      <div className="p-6 border-b border-indigo-900/30 flex items-center gap-3">
+        {settings?.logoUrl ? (
+          <img
+            src={settings.logoUrl}
+            alt="Logo"
+            className="w-10 h-10 object-contain"
+          />
+        ) : (
+          <div className="w-10 h-10 bg-indigo-600 rounded flex items-center justify-center font-bold text-white text-xl">
+            {settings?.companyName?.charAt(0) || "S"}
+          </div>
+        )}
+        <span className="font-bold text-lg text-white truncate">
+          {settings?.companyName || ""}
+        </span>
+      </div>
+
       <div>
 
         {/* Navigation Links */}

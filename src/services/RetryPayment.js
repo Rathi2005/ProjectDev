@@ -1,30 +1,21 @@
+/**
+ * Retry Payment Service — refactored to use centralized apiClient.
+ *
+ * Fixes:
+ * - `throw { ... }` → ApiError with stack trace
+ * - Safe JSON parsing handled by apiClient
+ * - Auth via centralized module
+ * - D-4: Uses /api/user/ (singular) — matches backend contract
+ */
+
+import { apiClient } from "../lib/apiClient.js";
+
 export const retryPayment = async (orderId, gateway, useWallet) => {
-  const res = await fetch(
-    `${import.meta.env.VITE_BASE_URL}/api/user/payments/${orderId}/retry?gateway=${gateway}&useWalletBalance=${useWallet}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    }
+  const data = await apiClient(
+    `/api/user/payments/${orderId}/retry?gateway=${encodeURIComponent(gateway)}&useWalletBalance=${useWallet}`,
+    { method: "POST" },
+    { auth: "user" }
   );
-
-  let data;
-  try {
-    data = await res.json();
-  } catch {
-    data = null;
-  }
-
-  if (!res.ok) {
-    throw {
-      status: res.status,
-      message:
-        data?.error ||
-        data?.message ||
-        `Request failed with status ${res.status}`,
-    };
-  }
 
   return data;
 };

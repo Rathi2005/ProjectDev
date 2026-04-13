@@ -135,10 +135,18 @@ const ResetPassword = ({ email, onSuccess }) => {
         <h2 className="text-2xl font-bold mb-1">Reset Password</h2>
 
         {resetStep === 1 ? (
-          <p className="text-gray-400 text-sm mt-0">
-            Enter the 6-digit OTP sent to <br />
-            <span className="text-white font-medium">{email}</span>
-          </p>
+          <>
+            <p className="text-gray-400 text-sm mt-0 mb-4">
+              Enter the 6-digit OTP sent to <br />
+              <span className="text-white font-medium">{email}</span>
+            </p>
+            <div className="bg-yellow-900/10 border border-yellow-800/30 rounded-lg p-2.5 mx-auto max-w-xs">
+              <p className="text-[11px] sm:text-xs text-yellow-500/90 leading-relaxed">
+                <span className="font-bold mr-1">Not receiving?</span> 
+                Please check your <span className="font-bold underline uppercase tracking-wider">Spam</span> or Junk folder.
+              </p>
+            </div>
+          </>
         ) : (
           <p className="text-gray-400 text-sm mt-0">
             Set your new password below.

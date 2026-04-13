@@ -101,7 +101,13 @@ const AdminHeader = () => {
             </div>
           )}
           <h1 className="text-lg font-semibold text-white tracking-wide uppercase">
-            {settings?.companyName || "Admin"} <span className="text-[#22c55e]">Panel</span>
+            {settings?.companyName ? (
+              <>
+                {settings.companyName} <span className="text-[#22c55e]">Panel</span>
+              </>
+            ) : (
+              <span className="text-[#22c55e]">Admin Panel</span>
+            )}
           </h1>
         </Link>
 

@@ -1,24 +1,22 @@
-export const upgradeUserApi = async ({ userId, payload }) => {
-  const token = localStorage.getItem("adminToken");
-  const BASE_URL = import.meta.env.VITE_BASE_URL;
+/**
+ * Admin Users API — refactored to use centralized apiClient.
+ * 
+ * Fixes:
+ * - CRITICAL: Old code called `res.json()` BEFORE `res.ok` check.
+ *   If response was non-JSON (HTML 502), this would crash with an
+ *   unhandled SyntaxError instead of showing the user an error.
+ *   Now handled safely by apiClient's safeJsonParse.
+ */
 
-  const res = await fetch(
-    `${BASE_URL}/api/admin/resellers/${userId}/enable`,
+import { apiClient } from "../lib/apiClient.js";
+
+export const upgradeUserApi = async ({ userId, payload }) => {
+  return apiClient(
+    `/api/admin/resellers/${userId}/enable`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
       body: JSON.stringify(payload),
-    }
+    },
+    { auth: "admin" }
   );
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data?.message || "Failed to upgrade user");
-  }
-
-  return data;
 };
