@@ -8,6 +8,14 @@ export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const DEFAULT_SETTINGS = {
+    companyName: "ServerLink",
+    logoUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS6f4thC2A4DalM-SgyOPhZaaec04PwADttAQ&s",
+    companyAddress: "delhi",
+    companyPhone: "3434343434",
+    defaultPhone: "5555555555"
+  };
+
   useEffect(() => {
     fetch(`${BASE_URL}/api/public/settings/general`)
       .then((res) => {
@@ -22,7 +30,9 @@ export const SettingsProvider = ({ children }) => {
         }
       })
       .catch((err) => {
-        console.error("Failed to load settings", err);
+        console.error("Failed to load settings from API, using defaults.", err);
+        setSettings(DEFAULT_SETTINGS);
+        document.title = DEFAULT_SETTINGS.companyName;
       })
       .finally(() => {
         setLoading(false);

@@ -234,7 +234,7 @@ export default function UpgradeUserModal({ user, onClose }) {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;
