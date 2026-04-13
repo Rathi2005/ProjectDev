@@ -354,7 +354,6 @@ function MainRoutes() {
 // ==========================================
 // 2. THE TRAFFIC COP (DOMAIN ROUTER)
 // ==========================================
-import { SettingsProvider } from "./context/AppSettingsContext";
 
 export default function App() {
   const currentDomain = window.location.hostname;
@@ -373,8 +372,6 @@ export default function App() {
   const isMainDomain = mainDomains.includes(currentDomain);
 
   return (
-    <SettingsProvider>
-      <Router>{isMainDomain ? <MainRoutes /> : <ResellerApp />}</Router>
-    </SettingsProvider>
+    <Router>{isMainDomain ? <MainRoutes /> : <ResellerApp />}</Router>
   );
 } 

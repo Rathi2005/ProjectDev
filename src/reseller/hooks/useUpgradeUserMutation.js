@@ -10,7 +10,7 @@ export const useUpgradeUserMutation = () => {
 
     onSuccess: (data) => {
       toast.success(data.message || "User upgraded successfully!");
-      queryClient.invalidateQueries(["users-overview"]);
+      queryClient.invalidateQueries({ queryKey: ["users-overview"] });  // v5 syntax
     },
 
     onError: (error) => {

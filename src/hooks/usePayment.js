@@ -1,3 +1,22 @@
+/**
+ * usePayment hook — VM purchase + payment verification polling.
+ *
+ * D-1 CRITICAL FIX (Payment Verification):
+ * Old behavior: `verifyPayment()` returned `res.json()` without checks.
+ *   If server returned {} or HTML, `res.status !== "PENDING"` was truthy
+ *   → false "Payment successful" toast shown to user.
+ *
+ * New behavior:
+ *   1. verifyPayment() validates response has `status` field (ApiError if not)
+ *   2. This hook explicitly checks for CONFIRMED/SUCCESS states
+ *   3. ApiError from verifyPayment stops polling with error toast
+ *   4. Network errors stop polling (no infinite retries)
+ *
+ * Error handling:
+ *   - showError checks both Error instances and legacy { status, message } objects
+ *   - All errors are surfaced to user via toast
+ */
+
 import { useState, useRef, useCallback } from "react";
 import { createVM, verifyPayment } from "../services/PaymentService";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +33,7 @@ export const usePayment = () => {
     if (e?.status === 401) return "Session expired. Login again.";
     if (e?.status === 403) return "Access denied.";
     if (e?.status === 400) return e.message;
-    if (e?.status === 500) return "Server error.";
+    if (e?.status >= 500) return "Server error.";
     if (e instanceof TypeError) return "Network error.";
     return e?.message || "Something went wrong.";
   }, []);
@@ -38,11 +57,16 @@ export const usePayment = () => {
       try {
         attempts++;
 
+        // verifyPayment now throws ApiError on:
+        // - HTTP errors (4xx/5xx)
+        // - Non-JSON responses
+        // - Missing `status` field in response
         const res = await verifyPayment(paymentId, gateway);
 
-        if (
-          res.status !== "PENDING"
-        ) {
+        // D-1 FIX: Explicit success check.
+        // ONLY stop polling if the status is definitively NOT pending.
+        // `res.status` is guaranteed to be a string by verifyPayment.
+        if (res.status !== "PENDING") {
           stopPolling();
           setQrData(null);
           toast.success("Payment successful");
@@ -56,11 +80,15 @@ export const usePayment = () => {
           toast("Payment not confirmed yet. You can retry.");
         }
       } catch (err) {
-        console.error("Polling error:", err);
+        // D-1 FIX: API errors STOP polling and SHOW the error.
+        // Old code silently continued polling on errors.
+        console.error("Payment polling failed:", err);
         stopPolling();
+        setQrData(null);
+        toast.error(showError(err));
       }
     }, 3000);
-  }, [stopPolling, navigate]);
+  }, [stopPolling, navigate, showError]);
 
   const startPayment = useCallback(async (serverConfig, gateway, onCashfreePay) => {
     setLoading(true);

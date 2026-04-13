@@ -16,6 +16,10 @@ export const SettingsProvider = ({ children }) => {
       })
       .then((data) => {
         setSettings(data);
+        // ✅ Sync document title with company name
+        if (data.companyName) {
+          document.title = data.companyName;
+        }
       })
       .catch((err) => {
         console.error("Failed to load settings", err);

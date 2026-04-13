@@ -1,8 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useSettings } from "../../../context/AppSettingsContext";
 
 export default function Footer() {
-  const APP_NAME = import.meta.env.VITE_APP_NAME;
+  const { settings } = useSettings();
+  const APP_NAME = settings?.companyName;
+
   return (
     <footer className="bg-[#0e1525] border-t border-indigo-900/30 text-gray-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -10,7 +13,7 @@ export default function Footer() {
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           {/* Left */}
           <p className="text-xs text-gray-500">
-            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+            © {new Date().getFullYear()} {APP_NAME && `${APP_NAME}. `}All rights reserved.
           </p>
 
           {/* Links */}

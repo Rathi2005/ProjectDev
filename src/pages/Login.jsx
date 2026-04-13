@@ -158,10 +158,12 @@ export default function LoginPage() {
                   </div>
                 )}
               </div>
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-2xl font-bold text-center">
                 {loginWithOtp 
                   ? "Login with OTP" 
-                  : `Welcome to ${settings?.companyName || "Our Platform"}`}
+                  : settings?.companyName 
+                    ? `Welcome to ${settings.companyName}` 
+                    : "Login"}
               </h1>
               <p className="text-gray-400 text-center text-sm mt-1">
                 {loginWithOtp

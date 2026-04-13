@@ -10,9 +10,13 @@ import SortIcon from "../components/SortIcon";
 import Swal from "sweetalert2";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../lib/apiClient";
 
-// hooks
+// hooks — React Query is now the SINGLE SOURCE OF TRUTH for orders
 import useSortableData from "../hooks/useSortableData";
+import { useUserOrders, USER_ORDERS_QUERY_KEY } from "../hooks/useUserOrders";
+import { useDebounce } from "../hooks/useDebounce";
 
 import {
   Cpu,
@@ -46,30 +50,66 @@ import {
 } from "lucide-react";
 
 export default function UserOrdersPage() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [expandedRow, setExpandedRow] = useState(null);
-  const [powerLoading, setPowerLoading] = useState({});
+  // ─── React Query: SINGLE SOURCE OF TRUTH for orders ─────────────────────
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+  // Search (raw → debounced)
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm.trim(), 500);
+
+  // Pagination (1-based for UI, 0-based sent to API)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const [selectedStatus, setSelectedStatus] = useState("ALL");
-  const [passwordInputs, setPasswordInputs] = useState({});
+  const [expandedRow, setExpandedRow] = useState(null);
+
+  // Account status
   const [accountStatus, setAccountStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(true);
+
+  // ── React Query hook — replaces the old setInterval + useState ──
+  const {
+    data: ordersData,
+    isLoading: ordersLoading,
+    isFetching,
+    isError,
+    error: queryError,
+  } = useUserOrders({
+    page: currentPage - 1,
+    size: itemsPerPage,
+    search: debouncedSearch,
+    rawSearch: searchTerm,
+    enabled: !statusLoading && !accountStatus?.isLocked,
+  });
+
+  // Derive from React Query data — NO local orders useState
+  // CRITICAL: React Query v5 preserves `data` from the last successful fetch
+  // even when a background refetch fails. The `?? []` is a safety net only.
+  const orders = ordersData?.orders ?? [];
+  const totalPages = ordersData?.totalPages ?? 1;
+  const totalItems = ordersData?.totalItems ?? 0;
+  const loading = ordersLoading && orders.length === 0;
+  const tableLoading = isFetching && orders.length > 0;
+
+  /** Invalidate orders cache — call this after ANY mutation */
+  const invalidateOrders = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: [USER_ORDERS_QUERY_KEY] });
+  }, [queryClient]);
+
+  // ── UI-only state (not data ownership) ──
+  const [powerLoading, setPowerLoading] = useState({});
+  const [passwordInputs, setPasswordInputs] = useState({});
   const [vmLockStatus, setVmLockStatus] = useState({});
   const [passwordLoading, setPasswordLoading] = useState({});
   const [macLoading, setMacLoading] = useState({});
-  const [tableLoading, setTableLoading] = useState(false);
-  const isFirstLoad = useRef(true);
 
-  const navigate = useNavigate();
-
-  const BASE_URL = import.meta.env.VITE_BASE_URL;
-
-  // Repayment
+  // Repayment / upgrade modals
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeVm, setUpgradeVm] = useState(null);
   const [pricingOptions, setPricingOptions] = useState(null);
-
   const [selectedCpu, setSelectedCpu] = useState(null);
   const [selectedRam, setSelectedRam] = useState(null);
   const [selectedDisk, setSelectedDisk] = useState(null);
@@ -81,10 +121,6 @@ export default function UserOrdersPage() {
   const [passwordVisible, setPasswordVisible] = useState({});
   const [passwordFetching, setPasswordFetching] = useState({});
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-
   const [retryOrder, setRetryOrder] = useState(null);
   const [showRetryPayment, setShowRetryPayment] = useState(false);
 
@@ -92,11 +128,6 @@ export default function UserOrdersPage() {
   const [priceLoading, setPriceLoading] = useState(false);
 
   const [copiedIp, setCopiedIp] = useState(null);
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
 
   const [qrData, setQrData] = useState(null);
   const pollRef = useRef(null);
@@ -306,9 +337,10 @@ export default function UserOrdersPage() {
   );
 
   const handleSearch = useCallback(() => {
-    setDebouncedSearch(searchTerm);
+    // debouncedSearch is now auto-managed by useDebounce hook.
+    // Just reset pagination on explicit search action.
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, []);
 
   const toggleRow = useCallback(
     (id) => {
@@ -339,23 +371,31 @@ export default function UserOrdersPage() {
       pollRef.current = setInterval(async () => {
         try {
           attempts++;
+          // D-1 FIX: verifyPayment now validates response shape.
+          // ApiError is thrown on HTTP errors or missing `status` field.
           const res = await verifyPayment(paymentId, "PAYTM");
           if (res.status !== "PENDING") {
             stopPolling();
             toast.success("Payment successful");
             setQrData(null);
-            setRefreshTrigger((prev) => prev + 1);
+            invalidateOrders();
           }
           if (attempts >= maxAttempts) {
             stopPolling();
+            setQrData(null);
             toast("Payment not confirmed yet. You can retry.");
           }
         } catch (err) {
-          console.error("Polling error:", err);
+          // D-1 FIX: Stop polling on errors instead of silently continuing.
+          // Prevents infinite 500-loop and informs the user.
+          console.error("Payment polling failed:", err);
+          stopPolling();
+          setQrData(null);
+          toast.error(err.message || "Payment verification failed");
         }
       }, 3000);
     },
-    [stopPolling],
+    [stopPolling, invalidateOrders],
   );
 
   const handleClosePaymentModal = useCallback(
@@ -420,26 +460,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         setPowerLoading((prev) => ({ ...prev, [vmId]: action }));
 
         let url = "";
-        const method = "POST";
 
         if (action === "rebuild") {
-          url = `${BASE_URL}/api/users/${order.originalData.userId}/vms/${vmId}/rebuild?isoId=${isoId}`;
+          url = `/api/users/${order.originalData.userId}/vms/${vmId}/rebuild?isoId=${isoId}`;
         } else {
-          url = `${BASE_URL}/api/users/${order.originalData.userId}/vms/${vmId}/control?action=${action}`;
+          url = `/api/users/${order.originalData.userId}/vms/${vmId}/control?action=${action}`;
         }
 
-        const res = await fetch(url, {
-          method,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(errText || "Power action failed");
-        }
+        await apiClient(url, { method: "POST" }, { auth: "user" });
 
         DarkSwal.fire({
           icon: "success",
@@ -447,33 +475,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           text: `${action.toUpperCase()} request sent successfully.`,
         });
 
-        setOrders((prev) =>
-          prev.map((o) =>
-            o.id === vmId
-              ? {
-                  ...o,
-                  status:
-                    action === "start"
-                      ? "ACTIVE"
-                      : action === "stop"
-                        ? "STOPPED"
-                        : action === "reboot"
-                          ? "REBOOTING"
-                          : action === "rebuild"
-                            ? "PROVISIONING"
-                            : o.status,
-                  liveState:
-                    action === "start"
-                      ? "RUNNING"
-                      : action === "stop"
-                        ? "STOPPED"
-                        : action === "reboot"
-                          ? "REBOOTING"
-                          : o.liveState,
-                }
-              : o,
-          ),
-        );
+        // A-4 FIX: NO optimistic state update.
+        // Instead, invalidate React Query cache so the next poll fetches real server state.
+        invalidateOrders();
 
         if (action === "stop") {
           setPasswordVisible((prev) => ({ ...prev, [vmId]: false }));
@@ -488,28 +492,18 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         setPowerLoading((prev) => ({ ...prev, [vmId]: null }));
       }
     },
-    [BASE_URL, DarkSwal],
+    [DarkSwal, invalidateOrders],
   );
 
   const fetchBasicIsos = useCallback(
     async (serverId) => {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${BASE_URL}/api/users/servers/${serverId}/isos/basic`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        },
+      return apiClient(
+        `/api/users/servers/${serverId}/isos/basic`,
+        {},
+        { auth: "user" }
       );
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "Failed to fetch ISOs");
-      }
-      return await res.json();
     },
-    [BASE_URL],
+    [],
   );
 
   const promptRebuildWithIso = useCallback(
@@ -610,35 +604,18 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       const token = localStorage.getItem("token");
       try {
         setMacLoading((prev) => ({ ...prev, [vmId]: true }));
-        const url = `${BASE_URL}/api/users/vms/${vmId}/mac/regenerate`;
-        console.log("Regenerating MAC for VM:", vmId, "URL:", url);
-        
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
 
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to regenerate MAC address");
-        }
-
-        const data = await res.json();
-        
-        // Update local state
-        setOrders((prev) =>
-          prev.map((o) =>
-            o.id === vmId
-              ? { ...o, macAddress: data.newMac }
-              : o
-          )
+        const data = await apiClient(
+          `/api/users/vms/${vmId}/mac/regenerate`,
+          { method: "POST" },
+          { auth: "user" }
         );
 
+        // E-1 FIX: Invalidate cache instead of manual state patching
+        invalidateOrders();
+
         toast.success(`MAC Address updated: ${data.newMac}`);
-        
+
         DarkSwal.fire({
           icon: "success",
           title: "Success",
@@ -656,12 +633,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         setMacLoading((prev) => ({ ...prev, [vmId]: false }));
       }
     },
-    [BASE_URL, DarkSwal, macLoading]
+    [DarkSwal, macLoading, invalidateOrders]
   );
 
   const fetchVmPassword = useCallback(
     async (order) => {
-      const token = localStorage.getItem("token");
       const userId = order.originalData?.userId;
       const vmId = order.originalData?.vmId || order.id;
 
@@ -674,14 +650,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
       try {
         setPasswordFetching((p) => ({ ...p, [vmId]: true }));
-        const res = await fetch(
-          `${BASE_URL}/api/users/${userId}/vms/${vmId}/password`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+        const data = await apiClient(
+          `/api/users/${userId}/vms/${vmId}/password`,
+          {},
+          { auth: "user" }
         );
-        if (!res.ok) throw new Error("Password not set");
-        const data = await res.json();
         setVmPasswords((p) => ({ ...p, [vmId]: data.password || null }));
         setPasswordVisible((p) => ({ ...p, [vmId]: false }));
       } catch (err) {
@@ -691,7 +664,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         setPasswordFetching((p) => ({ ...p, [vmId]: false }));
       }
     },
-    [BASE_URL],
+    [],
   );
 
   const togglePasswordView = useCallback(
@@ -708,7 +681,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   const handleSavePassword = useCallback(
     async (order) => {
-      const token = localStorage.getItem("token");
       const password = passwordInputs[order.id];
       const vmId = order.originalData?.vmId || order.id;
 
@@ -730,21 +702,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
       try {
         setPasswordLoading((prev) => ({ ...prev, [vmId]: true }));
-        const res = await fetch(
-          `${BASE_URL}/api/users/${userId}/vms/${vmId}/password`,
+        await apiClient(
+          `/api/users/${userId}/vms/${vmId}/password`,
           {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify({ password }),
           },
+          { auth: "user" }
         );
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(errText || "Failed to save password");
-        }
         toast.success("Password saved successfully");
         setVmPasswords((prev) => ({ ...prev, [vmId]: password }));
         setPasswordVisible((prev) => ({ ...prev, [vmId]: true }));
@@ -758,7 +723,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         setPasswordLoading((prev) => ({ ...prev, [vmId]: false }));
       }
     },
-    [BASE_URL, passwordInputs],
+    [passwordInputs],
   );
 
   const handleCouponApply = useCallback(
@@ -766,20 +731,17 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       if (priceLoading) return false;
       try {
         setPriceLoading(true);
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${BASE_URL}/api/coupons/validate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+        const data = await apiClient(
+          "/api/coupons/validate",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              code: couponCode.trim(),
+              orderAmount: priceBreakdown?.originalAmount ?? 0,
+            }),
           },
-          body: JSON.stringify({
-            code: couponCode.trim(),
-            orderAmount: priceBreakdown?.originalAmount ?? 0,
-          }),
-        });
-        if (!res.ok) throw new Error("Invalid coupon");
-        const data = await res.json();
+          { auth: "user" }
+        );
         if (!data.valid) throw new Error("Coupon not valid");
         setPriceBreakdown((prev) => ({
           ...prev,
@@ -796,7 +758,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         setPriceLoading(false);
       }
     },
-    [priceLoading, priceBreakdown, BASE_URL],
+    [priceLoading, priceBreakdown],
   );
 
   const calculateRenewalPrice = useCallback(
@@ -804,7 +766,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       if (!upgradeVm) return null;
       try {
         setPriceLoading(true);
-        const token = localStorage.getItem("token");
         const payload = {
           vmId: upgradeVm.id,
           planType: upgradeVm.planType || "SHARED",
@@ -815,22 +776,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           monthsToAdd: addMonths,
           couponCode,
         };
-        const res = await fetch(
-          `${BASE_URL}/api/billing/price/calculate-renewal`,
+        const data = await apiClient(
+          "/api/billing/price/calculate-renewal",
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify(payload),
           },
+          { auth: "user" }
         );
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || "Failed to calculate price");
-        }
-        const data = await res.json();
         setPriceBreakdown(data);
         return data;
       } catch (err) {
@@ -847,7 +800,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       selectedDisk,
       selectedBandwidth,
       addMonths,
-      BASE_URL,
     ],
   );
 
@@ -860,16 +812,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   const createUpgradeSession = useCallback(
     async ({ useWallet, couponCode, gateway }) => {
-      const token = localStorage.getItem("token");
       try {
-        const res = await fetch(
-          `${BASE_URL}/api/vms/renew/${upgradeVm.id}/upgrade-renew?gateway=${gateway}`,
+        const data = await apiClient(
+          `/api/vms/renew/${upgradeVm.id}/upgrade-renew?gateway=${encodeURIComponent(gateway)}`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify({
               addMonths,
               useWalletBalance: useWallet,
@@ -881,19 +828,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
               bandwidthPriceId: selectedBandwidth,
             }),
           },
+          { auth: "user" }
         );
-        const data = await res.json();
-        if (!res.ok) {
-          setShowPaymentFlow(false);
-          setTimeout(() => {
-            DarkSwal.fire({
-              icon: "error",
-              title: "Payment Failed",
-              text: data.error || data.message || "Upgrade / renewal failed",
-            });
-          }, 150);
-          return null;
-        }
+
         if (data.status === "COMPLETED") {
           setShowPaymentFlow(false);
           setTimeout(() => {
@@ -902,7 +839,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
               title: "Upgrade Successful",
               text: data.message,
             }).then(() => {
-              setRefreshTrigger((prev) => prev + 1);
+              invalidateOrders();
             });
           }, 150);
           return null;
@@ -922,7 +859,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       }
     },
     [
-      BASE_URL,
       upgradeVm,
       addMonths,
       selectedCpu,
@@ -939,7 +875,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       if (!data) return null;
       if (data.status === "COMPLETED") {
         toast.success("Payment successful");
-        setRefreshTrigger((prev) => prev + 1);
+        invalidateOrders();
         return { status: "COMPLETED" };
       }
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
@@ -960,20 +896,16 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   const createRetryPaymentSession = useCallback(
     async (order, gateway, useWallet) => {
-      const token = localStorage.getItem("token");
       const paymentOrderId = order.orderId ?? order.originalData?.orderId;
-      const res = await fetch(
-        `${BASE_URL}/api/user/payments/${paymentOrderId}/retry?gateway=${gateway}&useWalletBalance=${useWallet}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        },
+      // D-4: /api/user/ (singular) matches backend contract
+      const data = await apiClient(
+        `/api/user/payments/${paymentOrderId}/retry?gateway=${encodeURIComponent(gateway)}&useWalletBalance=${useWallet}`,
+        { method: "POST" },
+        { auth: "user" }
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Unable to retry payment");
       return data;
     },
-    [BASE_URL],
+    [],
   );
 
   const openUpgradeModal = useCallback(
@@ -981,12 +913,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       setUpgradeVm(order);
       setUpgradeModalOpen(true);
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(
-          `${BASE_URL}/api/pricing/upgrades/${order.id}`,
-          { headers: { Authorization: `Bearer ${token}` } },
+        const data = await apiClient(
+          `/api/pricing/upgrades/${order.id}`,
+          {},
+          { auth: "user" }
         );
-        const data = await res.json();
         setPricingOptions(data);
         setSelectedCpu(data.cpuOptions?.[0]?.tier?.id || null);
         setSelectedRam(data.ramOptions?.[0]?.tier?.id || null);
@@ -996,7 +927,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         toast.error("Failed to load pricing");
       }
     },
-    [BASE_URL],
+    [],
   );
 
   // ─── Derived / memoised data ──────────────────────────────────────────────
@@ -1011,10 +942,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
   const { sortedItems, requestSort, sortConfig } =
     useSortableData(filteredOrders);
 
-  const currentOrders = useMemo(() => sortedItems, [sortedItems]);
+  // currentOrders IS sortedItems — no copying
+  const currentOrders = sortedItems;
 
   // ─── Effects ──────────────────────────────────────────────────────────────
-  // Cleanup polling on unmount
+  // Cleanup payment polling on unmount (QR/UPI payment polling only)
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
@@ -1049,6 +981,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
     const timer = setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
       if (params.get("payment") === "success") {
+        // Ensure fresh data after payment redirect
+        invalidateOrders();
         DarkSwal.fire({
           icon: "success",
           title: "Payment Successful",
@@ -1058,19 +992,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [DarkSwal]);
+  }, [DarkSwal, invalidateOrders]);
 
   // Account status check
   useEffect(() => {
     const checkAccountStatus = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-        const res = await fetch(`${BASE_URL}/api/user/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Failed to fetch account status");
-        const data = await res.json();
+        const data = await apiClient("/api/user/status", {}, { auth: "user" });
         setAccountStatus(data);
       } catch (err) {
         console.error("Account status check failed", err);
@@ -1079,120 +1007,29 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       }
     };
     checkAccountStatus();
-  }, [BASE_URL]);
+  }, []);
 
-  // Fetch orders
+  // A-3 FIX: The old setInterval + useState loop has been REMOVED.
+  // Orders are now fetched by the `useUserOrders` React Query hook (defined at the top).
+  // React Query handles: deduplication, polling (8s), stale detection, caching, and cleanup.
+
+  // C-1 FIX: Fetch lock status ONLY for the expanded row, not all orders
   useEffect(() => {
-    if (statusLoading) return;
-    if (accountStatus?.isLocked) {
-      setLoading(false);
-      return;
-    }
-
-    let isSubscribed = true;
-
-    async function fetchUserOrders(isBackground = false) {
+    if (!expandedRow) return;
+    const order = orders.find((o) => o.id === expandedRow);
+    if (!order) return;
+    const vmId = order.originalData?.vmId || order.id;
+    // Only fetch if we don't already have it
+    if (vmLockStatus[vmId] !== undefined) return;
+    (async () => {
       try {
-        if (!isBackground) {
-          if (isFirstLoad.current) {
-            setLoading(true);
-          } else {
-            setTableLoading(true);
-          }
-        }
-        
-        const token = localStorage.getItem("token");
-        const params = new URLSearchParams({
-          page: currentPage - 1,
-          size: itemsPerPage,
-          ...(debouncedSearch ? { search: debouncedSearch } : {}),
-          sortBy: "createdAt",
-          sortDir: "desc",
-        });
-        const res = await fetch(
-          `${BASE_URL}/api/users/orders/my-orders?${params}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "X-Reseller-Domain": window.location.hostname,
-            },
-          },
-        );
-        if (res.status === 401) {
-          localStorage.removeItem("token");
-          window.location.href = "/login";
-          return;
-        }
-        const data = await res.json();
-        
-        if (isSubscribed) {
-          setTotalPages(data.totalPages);
-          setTotalItems(data.totalItems);
-          const transformedOrders = (data.orders || []).map((item) => ({
-            id: item.vmId,
-            orderId: item.orderId,
-            vmName: item.vmName,
-            status: item.status,
-            liveState: item.liveState,
-            ipAddress: item.ipAddress,
-            createdAt: item.billing?.boughtAt,
-            planType: item.billing?.planType,
-            priceTotal: item.billing?.monthlyPlan,
-            cores: item.specs?.cores,
-            ramMb: item.specs?.ramMb,
-            diskGb: item.specs?.diskGb,
-            osType: item.specs?.osType,
-            expiresAt: item.billing?.expiresAt,
-            durationMonths: item.billing?.durationMonths,
-            serverLocation: item.serverLocation,
-            isProtected: item.isProtected,
-            originalData: item,
-            isoName: item.specs?.isoName,
-            macAddress: item.macAddress || item.mac_address || item.mac || (item.specs && item.specs.mac) || "Not available",
-          }));
-          setOrders(transformedOrders);
-          isFirstLoad.current = false;
-        }
-      } catch (err) {
-        if (!isBackground) toast.error("Error fetching orders");
-      } finally {
-        if (!isBackground && isSubscribed) {
-          setLoading(false);
-          setTableLoading(false);
-        }
-      }
-    }
-
-    fetchUserOrders(false);
-
-    const intervalId = setInterval(() => {
-      fetchUserOrders(true);
-    }, 10000);
-
-    return () => {
-      isSubscribed = false;
-      clearInterval(intervalId);
-    };
-  }, [BASE_URL, statusLoading, accountStatus, currentPage, debouncedSearch, refreshTrigger]);
-
-  // Fetch VM lock statuses whenever orders change
-  useEffect(() => {
-    if (!orders.length) return;
-    const token = localStorage.getItem("token");
-    orders.forEach(async (order) => {
-      const vmId = order.originalData?.vmId || order.id;
-      try {
-        const res = await fetch(`${BASE_URL}/api/vms/${vmId}/lock-status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await apiClient(`/api/vms/${vmId}/lock-status`, {}, { auth: "user" });
         setVmLockStatus((prev) => ({ ...prev, [vmId]: data }));
       } catch (err) {
         console.error("Failed to fetch lock status", err);
       }
-    });
-  }, [orders, BASE_URL]);
+    })();
+  }, [expandedRow, orders, vmLockStatus]);
 
   // Fetch password when a row is expanded
   useEffect(() => {
@@ -1205,10 +1042,10 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
     }
   }, [expandedRow, orders, vmPasswords, fetchVmPassword]);
 
-  // Reset page to 1 whenever sort changes
+  // Reset page to 1 whenever sort or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [sortConfig]);
+  }, [sortConfig, debouncedSearch]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -1279,6 +1116,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                     type="text"
                     placeholder="Search by name, IP, VMID..."
                     value={searchTerm}
+                    autoComplete="off"
+                    name="vm-search"
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleSearch();
