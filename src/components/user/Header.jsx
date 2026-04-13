@@ -22,7 +22,6 @@ const Header = () => {
   const [user, setUser] = useState(null);
   const [isReseller, setIsReseller] = useState(false);
   const dropdownRef = useRef(null);
-  const APP_NAME = import.meta.env.VITE_APP_NAME;
 
   // ✅ Call your hook here — this gives you the logout function
   const logout = useLogout();
@@ -98,7 +97,7 @@ const Header = () => {
               className="h-9 w-9 object-contain"
             />
             <h1 className="text-lg font-semibold text-white tracking-wide">
-              {APP_NAME}
+              {settings?.companyName || "Our Platform"}
             </h1>
           </Link>
         </div>
