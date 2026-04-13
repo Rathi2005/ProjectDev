@@ -255,10 +255,7 @@ export default function CouponAndWallet({
 
       if (res?.paymentSessionId) {
         const cashfree = window.Cashfree({
-          mode:
-            import.meta.env.VITE_CASHFREE_MODE === "production"
-              ? "production"
-              : "sandbox",
+          mode: gateway?.mode?.toLowerCase(),
         });
 
         cashfree.checkout({
@@ -281,6 +278,7 @@ export default function CouponAndWallet({
     couponValidated,
     couponCode,
     onInstantSuccess,
+    gateway,
   ]);
 
   const handleCouponToggle = useCallback((checked) => {

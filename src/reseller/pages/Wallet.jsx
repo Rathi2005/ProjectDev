@@ -443,6 +443,7 @@ export default function WalletPage() {
                     <PaymentFlow
                       onCreateSession={createWalletTopUpSession}
                       onClose={handlePaymentClose}
+                      
                     />
                     <button
                       onClick={() => setShowAddFunds(false)}

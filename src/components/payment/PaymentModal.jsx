@@ -12,13 +12,12 @@ const PaymentModal = memo(function PaymentModal({
   onCouponApply,
 }) {
   // ✅ ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURN
-  const [gateway, setGateway] = useState("CASHFREE");
-
+  const [gateway, setGateway] = useState(null);
   const handleCreateSessionWithGateway = useCallback(
     (data) => {
       return onCreateSession({
         ...data,
-        gateway,
+        gateway: gateway?.type, // 🔥 IMPORTANT FIX
       });
     },
     [onCreateSession, gateway],
