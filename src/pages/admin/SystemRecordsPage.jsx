@@ -61,11 +61,17 @@ export default function SystemRecordsPage() {
   const [searchBy, setSearchBy] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterDropdownRef = useRef(null);
-  const [sortConfig, setSortConfig] = useState({ key: "id", direction: "desc" });
+  const [sortConfig, setSortConfig] = useState({
+    key: "id",
+    direction: "desc",
+  });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+      if (
+        filterDropdownRef.current &&
+        !filterDropdownRef.current.contains(event.target)
+      ) {
         setIsFilterOpen(false);
       }
     };
@@ -92,6 +98,7 @@ export default function SystemRecordsPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedUpgradeUser, setSelectedUpgradeUser] = useState(null);
+  const [upgradingUserId, setUpgradingUserId] = useState(null);
 
   const initialForm = {
     vmName: "",
@@ -146,7 +153,16 @@ export default function SystemRecordsPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [pageType, page, size, debouncedSearchTerm, searchBy, selectedFilter, sortConfig.key, sortConfig.direction]);
+  }, [
+    pageType,
+    page,
+    size,
+    debouncedSearchTerm,
+    searchBy,
+    selectedFilter,
+    sortConfig.key,
+    sortConfig.direction,
+  ]);
 
   useEffect(() => {
     setPage(0);
@@ -373,7 +389,8 @@ export default function SystemRecordsPage() {
           const searchParam = debouncedSearchTerm
             ? `&search=${encodeURIComponent(debouncedSearchTerm)}`
             : "";
-          const searchByParam = (debouncedSearchTerm && searchBy) ? `&searchBy=${searchBy}` : "";
+          const searchByParam =
+            debouncedSearchTerm && searchBy ? `&searchBy=${searchBy}` : "";
           const filterParam =
             selectedFilter !== "all" ? `&filter=${selectedFilter}` : "";
 
@@ -852,7 +869,7 @@ export default function SystemRecordsPage() {
         switch (column.key) {
           case "name":
             return (
-              <div 
+              <div
                 onClick={(e) => {
                   e.stopPropagation();
                   showUserDetailsModal(record);
@@ -1185,10 +1202,15 @@ export default function SystemRecordsPage() {
                   { value: "name", label: "Full Name" },
                   { value: "billing", label: "Billing Info" },
                 ];
-                const activeLabel = searchOptions.find(o => o.value === searchBy)?.label || "All Fields";
+                const activeLabel =
+                  searchOptions.find((o) => o.value === searchBy)?.label ||
+                  "All Fields";
 
                 return (
-                  <div className="flex-1 relative group" ref={filterDropdownRef}>
+                  <div
+                    className="flex-1 relative group"
+                    ref={filterDropdownRef}
+                  >
                     <div className="flex items-center bg-[#0e1525] border border-indigo-900/50 rounded-xl focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all duration-300">
                       <div className="pl-4 text-gray-400">
                         <Search className="w-4 h-4" />
@@ -1203,7 +1225,7 @@ export default function SystemRecordsPage() {
                       />
 
                       {searchTerm && (
-                        <button 
+                        <button
                           onClick={() => setSearchTerm("")}
                           className="p-1 hover:bg-gray-700/50 rounded-full transition-colors mr-2 text-gray-400"
                         >
@@ -1216,8 +1238,13 @@ export default function SystemRecordsPage() {
                           onClick={() => setIsFilterOpen(!isFilterOpen)}
                           className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-indigo-300 hover:text-white hover:bg-indigo-600/10 transition-all"
                         >
-                          <span className="opacity-60 font-normal">Filter:</span> {activeLabel}
-                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isFilterOpen ? 'rotate-180' : ''}`} />
+                          <span className="opacity-60 font-normal">
+                            Filter:
+                          </span>{" "}
+                          {activeLabel}
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 transition-transform duration-300 ${isFilterOpen ? "rotate-180" : ""}`}
+                          />
                         </button>
 
                         {isFilterOpen && (
@@ -1309,17 +1336,23 @@ export default function SystemRecordsPage() {
                         {config.columns.map((col, index) => (
                           <th
                             key={index}
-                            onClick={() => setSortConfig({
-                              key: col.key,
-                              direction: sortConfig.key === col.key && sortConfig.direction === 'desc' ? 'asc' : 'desc'
-                            })}
+                            onClick={() =>
+                              setSortConfig({
+                                key: col.key,
+                                direction:
+                                  sortConfig.key === col.key &&
+                                  sortConfig.direction === "desc"
+                                    ? "asc"
+                                    : "desc",
+                              })
+                            }
                             className={`py-3 px-4 text-left text-gray-300 text-sm font-medium ${col.width} cursor-pointer hover:text-indigo-400 select-none`}
                           >
                             <div className="flex items-center gap-1">
                               {col.label}
                               {sortConfig.key === col.key && (
                                 <span className="text-[10px] text-indigo-400">
-                                  {sortConfig.direction === 'desc' ? '▼' : '▲'}
+                                  {sortConfig.direction === "desc" ? "▼" : "▲"}
                                 </span>
                               )}
                             </div>
@@ -1356,7 +1389,6 @@ export default function SystemRecordsPage() {
                             </td>
                           ))}
 
-                          {/* 🔐 Lock Status dropdown – users overview only */}
                           {/* 🔐 Lock Status dropdown – users overview only */}
                           {pageType === "users-overview" && (
                             <td className="py-3 px-4 align-middle">
@@ -1426,11 +1458,18 @@ export default function SystemRecordsPage() {
                               <ResellerActionButton
                                 user={record}
                                 BASE_URL={BASE_URL}
+                                isLoading={upgradingUserId === record.id}
                                 onUpgrade={(user) => {
+                                  if (upgradingUserId) return;
+
+                                  setUpgradingUserId(user.id);
                                   setSelectedUpgradeUser(user);
                                   setShowUpgradeModal(true);
                                 }}
-                                onSuccess={fetchRecords}
+                                onSuccess={() => {
+                                  setUpgradingUserId(null);
+                                  fetchRecords();
+                                }}
                               />
                             </td>
                           )}
@@ -1564,7 +1603,10 @@ export default function SystemRecordsPage() {
       {showUpgradeModal && selectedUpgradeUser && (
         <UpgradeUserModal
           user={selectedUpgradeUser}
-          onClose={() => setShowUpgradeModal(false)}
+          onClose={() => {
+            setShowUpgradeModal(false);
+            setUpgradingUserId(null); // ✅ reset loader
+          }}
         />
       )}
     </div>

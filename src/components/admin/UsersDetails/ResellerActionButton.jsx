@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Swal from "sweetalert2";
+import { Loader2 } from "lucide-react";
 
 const DarkSwal = Swal.mixin({
   background: "#1e2640",
@@ -12,25 +13,23 @@ export default function ResellerActionButton({
   user,
   BASE_URL,
   onUpgrade,
-  onSuccess
+  onSuccess,
+  isLoading,
 }) {
-
   const [loading, setLoading] = useState(false);
 
   const revokeReseller = async () => {
-
     const confirm = await DarkSwal.fire({
       title: "Revoke Reseller?",
       text: "This will delete domain and proxy configuration.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, Revoke"
+      confirmButtonText: "Yes, Revoke",
     });
 
     if (!confirm.isConfirmed) return;
 
     try {
-
       setLoading(true);
 
       const token = localStorage.getItem("adminToken");
@@ -42,7 +41,7 @@ export default function ResellerActionButton({
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       const data = await res.json();
@@ -51,22 +50,11 @@ export default function ResellerActionButton({
         throw new Error(data?.error || "Failed to revoke reseller");
       }
 
-      await DarkSwal.fire(
-        "Success",
-        data.message,
-        "success"
-      );
+      await DarkSwal.fire("Success", data.message, "success");
 
       onSuccess(); // reload table
-
     } catch (err) {
-
-      DarkSwal.fire(
-        "Error",
-        err.message,
-        "error"
-      );
-
+      DarkSwal.fire("Error", err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -85,13 +73,22 @@ export default function ResellerActionButton({
     );
   }
 
+  const handleUpgrade = () => {
+    if (isLoading) return; // 🚫 prevent double click
+    onUpgrade(user);
+  };
+
   // USER NOT RESELLER → SHOW UPGRADE
   return (
     <button
-      onClick={() => onUpgrade(user)}
-      className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded"
+      onClick={handleUpgrade}
+      disabled={isLoading}
+      className={`px-3 py-1 text-xs rounded flex items-center justify-center gap-2 min-w-[90px]
+    ${isLoading ? "bg-gray-500 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"}
+  `}
     >
-      Upgrade
+      {isLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+      {isLoading ? "Upgrading" : "Upgrade"}
     </button>
   );
 }
