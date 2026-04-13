@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import Header from "../components/user/Header";
 import PaymentFlow from "../components/payment/PaymentFlow";
 import CouponAndWallet from "../components/payment/CouponAndWallet";
@@ -290,8 +296,13 @@ export default function UserOrdersPage() {
   );
 
   const getRenewButtonConfig = useCallback(
-    (expiresAt) => {
-      const state = getBillingState(expiresAt);
+    (order) => {
+      if (order.status?.toUpperCase() === "SUSPENDED") {
+        return { label: "Repay & Activate", color: "bg-red-600" };
+      }
+
+      const state = getBillingState(order.expiresAt);
+
       switch (state) {
         case "ACTIVE":
           return { label: "Extend Plan", color: "bg-indigo-600" };
@@ -309,7 +320,6 @@ export default function UserOrdersPage() {
     },
     [getBillingState],
   );
-
 
   const isRebuildBlockedTime = useCallback(() => {
     const hourIST = Number(
@@ -495,16 +505,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
     [DarkSwal, invalidateOrders],
   );
 
-  const fetchBasicIsos = useCallback(
-    async (serverId) => {
-      return apiClient(
-        `/api/users/servers/${serverId}/isos/basic`,
-        {},
-        { auth: "user" }
-      );
-    },
-    [],
-  );
+  const fetchBasicIsos = useCallback(async (serverId) => {
+    return apiClient(
+      `/api/users/servers/${serverId}/isos/basic`,
+      {},
+      { auth: "user" },
+    );
+  }, []);
 
   const promptRebuildWithIso = useCallback(
     async (order) => {
@@ -608,7 +615,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         const data = await apiClient(
           `/api/users/vms/${vmId}/mac/regenerate`,
           { method: "POST" },
-          { auth: "user" }
+          { auth: "user" },
         );
 
         // E-1 FIX: Invalidate cache instead of manual state patching
@@ -621,7 +628,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           title: "Success",
           text: `MAC address successfully regenerated. Your server is now rebooting.`,
         });
-
       } catch (err) {
         toast.error(err.message);
         DarkSwal.fire({
@@ -633,39 +639,36 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         setMacLoading((prev) => ({ ...prev, [vmId]: false }));
       }
     },
-    [DarkSwal, macLoading, invalidateOrders]
+    [DarkSwal, macLoading, invalidateOrders],
   );
 
-  const fetchVmPassword = useCallback(
-    async (order) => {
-      const userId = order.originalData?.userId;
-      const vmId = order.originalData?.vmId || order.id;
+  const fetchVmPassword = useCallback(async (order) => {
+    const userId = order.originalData?.userId;
+    const vmId = order.originalData?.vmId || order.id;
 
-      if (!userId || !vmId) {
-        toast.error("Cannot fetch password: missing server information");
-        return;
-      }
+    if (!userId || !vmId) {
+      toast.error("Cannot fetch password: missing server information");
+      return;
+    }
 
-      if (order.liveState?.toUpperCase() !== "RUNNING") return;
+    if (order.liveState?.toUpperCase() !== "RUNNING") return;
 
-      try {
-        setPasswordFetching((p) => ({ ...p, [vmId]: true }));
-        const data = await apiClient(
-          `/api/users/${userId}/vms/${vmId}/password`,
-          {},
-          { auth: "user" }
-        );
-        setVmPasswords((p) => ({ ...p, [vmId]: data.password || null }));
-        setPasswordVisible((p) => ({ ...p, [vmId]: false }));
-      } catch (err) {
-        setVmPasswords((p) => ({ ...p, [vmId]: null }));
-        toast.error("Password not set");
-      } finally {
-        setPasswordFetching((p) => ({ ...p, [vmId]: false }));
-      }
-    },
-    [],
-  );
+    try {
+      setPasswordFetching((p) => ({ ...p, [vmId]: true }));
+      const data = await apiClient(
+        `/api/users/${userId}/vms/${vmId}/password`,
+        {},
+        { auth: "user" },
+      );
+      setVmPasswords((p) => ({ ...p, [vmId]: data.password || null }));
+      setPasswordVisible((p) => ({ ...p, [vmId]: false }));
+    } catch (err) {
+      setVmPasswords((p) => ({ ...p, [vmId]: null }));
+      toast.error("Password not set");
+    } finally {
+      setPasswordFetching((p) => ({ ...p, [vmId]: false }));
+    }
+  }, []);
 
   const togglePasswordView = useCallback(
     (order) => {
@@ -708,7 +711,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
             method: "PUT",
             body: JSON.stringify({ password }),
           },
-          { auth: "user" }
+          { auth: "user" },
         );
         toast.success("Password saved successfully");
         setVmPasswords((prev) => ({ ...prev, [vmId]: password }));
@@ -740,7 +743,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
               orderAmount: priceBreakdown?.originalAmount ?? 0,
             }),
           },
-          { auth: "user" }
+          { auth: "user" },
         );
         if (!data.valid) throw new Error("Coupon not valid");
         setPriceBreakdown((prev) => ({
@@ -782,7 +785,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
             method: "POST",
             body: JSON.stringify(payload),
           },
-          { auth: "user" }
+          { auth: "user" },
         );
         setPriceBreakdown(data);
         return data;
@@ -828,7 +831,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
               bandwidthPriceId: selectedBandwidth,
             }),
           },
-          { auth: "user" }
+          { auth: "user" },
         );
 
         if (data.status === "COMPLETED") {
@@ -871,7 +874,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   const handleCreateSession = useCallback(
     async ({ gateway, useWallet, couponCode }) => {
-      const data = await createUpgradeSession({ gateway, useWallet, couponCode });
+      const data = await createUpgradeSession({
+        gateway,
+        useWallet,
+        couponCode,
+      });
       if (!data) return null;
       if (data.status === "COMPLETED") {
         toast.success("Payment successful");
@@ -901,41 +908,37 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       const data = await apiClient(
         `/api/user/payments/${paymentOrderId}/retry?gateway=${encodeURIComponent(gateway)}&useWalletBalance=${useWallet}`,
         { method: "POST" },
-        { auth: "user" }
+        { auth: "user" },
       );
       return data;
     },
     [],
   );
 
-  const openUpgradeModal = useCallback(
-    async (order) => {
-      setUpgradeVm(order);
-      setUpgradeModalOpen(true);
-      try {
-        const data = await apiClient(
-          `/api/pricing/upgrades/${order.id}`,
-          {},
-          { auth: "user" }
-        );
-        setPricingOptions(data);
-        setSelectedCpu(data.cpuOptions?.[0]?.tier?.id || null);
-        setSelectedRam(data.ramOptions?.[0]?.tier?.id || null);
-        setSelectedDisk(data.diskOptions?.[0]?.tier?.id || null);
-        setSelectedBandwidth(data.bandwidthOptions?.[0]?.tier?.id || null);
-      } catch {
-        toast.error("Failed to load pricing");
-      }
-    },
-    [],
-  );
+  const openUpgradeModal = useCallback(async (order) => {
+    setUpgradeVm(order);
+    setUpgradeModalOpen(true);
+    try {
+      const data = await apiClient(
+        `/api/pricing/upgrades/${order.id}`,
+        {},
+        { auth: "user" },
+      );
+      setPricingOptions(data);
+      setSelectedCpu(data.cpuOptions?.[0]?.tier?.id || null);
+      setSelectedRam(data.ramOptions?.[0]?.tier?.id || null);
+      setSelectedDisk(data.diskOptions?.[0]?.tier?.id || null);
+      setSelectedBandwidth(data.bandwidthOptions?.[0]?.tier?.id || null);
+    } catch {
+      toast.error("Failed to load pricing");
+    }
+  }, []);
 
   // ─── Derived / memoised data ──────────────────────────────────────────────
   const filteredOrders = useMemo(() => {
     if (selectedStatus === "ALL") return orders;
     return orders.filter(
-      (order) =>
-        order.status?.toUpperCase() === selectedStatus.toUpperCase(),
+      (order) => order.status?.toUpperCase() === selectedStatus.toUpperCase(),
     );
   }, [orders, selectedStatus]);
 
@@ -953,7 +956,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const anyModalOpen = showPaymentFlow || upgradeModalOpen || showRetryPayment || !!qrData;
+    const anyModalOpen =
+      showPaymentFlow || upgradeModalOpen || showRetryPayment || !!qrData;
     if (anyModalOpen) {
       const scrollY = window.scrollY;
       document.body.style.position = "fixed";
@@ -1023,7 +1027,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
     if (vmLockStatus[vmId] !== undefined) return;
     (async () => {
       try {
-        const data = await apiClient(`/api/vms/${vmId}/lock-status`, {}, { auth: "user" });
+        const data = await apiClient(
+          `/api/vms/${vmId}/lock-status`,
+          {},
+          { auth: "user" },
+        );
         setVmLockStatus((prev) => ({ ...prev, [vmId]: data }));
       } catch (err) {
         console.error("Failed to fetch lock status", err);
@@ -1140,10 +1148,18 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                     onChange={(e) => setSelectedStatus(e.target.value)}
                     className="bg-transparent text-sm text-white outline-none appearance-none"
                   >
-                    <option value="ALL" className="bg-[#151c2f]">All Servers</option>
-                    <option value="ACTIVE" className="bg-[#151c2f]">Active</option>
-                    <option value="STOPPED" className="bg-[#151c2f]">Stopped</option>
-                    <option value="PENDING_PAYMENT" className="bg-[#151c2f]">Pending</option>
+                    <option value="ALL" className="bg-[#151c2f]">
+                      All Servers
+                    </option>
+                    <option value="ACTIVE" className="bg-[#151c2f]">
+                      Active
+                    </option>
+                    <option value="STOPPED" className="bg-[#151c2f]">
+                      Stopped
+                    </option>
+                    <option value="PENDING_PAYMENT" className="bg-[#151c2f]">
+                      Pending
+                    </option>
                   </select>
                 </div>
 
@@ -1163,7 +1179,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                   onClick={() => setRefreshTrigger((prev) => prev + 1)}
                   className="px-4 py-2.5 border border-indigo-900/50 hover:bg-indigo-900/20 text-indigo-300 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
                 >
-                  <RefreshCw className={`w-4 h-4 ${tableLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`w-4 h-4 ${tableLoading ? "animate-spin" : ""}`}
+                  />
                   Refresh
                 </button>
               </div>
@@ -1339,7 +1357,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                       Make Payment
                                     </button>
                                   )}
-                                  
+
                                   {isVmLocked(order) && (
                                     <div
                                       title={
@@ -1374,646 +1392,649 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
                             {/* Expanded Details */}
                             {expandedRow === order.id && (
-                                <tr className="bg-[#0f172a] border-t border-indigo-900/30">
-                                  <td colSpan="7" className="p-0">
-                                    <div className="p-4 sm:p-6">
-                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-
-                                        {/* ── Server Specifications Card ── */}
-                                        <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
-                                          <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                            <div className="p-2 bg-indigo-900/30 rounded-lg">
-                                              <Server className="w-5 h-5 text-indigo-400" />
-                                            </div>
-                                            <h3 className="text-lg font-semibold text-indigo-300">
-                                              Server Specifications
-                                            </h3>
+                              <tr className="bg-[#0f172a] border-t border-indigo-900/30">
+                                <td colSpan="7" className="p-0">
+                                  <div className="p-4 sm:p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                                      {/* ── Server Specifications Card ── */}
+                                      <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
+                                        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                                          <div className="p-2 bg-indigo-900/30 rounded-lg">
+                                            <Server className="w-5 h-5 text-indigo-400" />
                                           </div>
+                                          <h3 className="text-lg font-semibold text-indigo-300">
+                                            Server Specifications
+                                          </h3>
+                                        </div>
 
-                                          <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                  <Cpu className="w-4 h-4" />
-                                                  <span>CPU Cores</span>
-                                                </div>
-                                                <p className="text-xl font-bold text-white">
-                                                  {order.cores || 0}
-                                                  <span className="text-sm text-gray-400 ml-1">
-                                                    cores
-                                                  </span>
-                                                </p>
-                                              </div>
-
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                  <MemoryStick className="w-4 h-4" />
-                                                  <span>RAM</span>
-                                                </div>
-                                                <p className="text-xl font-bold text-white">
-                                                  {order.ramMb
-                                                    ? `${Math.round(order.ramMb / 1024)}`
-                                                    : "N/A"}
-                                                  <span className="text-sm text-gray-400 ml-1">
-                                                    GB
-                                                  </span>
-                                                </p>
-                                              </div>
-                                            </div>
-
+                                        <div className="space-y-4">
+                                          <div className="grid grid-cols-2 gap-4">
                                             <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                               <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                <HardDrive className="w-4 h-4" />
-                                                <span>Storage</span>
+                                                <Cpu className="w-4 h-4" />
+                                                <span>CPU Cores</span>
                                               </div>
                                               <p className="text-xl font-bold text-white">
-                                                {order.diskGb ?? "N/A"}
+                                                {order.cores || 0}
                                                 <span className="text-sm text-gray-400 ml-1">
-                                                  GB SSD
+                                                  cores
                                                 </span>
                                               </p>
                                             </div>
 
                                             <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                               <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                <Activity className="w-4 h-4" />
-                                                <span>VM ID</span>
+                                                <MemoryStick className="w-4 h-4" />
+                                                <span>RAM</span>
                                               </div>
-                                              <p className="text-sm font-semibold text-white font-mono">
-                                                #{order.id}
+                                              <p className="text-xl font-bold text-white">
+                                                {order.ramMb
+                                                  ? `${Math.round(order.ramMb / 1024)}`
+                                                  : "N/A"}
+                                                <span className="text-sm text-gray-400 ml-1">
+                                                  GB
+                                                </span>
+                                              </p>
+                                            </div>
+                                          </div>
+
+                                          <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                            <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                              <HardDrive className="w-4 h-4" />
+                                              <span>Storage</span>
+                                            </div>
+                                            <p className="text-xl font-bold text-white">
+                                              {order.diskGb ?? "N/A"}
+                                              <span className="text-sm text-gray-400 ml-1">
+                                                GB SSD
+                                              </span>
+                                            </p>
+                                          </div>
+
+                                          <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                            <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                              <Activity className="w-4 h-4" />
+                                              <span>VM ID</span>
+                                            </div>
+                                            <p className="text-sm font-semibold text-white font-mono">
+                                              #{order.id}
+                                            </p>
+                                          </div>
+
+                                          <div
+                                            className={`grid gap-4 ${
+                                              order.isProtected
+                                                ? "grid-cols-2"
+                                                : "grid-cols-1"
+                                            }`}
+                                          >
+                                            {/* ISO Name */}
+                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                <FileText className="w-4 h-4 text-indigo-400" />
+                                                <span>ISO</span>
+                                              </div>
+                                              <p className="text-sm font-semibold text-white">
+                                                {order.isoName || "N/A"}
                                               </p>
                                             </div>
 
-                                            <div
-                                              className={`grid gap-4 ${
-                                                order.isProtected
-                                                  ? "grid-cols-2"
-                                                  : "grid-cols-1"
-                                              }`}
-                                            >
-                                              {/* ISO Name */}
+                                            {/* Protection Status */}
+                                            {order.isProtected && (
                                               <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                                 <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                  <FileText className="w-4 h-4 text-indigo-400" />
-                                                  <span>ISO</span>
+                                                  <Shield className="w-4 h-4 text-green-400" />
+                                                  <span>Protection</span>
                                                 </div>
-                                                <p className="text-sm font-semibold text-white">
-                                                  {order.isoName || "N/A"}
+                                                <p className="text-sm font-semibold text-green-400">
+                                                  Protected
                                                 </p>
                                               </div>
-
-                                              {/* Protection Status */}
-                                              {order.isProtected && (
-                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                    <Shield className="w-4 h-4 text-green-400" />
-                                                    <span>Protection</span>
-                                                  </div>
-                                                  <p className="text-sm font-semibold text-green-400">
-                                                    Protected
-                                                  </p>
-                                                </div>
-                                              )}
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                              {/* IP Address */}
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden">
-                                                <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                    <Wifi className="w-4 h-4 text-emerald-400" />
-                                                    <span>IP Address</span>
-                                                  </div>
-                                                <p className="text-sm font-mono font-semibold text-white truncate px-1">
-                                                  {order.ipAddress || "Not assigned"}
-                                                </p>
-                                              </div>
-
-                                              {/* MAC Address */}
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
-                                                <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                                                
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
-                                                  <Activity className="w-4 h-4 text-purple-400" />
-                                                  <span>MAC Address</span>
-                                                </div>
-
-                                                <p className="text-sm font-mono font-bold text-white uppercase tracking-wider mb-3 relative z-[1]">
-                                                  {order.macAddress || "Not available"}
-                                                </p>
-
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleRegenerateMac(order);
-                                                  }}
-                                                  disabled={macLoading[order.originalData?.vmId || order.id]}
-                                                  className="relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg border border-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
-                                                >
-                                                  {macLoading[order.originalData?.vmId || order.id] ? (
-                                                    <RefreshCw className="w-3 h-3 animate-spin" />
-                                                  ) : (
-                                                    <RefreshCw className="w-3 h-3 group-hover/btn:rotate-180 transition-transform duration-500" />
-                                                  )}
-                                                  REGENERATE MAC
-                                                </button>
-                                              </div>
-                                            </div>
-
-                                            <div className="pt-4 border-t border-indigo-900/30">
-                                              <button
-                                                onClick={() =>
-                                                  showDetailsModal(order)
-                                                }
-                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
-                                              >
-                                                <FileText className="w-4 h-4" />
-                                                View Full Details
-                                              </button>
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        {/* ── Billing Details Card ── */}
-                                        <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
-                                          <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                            <div className="p-2 bg-indigo-900/30 rounded-lg">
-                                              <FileText className="w-5 h-5 text-indigo-400" />
-                                            </div>
-                                            <h3 className="text-lg font-semibold text-indigo-300">
-                                              Billing & Location
-                                            </h3>
+                                            )}
                                           </div>
 
-                                          <div className="space-y-4">
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                            {/* IP Address */}
+                                            <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden">
+                                              <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                               <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                <IndianRupee className="w-4 h-4" />
-                                                <span>Monthly Cost</span>
+                                                <Wifi className="w-4 h-4 text-emerald-400" />
+                                                <span>IP Address</span>
                                               </div>
-                                              <p className="text-2xl font-bold text-emerald-300">
-                                                {formatCurrency(order.priceTotal)}
+                                              <p className="text-sm font-mono font-semibold text-white truncate px-1">
+                                                {order.ipAddress ||
+                                                  "Not assigned"}
                                               </p>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
-                                                  <Calendar className="w-4 h-4" />
-                                                  <span>Created</span>
-                                                </div>
-                                                <p className="text-sm font-medium text-white">
-                                                  {formatDate(order.createdAt)}
-                                                </p>
+                                            {/* MAC Address */}
+                                            <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
+                                              <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
+                                                <Activity className="w-4 h-4 text-purple-400" />
+                                                <span>MAC Address</span>
                                               </div>
 
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
-                                                  <Calendar className="w-4 h-4" />
-                                                  <span>Expires</span>
-                                                </div>
-                                                <p className="text-sm font-medium text-white">
-                                                  {formatDate(order.expiresAt)}
-                                                </p>
-                                              </div>
-                                            </div>
+                                              <p className="text-sm font-mono font-bold text-white uppercase tracking-wider mb-3 relative z-[1]">
+                                                {order.macAddress ||
+                                                  "Not available"}
+                                              </p>
 
-                                            {(() => {
-                                              const renewConfig =
-                                                getRenewButtonConfig(
-                                                  order.expiresAt,
-                                                );
-                                              return (
-                                                renewConfig && (
-                                                  <button
-                                                    onClick={() =>
-                                                      openUpgradeModal(order)
-                                                    }
-                                                    className={`mt-4 w-full text-white px-4 py-2 rounded-lg text-sm font-semibold ${renewConfig.color}`}
-                                                  >
-                                                    {renewConfig.label}
-                                                  </button>
-                                                )
-                                              );
-                                            })()}
-
-                                            {order.expiresAt && (
-                                              <div className="pt-3 border-t border-indigo-900/30">
-                                                <div className="flex items-center justify-between">
-                                                  <div className="flex items-center gap-2">
-                                                    <Clock className="w-4 h-4 text-yellow-400" />
-                                                    <span className="text-sm text-gray-400">
-                                                      Days Remaining
-                                                    </span>
-                                                  </div>
-                                                  <span className="text-lg font-bold text-white">
-                                                    {getDaysRemaining(
-                                                      order.expiresAt,
-                                                    )}{" "}
-                                                    days
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            )}
-
-                                            <div className="pt-3 border-t border-indigo-900/30 space-y-3">
-                                              <div className="flex items-center justify-between">
-                                                <span className="text-sm text-gray-400">
-                                                  Plan Type
-                                                </span>
-                                                <span className="px-3 py-1 bg-indigo-900/30 rounded-full text-sm font-medium">
-                                                  {order.planType || "Standard"}
-                                                </span>
-                                              </div>
-
-                                              <div className="flex items-center justify-between">
-                                                <span className="text-sm text-gray-400">
-                                                  Server Location
-                                                </span>
-                                                <span className="px-3 py-1 bg-blue-900/30 text-blue-300 rounded-full text-sm font-medium">
-                                                  {order.serverLocation ||
-                                                    "Unknown"}
-                                                </span>
-                                              </div>
-
-                                              {order.originalData
-                                                ?.assignedTo && (
-                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                    <User className="w-4 h-4 text-indigo-400" />
-                                                    <span>Assigned To</span>
-                                                  </div>
-                                                  <div className="text-sm text-white font-medium">
-                                                    {
-                                                      order.originalData
-                                                        .assignedTo.name
-                                                    }
-                                                  </div>
-                                                  <div className="text-xs text-gray-400">
-                                                    {
-                                                      order.originalData
-                                                        .assignedTo.email
-                                                    }
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        {/* ── Connection & Controls Card ── */}
-                                        <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
-                                          {/* Server Password Setup */}
-                                          <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4">
-                                            <h4 className="flex text-sm font-semibold text-indigo-300 mb-2">
-                                              <Lock className="w-5 h-5 text-red-400 mr-1" />
-                                              Server Access Password
-                                            </h4>
-                                            <p className="text-xs text-gray-400 mb-3">
-                                              Set a password to enable VM
-                                              actions and remote access.
-                                            </p>
-                                            <div className="flex gap-2">
-                                              <input
-                                                type="password"
-                                                placeholder="Enter password"
-                                                value={
-                                                  passwordInputs[order.id] || ""
-                                                }
-                                                onChange={(e) =>
-                                                  setPasswordInputs((prev) => ({
-                                                    ...prev,
-                                                    [order.id]: e.target.value,
-                                                  }))
-                                                }
-                                                className="flex-1 bg-[#151c2f] border border-indigo-900/50 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-                                              />
                                               <button
-                                                onClick={() =>
-                                                  handleSavePassword(order)
-                                                }
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleRegenerateMac(order);
+                                                }}
                                                 disabled={
-                                                  passwordLoading[
+                                                  macLoading[
                                                     order.originalData?.vmId ||
                                                       order.id
                                                   ]
                                                 }
-                                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-white text-sm font-semibold"
+                                                className="relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg border border-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
                                               >
-                                                Save
+                                                {macLoading[
+                                                  order.originalData?.vmId ||
+                                                    order.id
+                                                ] ? (
+                                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                  <RefreshCw className="w-3 h-3 group-hover/btn:rotate-180 transition-transform duration-500" />
+                                                )}
+                                                REGENERATE MAC
                                               </button>
                                             </div>
                                           </div>
 
-                                          {/* VM Password Viewer */}
-                                          <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-1">
-                                            <h4 className="text-sm font-semibold text-indigo-300 mb-3 flex items-center gap-2">
-                                              <Key className="w-5 h-5 text-yellow-400" />
-                                              VM Details
-                                            </h4>
+                                          <div className="pt-4 border-t border-indigo-900/30">
+                                            <button
+                                              onClick={() =>
+                                                showDetailsModal(order)
+                                              }
+                                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                                            >
+                                              <FileText className="w-4 h-4" />
+                                              View Full Details
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
 
-                                            <div className="space-y-3 text-sm">
-                                              {/* Username */}
-                                              <div className="flex items-center">
-                                                <span className="text-gray-400">
-                                                  Username
-                                                </span>
-                                                <span className="font-semibold text-white ml-2">
-                                                  {getDefaultUsername(
-                                                    order.osType,
-                                                  )}
+                                      {/* ── Billing Details Card ── */}
+                                      <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
+                                        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                                          <div className="p-2 bg-indigo-900/30 rounded-lg">
+                                            <FileText className="w-5 h-5 text-indigo-400" />
+                                          </div>
+                                          <h3 className="text-lg font-semibold text-indigo-300">
+                                            Billing & Location
+                                          </h3>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                          <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                            <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                              <IndianRupee className="w-4 h-4" />
+                                              <span>Monthly Cost</span>
+                                            </div>
+                                            <p className="text-2xl font-bold text-emerald-300">
+                                              {formatCurrency(order.priceTotal)}
+                                            </p>
+                                          </div>
+
+                                          <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                                                <Calendar className="w-4 h-4" />
+                                                <span>Created</span>
+                                              </div>
+                                              <p className="text-sm font-medium text-white">
+                                                {formatDate(order.createdAt)}
+                                              </p>
+                                            </div>
+
+                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                                                <Calendar className="w-4 h-4" />
+                                                <span>Expires</span>
+                                              </div>
+                                              <p className="text-sm font-medium text-white">
+                                                {formatDate(order.expiresAt)}
+                                              </p>
+                                            </div>
+                                          </div>
+
+                                          {(() => {
+                                            const renewConfig =
+                                              getRenewButtonConfig(order);
+                                            return (
+                                              renewConfig && (
+                                                <button
+                                                  onClick={() =>
+                                                    openUpgradeModal(order)
+                                                  }
+                                                  className={`mt-4 w-full text-white px-4 py-2 rounded-lg text-sm font-semibold ${renewConfig.color}`}
+                                                >
+                                                  {renewConfig.label}
+                                                </button>
+                                              )
+                                            );
+                                          })()}
+
+                                          {order.expiresAt && (
+                                            <div className="pt-3 border-t border-indigo-900/30">
+                                              <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                  <Clock className="w-4 h-4 text-yellow-400" />
+                                                  <span className="text-sm text-gray-400">
+                                                    Days Remaining
+                                                  </span>
+                                                </div>
+                                                <span className="text-lg font-bold text-white">
+                                                  {getDaysRemaining(
+                                                    order.expiresAt,
+                                                  )}{" "}
+                                                  days
                                                 </span>
                                               </div>
+                                            </div>
+                                          )}
 
-                                              {/* Password */}
-                                              <div className="flex items-center">
-                                                <span className="text-gray-400">
-                                                  Password
-                                                </span>
-                                                <div className="flex items-center justify-between ml-2 w-full">
-                                                  {/* Password / Status */}
-                                                  <div>
-                                                    {(() => {
-                                                      const vmId =
-                                                        order.originalData
-                                                          ?.vmId || order.id;
-                                                      return passwordFetching[
-                                                        vmId
-                                                      ] ? (
-                                                        <span className="text-gray-400 text-sm">
-                                                          Loading...
-                                                        </span>
-                                                      ) : vmPasswords[vmId] ? (
-                                                        <code className="bg-[#151c2f] px-1 py-1 rounded font-mono text-white">
-                                                          {passwordVisible[vmId]
-                                                            ? vmPasswords[vmId]
-                                                            : "••••••••"}
-                                                        </code>
-                                                      ) : (
-                                                        <span className="text-sm text-red-400">
-                                                          Password not set
-                                                        </span>
-                                                      );
-                                                    })()}
-                                                  </div>
+                                          <div className="pt-3 border-t border-indigo-900/30 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-sm text-gray-400">
+                                                Plan Type
+                                              </span>
+                                              <span className="px-3 py-1 bg-indigo-900/30 rounded-full text-sm font-medium">
+                                                {order.planType || "Standard"}
+                                              </span>
+                                            </div>
 
-                                                  {/* Eye Button */}
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-sm text-gray-400">
+                                                Server Location
+                                              </span>
+                                              <span className="px-3 py-1 bg-blue-900/30 text-blue-300 rounded-full text-sm font-medium">
+                                                {order.serverLocation ||
+                                                  "Unknown"}
+                                              </span>
+                                            </div>
+
+                                            {order.originalData?.assignedTo && (
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                  <User className="w-4 h-4 text-indigo-400" />
+                                                  <span>Assigned To</span>
+                                                </div>
+                                                <div className="text-sm text-white font-medium">
+                                                  {
+                                                    order.originalData
+                                                      .assignedTo.name
+                                                  }
+                                                </div>
+                                                <div className="text-xs text-gray-400">
+                                                  {
+                                                    order.originalData
+                                                      .assignedTo.email
+                                                  }
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* ── Connection & Controls Card ── */}
+                                      <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
+                                        {/* Server Password Setup */}
+                                        <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4">
+                                          <h4 className="flex text-sm font-semibold text-indigo-300 mb-2">
+                                            <Lock className="w-5 h-5 text-red-400 mr-1" />
+                                            Server Access Password
+                                          </h4>
+                                          <p className="text-xs text-gray-400 mb-3">
+                                            Set a password to enable VM actions
+                                            and remote access.
+                                          </p>
+                                          <div className="flex gap-2">
+                                            <input
+                                              type="password"
+                                              placeholder="Enter password"
+                                              value={
+                                                passwordInputs[order.id] || ""
+                                              }
+                                              onChange={(e) =>
+                                                setPasswordInputs((prev) => ({
+                                                  ...prev,
+                                                  [order.id]: e.target.value,
+                                                }))
+                                              }
+                                              className="flex-1 bg-[#151c2f] border border-indigo-900/50 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+                                            />
+                                            <button
+                                              onClick={() =>
+                                                handleSavePassword(order)
+                                              }
+                                              disabled={
+                                                passwordLoading[
+                                                  order.originalData?.vmId ||
+                                                    order.id
+                                                ]
+                                              }
+                                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-white text-sm font-semibold"
+                                            >
+                                              Save
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* VM Password Viewer */}
+                                        <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-1">
+                                          <h4 className="text-sm font-semibold text-indigo-300 mb-3 flex items-center gap-2">
+                                            <Key className="w-5 h-5 text-yellow-400" />
+                                            VM Details
+                                          </h4>
+
+                                          <div className="space-y-3 text-sm">
+                                            {/* Username */}
+                                            <div className="flex items-center">
+                                              <span className="text-gray-400">
+                                                Username
+                                              </span>
+                                              <span className="font-semibold text-white ml-2">
+                                                {getDefaultUsername(
+                                                  order.osType,
+                                                )}
+                                              </span>
+                                            </div>
+
+                                            {/* Password */}
+                                            <div className="flex items-center">
+                                              <span className="text-gray-400">
+                                                Password
+                                              </span>
+                                              <div className="flex items-center justify-between ml-2 w-full">
+                                                {/* Password / Status */}
+                                                <div>
                                                   {(() => {
-                                                    return (
-                                                      <button
-                                                        onClick={() =>
-                                                          canViewPassword(
-                                                            order,
-                                                          ) &&
-                                                          togglePasswordView(
-                                                            order,
-                                                          )
-                                                        }
-                                                        disabled={
-                                                          !canViewPassword(
-                                                            order,
-                                                          )
-                                                        }
-                                                        className={`p-1.5 rounded transition ${
-                                                          canViewPassword(order)
-                                                            ? "hover:bg-indigo-900/30"
-                                                            : "opacity-40 cursor-not-allowed"
-                                                        }`}
-                                                      >
-                                                        <Eye className="w-4 h-4 text-indigo-400" />
-                                                      </button>
+                                                    const vmId =
+                                                      order.originalData
+                                                        ?.vmId || order.id;
+                                                    return passwordFetching[
+                                                      vmId
+                                                    ] ? (
+                                                      <span className="text-gray-400 text-sm">
+                                                        Loading...
+                                                      </span>
+                                                    ) : vmPasswords[vmId] ? (
+                                                      <code className="bg-[#151c2f] px-1 py-1 rounded font-mono text-white">
+                                                        {passwordVisible[vmId]
+                                                          ? vmPasswords[vmId]
+                                                          : "••••••••"}
+                                                      </code>
+                                                    ) : (
+                                                      <span className="text-sm text-red-400">
+                                                        Password not set
+                                                      </span>
                                                     );
                                                   })()}
                                                 </div>
-                                              </div>
-                                            </div>
-                                          </div>
 
-                                          <div className="flex items-center gap-3 mt-4 sm:mb-6">
-                                            <div className="p-2 bg-indigo-900/30 rounded-lg">
-                                              <Zap className="w-5 h-5 text-indigo-400" />
-                                            </div>
-                                            <h3 className="text-lg font-semibold text-indigo-300">
-                                              Connection & Controls
-                                            </h3>
-                                          </div>
-
-                                          <div className="space-y-4">
-                                            {order.ipAddress && (
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                <div className="flex items-center justify-between mb-3">
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                                    <Wifi className="w-4 h-4" />
-                                                    <span>IP Address</span>
-                                                  </div>
-                                                  <button
-                                                    onClick={() =>
-                                                      handleCopy(
-                                                        order.ipAddress,
-                                                        order.id,
-                                                      )
-                                                    }
-                                                    className="text-sm flex items-center gap-1 transition-all"
-                                                  >
-                                                    {copiedIp === order.id ? (
-                                                      <>
-                                                        <Copy className="w-4 h-4 text-indigo-400" />
-                                                        <span className="text-indigo-400 font-medium">
-                                                          Copied
-                                                        </span>
-                                                      </>
-                                                    ) : (
-                                                      <>
-                                                        <Copy className="w-4 h-4 text-indigo-400" />
-                                                        <span className="text-indigo-400 hover:text-indigo-300">
-                                                          Copy
-                                                        </span>
-                                                      </>
-                                                    )}
-                                                  </button>
-                                                </div>
-                                                <code className="text-base font-mono text-white break-all">
-                                                  {order.ipAddress}
-                                                </code>
-                                              </div>
-                                            )}
-
-                                            {/* Connection Buttons */}
-                                            {order.ipAddress &&
-                                              order.liveState?.toUpperCase() ===
-                                                "RUNNING" && (
-                                                <div className="grid grid-cols-3 gap-3">
-                                                  <button
-                                                    onClick={() =>
-                                                      handleSSH(order)
-                                                    }
-                                                    className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
-                                                  >
-                                                    <Terminal className="w-4 h-4" />
-                                                    SSH
-                                                  </button>
-
-                                                  <button
-                                                    onClick={() =>
-                                                      toast.success(
-                                                        "Console access would open here",
-                                                      )
-                                                    }
-                                                    className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
-                                                  >
-                                                    <Monitor className="w-4 h-4" />
-                                                    Console
-                                                  </button>
-
-                                                  <button
-                                                    onClick={() =>
-                                                      navigate(
-                                                        `/user/vms/${order.id}/performance`,
-                                                        {
-                                                          state: {
-                                                            userId:
-                                                              order.originalData
-                                                                .userId,
-                                                            serverId:
-                                                              order.originalData
-                                                                .serverId,
-                                                            vmName:
-                                                              order.vmName,
-                                                          },
-                                                        },
-                                                      )
-                                                    }
-                                                    className="flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
-                                                  >
-                                                    <Activity className="w-4 h-4" />
-                                                    Performance
-                                                  </button>
-                                                </div>
-                                              )}
-
-
-                                            {/* Power Controls */}
-                                            <div className="pt-3 border-t border-indigo-900/30">
-                                              <h4 className="text-sm font-semibold text-white mb-3">
-                                                Power Controls
-                                              </h4>
-                                              <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                  onClick={() =>
-                                                    handlePowerAction(
-                                                      order,
-                                                      "start",
-                                                    )
-                                                  }
-                                                  disabled={
-                                                    !canAction(
-                                                      order.liveState,
-                                                      "start",
-                                                    ) || order.status !== "ACTIVE" ||
-                                                    !!powerLoading[
-                                                      order.originalData?.vmId ||
-                                                        order.id
-                                                    ]
-                                                  }
-                                                  className="flex items-center justify-center gap-2 p-2 bg-green-900/30 hover:bg-green-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-green-300 rounded text-sm transition-colors"
-                                                >
-                                                  <Play className="w-4 h-4" />
-                                                  Start
-                                                </button>
-
-                                                <button
-                                                  onClick={() =>
-                                                    handlePowerAction(
-                                                      order,
-                                                      "stop",
-                                                    )
-                                                  }
-                                                  disabled={
-                                                    !canAction(
-                                                      order.liveState,
-                                                      "stop",
-                                                    ) || order.status !== "ACTIVE" ||
-                                                    !!powerLoading[
-                                                      order.originalData?.vmId ||
-                                                        order.id
-                                                    ]
-                                                  }
-                                                  className="flex items-center justify-center gap-2 p-2 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-red-300 rounded text-sm transition-colors"
-                                                >
-                                                  <Square className="w-4 h-4" />
-                                                  Stop
-                                                </button>
-
-                                                <button
-                                                  onClick={() =>
-                                                    handlePowerAction(
-                                                      order,
-                                                      "reboot",
-                                                    )
-                                                  }
-                                                  disabled={
-                                                    !canAction(
-                                                      order.liveState,
-                                                      "reboot",
-                                                    ) || order.status !== "ACTIVE" ||
-                                                    !!powerLoading[
-                                                      order.originalData?.vmId ||
-                                                        order.id
-                                                    ]
-                                                  }
-                                                  className="flex items-center justify-center gap-2 p-2 bg-purple-900/30 hover:bg-purple-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-purple-300 rounded text-sm transition-colors"
-                                                >
-                                                  <RefreshCw className="w-4 h-4" />
-                                                  Reboot
-                                                </button>
-
-                                                <button
-                                                  onClick={() => {
-                                                    if (
-                                                      isRebuildBlockedTime()
-                                                    ) {
-                                                      Swal.fire({
-                                                        icon: "warning",
-                                                        title:
-                                                          "Maintenance Window",
-                                                        text: "Rebuild is disabled between 9 AM and 11 AM (IST)",
-                                                        background: "#0e1525",
-                                                        color: "#e5e7eb",
-                                                      });
-                                                      return;
-                                                    }
-                                                    promptRebuildWithIso(order);
-                                                  }}
-                                                  disabled={
-                                                    !!powerLoading[
-                                                      order.originalData?.vmId ||
-                                                        order.id
-                                                    ] || isRebuildBlockedTime()
-                                                  }
-                                                  title={
-                                                    isRebuildBlockedTime()
-                                                      ? "Rebuild disabled from 9 AM to 11 AM"
-                                                      : "Rebuild server"
-                                                  }
-                                                  className={`flex items-center justify-center gap-2 p-2 rounded text-sm transition ${
-                                                    isRebuildBlockedTime()
-                                                      ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                                                      : "bg-orange-900/30 hover:bg-orange-900/50 text-orange-300"
-                                                  }`}
-                                                >
-                                                  <AlertCircle className="w-4 h-4" />
-                                                  Rebuild
-                                                </button>
+                                                {/* Eye Button */}
+                                                {(() => {
+                                                  return (
+                                                    <button
+                                                      onClick={() =>
+                                                        canViewPassword(
+                                                          order,
+                                                        ) &&
+                                                        togglePasswordView(
+                                                          order,
+                                                        )
+                                                      }
+                                                      disabled={
+                                                        !canViewPassword(order)
+                                                      }
+                                                      className={`p-1.5 rounded transition ${
+                                                        canViewPassword(order)
+                                                          ? "hover:bg-indigo-900/30"
+                                                          : "opacity-40 cursor-not-allowed"
+                                                      }`}
+                                                    >
+                                                      <Eye className="w-4 h-4 text-indigo-400" />
+                                                    </button>
+                                                  );
+                                                })()}
                                               </div>
                                             </div>
                                           </div>
                                         </div>
-                                        {/* ── end grid ── */}
+
+                                        <div className="flex items-center gap-3 mt-4 sm:mb-6">
+                                          <div className="p-2 bg-indigo-900/30 rounded-lg">
+                                            <Zap className="w-5 h-5 text-indigo-400" />
+                                          </div>
+                                          <h3 className="text-lg font-semibold text-indigo-300">
+                                            Connection & Controls
+                                          </h3>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                          {order.ipAddress && (
+                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                              <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                                  <Wifi className="w-4 h-4" />
+                                                  <span>IP Address</span>
+                                                </div>
+                                                <button
+                                                  onClick={() =>
+                                                    handleCopy(
+                                                      order.ipAddress,
+                                                      order.id,
+                                                    )
+                                                  }
+                                                  className="text-sm flex items-center gap-1 transition-all"
+                                                >
+                                                  {copiedIp === order.id ? (
+                                                    <>
+                                                      <Copy className="w-4 h-4 text-indigo-400" />
+                                                      <span className="text-indigo-400 font-medium">
+                                                        Copied
+                                                      </span>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <Copy className="w-4 h-4 text-indigo-400" />
+                                                      <span className="text-indigo-400 hover:text-indigo-300">
+                                                        Copy
+                                                      </span>
+                                                    </>
+                                                  )}
+                                                </button>
+                                              </div>
+                                              <code className="text-base font-mono text-white break-all">
+                                                {order.ipAddress}
+                                              </code>
+                                            </div>
+                                          )}
+
+                                          {/* Connection Buttons */}
+                                          {order.ipAddress &&
+                                            order.liveState?.toUpperCase() ===
+                                              "RUNNING" && (
+                                              <div className="grid grid-cols-3 gap-3">
+                                                <button
+                                                  onClick={() =>
+                                                    handleSSH(order)
+                                                  }
+                                                  className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
+                                                >
+                                                  <Terminal className="w-4 h-4" />
+                                                  SSH
+                                                </button>
+
+                                                <button
+                                                  onClick={() =>
+                                                    toast.success(
+                                                      "Console access would open here",
+                                                    )
+                                                  }
+                                                  className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
+                                                >
+                                                  <Monitor className="w-4 h-4" />
+                                                  Console
+                                                </button>
+
+                                                <button
+                                                  onClick={() =>
+                                                    navigate(
+                                                      `/user/vms/${order.id}/performance`,
+                                                      {
+                                                        state: {
+                                                          userId:
+                                                            order.originalData
+                                                              .userId,
+                                                          serverId:
+                                                            order.originalData
+                                                              .serverId,
+                                                          vmName: order.vmName,
+                                                        },
+                                                      },
+                                                    )
+                                                  }
+                                                  className="flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                                                >
+                                                  <Activity className="w-4 h-4" />
+                                                  Performance
+                                                </button>
+                                              </div>
+                                            )}
+
+                                          {/* Power Controls */}
+                                          <div className="pt-3 border-t border-indigo-900/30">
+                                            <h4 className="text-sm font-semibold text-white mb-3">
+                                              Power Controls
+                                            </h4>
+                                            <div className="grid grid-cols-2 gap-2">
+                                              <button
+                                                onClick={() =>
+                                                  handlePowerAction(
+                                                    order,
+                                                    "start",
+                                                  )
+                                                }
+                                                disabled={
+                                                  !canAction(
+                                                    order.liveState,
+                                                    "start",
+                                                  ) ||
+                                                  order.status !== "ACTIVE" ||
+                                                  !!powerLoading[
+                                                    order.originalData?.vmId ||
+                                                      order.id
+                                                  ]
+                                                }
+                                                className="flex items-center justify-center gap-2 p-2 bg-green-900/30 hover:bg-green-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-green-300 rounded text-sm transition-colors"
+                                              >
+                                                <Play className="w-4 h-4" />
+                                                Start
+                                              </button>
+
+                                              <button
+                                                onClick={() =>
+                                                  handlePowerAction(
+                                                    order,
+                                                    "stop",
+                                                  )
+                                                }
+                                                disabled={
+                                                  !canAction(
+                                                    order.liveState,
+                                                    "stop",
+                                                  ) ||
+                                                  order.status !== "ACTIVE" ||
+                                                  !!powerLoading[
+                                                    order.originalData?.vmId ||
+                                                      order.id
+                                                  ]
+                                                }
+                                                className="flex items-center justify-center gap-2 p-2 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-red-300 rounded text-sm transition-colors"
+                                              >
+                                                <Square className="w-4 h-4" />
+                                                Stop
+                                              </button>
+
+                                              <button
+                                                onClick={() =>
+                                                  handlePowerAction(
+                                                    order,
+                                                    "reboot",
+                                                  )
+                                                }
+                                                disabled={
+                                                  !canAction(
+                                                    order.liveState,
+                                                    "reboot",
+                                                  ) ||
+                                                  order.status !== "ACTIVE" ||
+                                                  !!powerLoading[
+                                                    order.originalData?.vmId ||
+                                                      order.id
+                                                  ]
+                                                }
+                                                className="flex items-center justify-center gap-2 p-2 bg-purple-900/30 hover:bg-purple-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-purple-300 rounded text-sm transition-colors"
+                                              >
+                                                <RefreshCw className="w-4 h-4" />
+                                                Reboot
+                                              </button>
+
+                                              <button
+                                                onClick={() => {
+                                                  if (isRebuildBlockedTime()) {
+                                                    Swal.fire({
+                                                      icon: "warning",
+                                                      title:
+                                                        "Maintenance Window",
+                                                      text: "Rebuild is disabled between 9 AM and 11 AM (IST)",
+                                                      background: "#0e1525",
+                                                      color: "#e5e7eb",
+                                                    });
+                                                    return;
+                                                  }
+                                                  promptRebuildWithIso(order);
+                                                }}
+                                                disabled={
+                                                  !!powerLoading[
+                                                    order.originalData?.vmId ||
+                                                      order.id
+                                                  ] || isRebuildBlockedTime()
+                                                }
+                                                title={
+                                                  isRebuildBlockedTime()
+                                                    ? "Rebuild disabled from 9 AM to 11 AM"
+                                                    : "Rebuild server"
+                                                }
+                                                className={`flex items-center justify-center gap-2 p-2 rounded text-sm transition ${
+                                                  isRebuildBlockedTime()
+                                                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                                                    : "bg-orange-900/30 hover:bg-orange-900/50 text-orange-300"
+                                                }`}
+                                              >
+                                                <AlertCircle className="w-4 h-4" />
+                                                Rebuild
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
                                       </div>
+                                      {/* ── end grid ── */}
                                     </div>
-                                  </td>
-                                </tr>
-                              )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
                           </React.Fragment>
                         ))}
                       </tbody>
@@ -2068,27 +2089,22 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                 </button>
                               );
                             })}
-                            {totalPages > 5 &&
-                              currentPage < totalPages - 2 && (
-                                <>
-                                  <span className="text-gray-500 px-1">
-                                    ...
-                                  </span>
-                                  <button
-                                    onClick={() => setCurrentPage(totalPages)}
-                                    className="px-3 py-1 rounded-md border border-indigo-900/50 text-gray-400 hover:bg-indigo-900/20 text-sm"
-                                  >
-                                    {totalPages}
-                                  </button>
-                                </>
-                              )}
+                            {totalPages > 5 && currentPage < totalPages - 2 && (
+                              <>
+                                <span className="text-gray-500 px-1">...</span>
+                                <button
+                                  onClick={() => setCurrentPage(totalPages)}
+                                  className="px-3 py-1 rounded-md border border-indigo-900/50 text-gray-400 hover:bg-indigo-900/20 text-sm"
+                                >
+                                  {totalPages}
+                                </button>
+                              </>
+                            )}
                           </div>
 
                           <button
                             onClick={() =>
-                              setCurrentPage((p) =>
-                                Math.min(totalPages, p + 1),
-                              )
+                              setCurrentPage((p) => Math.min(totalPages, p + 1))
                             }
                             disabled={currentPage === totalPages}
                             className="px-4 py-2 border border-indigo-900/50 rounded-lg text-indigo-300 hover:bg-indigo-900/20 disabled:opacity-50 text-sm"
@@ -2165,9 +2181,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0e1525] w-full max-w-md rounded-xl border border-indigo-900/50">
             <div className="p-6 border-b border-indigo-900/40 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-white">
-                Complete Payment
-              </h2>
+              <h2 className="text-lg font-bold text-white">Complete Payment</h2>
               <button
                 onClick={() => setShowRetryPayment(false)}
                 className="text-gray-400 hover:text-white"
