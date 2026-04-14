@@ -1124,7 +1124,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                     type="text"
                     placeholder="Search by name, IP, VMID..."
                     value={searchTerm}
-                    autoComplete="off"
+                    autoComplete="search-no-autofill"
                     name="vm-search"
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyDown={(e) => {
@@ -1697,9 +1697,17 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                             Set a password to enable VM actions
                                             and remote access.
                                           </p>
-                                          <div className="flex gap-2">
+                                          <form
+                                            onSubmit={(e) => {
+                                              e.preventDefault();
+                                              handleSavePassword(order);
+                                            }}
+                                            className="flex gap-2"
+                                          >
                                             <input
                                               type="password"
+                                              name={`vm-pass-setup-${order.id}`}
+                                              autoComplete="new-password"
                                               placeholder="Enter password"
                                               value={
                                                 passwordInputs[order.id] || ""
@@ -1713,9 +1721,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               className="flex-1 bg-[#151c2f] border border-indigo-900/50 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
                                             />
                                             <button
-                                              onClick={() =>
-                                                handleSavePassword(order)
-                                              }
+                                              type="submit"
                                               disabled={
                                                 passwordLoading[
                                                   order.originalData?.vmId ||
@@ -1726,7 +1732,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                             >
                                               Save
                                             </button>
-                                          </div>
+                                          </form>
                                         </div>
 
                                         {/* VM Password Viewer */}
