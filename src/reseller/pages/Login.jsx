@@ -73,13 +73,26 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // 👉 OTP FLOW
+      if (loginWithOtp) {
+        const data = await apiFetch("/api/reseller/auth/login/otp/initiate", {
+          method: "POST",
+          body: JSON.stringify({ email: formData.email }),
+        });
+
+        toast.success(data.message || "OTP sent!");
+
+        setShowOtpForm(true); 
+        return;
+      }
+
+      // 👉 PASSWORD FLOW (existing)
       const data = await apiFetch("/api/reseller/auth/login/password", {
         method: "POST",
         body: JSON.stringify(formData),
       });
 
       toast.success(data.message || "Login successful!");
-
       localStorage.setItem("rToken", data.token);
 
       setTimeout(() => navigate("/dashboard"), 1000);
@@ -128,9 +141,7 @@ export default function LoginPage() {
                 <LogoIcon />
               </div>
               <h1 className="text-2xl font-bold">
-                {loginWithOtp
-                  ? "Login with OTP"
-                  : "Login to Your Account"}
+                {loginWithOtp ? "Login with OTP" : "Login to Your Account"}
               </h1>
               <p className="text-gray-400 text-center text-sm mt-1">
                 {loginWithOtp
