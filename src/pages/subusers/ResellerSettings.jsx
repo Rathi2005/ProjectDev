@@ -68,7 +68,70 @@ const ResellerSettings = () => {
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    setLoading(false);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // ===== COMPANY API =====
+        const companyRes = await fetch(COMPANY_API, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const companyData = await companyRes.json();
+
+        if (companyRes.ok) {
+          const mappedCompany = {
+            companyName: companyData.companyName || "",
+            supportEmail: companyData.supportEmail || "",
+            supportPhone: companyData.companyPhone || "",
+            addressLine1: companyData.companyAddress || "",
+            city: "",
+            state: "",
+            country: "",
+            zipCode: "",
+            taxId: companyData.taxId || "",
+          };
+
+          setCompany(mappedCompany);
+          setInitialCompany(mappedCompany);
+        }
+
+        // ===== SMTP API =====
+        const smtpRes = await fetch(SMTP_API, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const smtpData = await smtpRes.json();
+
+        if (smtpRes.ok) {
+          const mappedSmtp = {
+            smtpHost: smtpData.smtpHost || "",
+            smtpPort: smtpData.smtpPort || "",
+            smtpUsername: smtpData.smtpUsername || "",
+            smtpPassword: smtpData.smtpPassword || "",
+            smtpSenderEmail: smtpData.smtpSenderEmail || "",
+            smtpSenderName: smtpData.smtpSenderName || "",
+            smtpAuth: smtpData.smtpAuth ?? true,
+            domainUrl: "", // not in API
+            brandName: "", // not in API
+          };
+
+          setSmtp(mappedSmtp);
+          setInitialSmtp(mappedSmtp);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load settings");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -125,7 +188,7 @@ const ResellerSettings = () => {
         smtpSenderEmail: smtp.smtpSenderEmail,
         smtpSenderName: smtp.smtpSenderName,
         smtpAuth: smtp.smtpAuth,
-        
+
         domainUrl: smtp.domainUrl,
         brandName: smtp.brandName,
       };
