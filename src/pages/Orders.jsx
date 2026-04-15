@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import Header from "../components/user/Header";
 import PaymentFlow from "../components/payment/PaymentFlow";
 import CouponAndWallet from "../components/payment/CouponAndWallet";
@@ -176,6 +182,8 @@ export default function UserOrdersPage() {
         return "Stopped";
       case "REBOOTING":
         return "Rebooting";
+      case "SUSPENDED":
+        return "Suspended";
       default:
         return status || "Unknown";
     }
@@ -202,6 +210,8 @@ export default function UserOrdersPage() {
         return "text-gray-400 bg-gray-700/10 border border-gray-700/20";
       case "REBOOTING":
         return "text-purple-400 bg-purple-400/10 border border-purple-400/20";
+      case "SUSPENDED":
+        return "text-red-400 bg-red-400/10 border border-red-400/20";
       default:
         return "text-gray-400 bg-gray-700/10 border border-gray-700/20";
     }
@@ -256,8 +266,16 @@ export default function UserOrdersPage() {
   );
 
   const getRenewButtonConfig = useCallback(
-    (expiresAt) => {
+    (expiresAt, status) => {
+      if (status?.toUpperCase() === "SUSPENDED") {
+        return {
+          label: "Pay to Activate",
+          color: "bg-red-600",
+        };
+      }
+
       const state = getBillingState(expiresAt);
+
       switch (state) {
         case "ACTIVE":
           return { label: "Extend Plan", color: "bg-indigo-600" };
@@ -855,7 +873,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   const handleCreateSession = useCallback(
     async ({ gateway, useWallet, couponCode }) => {
-      const data = await createUpgradeSession({ gateway, useWallet, couponCode });
+      const data = await createUpgradeSession({
+        gateway,
+        useWallet,
+        couponCode,
+      });
       if (!data) return null;
       if (data.status === "COMPLETED") {
         toast.success("Payment successful");
@@ -923,8 +945,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
   const filteredOrders = useMemo(() => {
     if (selectedStatus === "ALL") return orders;
     return orders.filter(
-      (order) =>
-        order.status?.toUpperCase() === selectedStatus.toUpperCase(),
+      (order) => order.status?.toUpperCase() === selectedStatus.toUpperCase(),
     );
   }, [orders, selectedStatus]);
 
@@ -941,7 +962,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
   // Lock body scroll when any modal is open
   useEffect(() => {
-    const anyModalOpen = showPaymentFlow || upgradeModalOpen || showRetryPayment || !!qrData;
+    const anyModalOpen =
+      showPaymentFlow || upgradeModalOpen || showRetryPayment || !!qrData;
     if (anyModalOpen) {
       const scrollY = window.scrollY;
       document.body.style.position = "fixed";
@@ -1037,7 +1059,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
           return;
         }
         const data = await res.json();
-        
+
         if (isSubscribed) {
           setTotalPages(data.totalPages);
           setTotalItems(data.totalItems);
@@ -1081,7 +1103,14 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       isSubscribed = false;
       clearInterval(intervalId);
     };
-  }, [BASE_URL, statusLoading, accountStatus, currentPage, debouncedSearch, refreshTrigger]);
+  }, [
+    BASE_URL,
+    statusLoading,
+    accountStatus,
+    currentPage,
+    debouncedSearch,
+    refreshTrigger,
+  ]);
 
   // Fetch VM lock statuses whenever orders change
   useEffect(() => {
@@ -1209,10 +1238,18 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                     onChange={(e) => setSelectedStatus(e.target.value)}
                     className="bg-transparent text-sm text-white outline-none appearance-none"
                   >
-                    <option value="ALL" className="bg-[#151c2f]">All Servers</option>
-                    <option value="ACTIVE" className="bg-[#151c2f]">Active</option>
-                    <option value="STOPPED" className="bg-[#151c2f]">Stopped</option>
-                    <option value="PENDING_PAYMENT" className="bg-[#151c2f]">Pending</option>
+                    <option value="ALL" className="bg-[#151c2f]">
+                      All Servers
+                    </option>
+                    <option value="ACTIVE" className="bg-[#151c2f]">
+                      Active
+                    </option>
+                    <option value="STOPPED" className="bg-[#151c2f]">
+                      Stopped
+                    </option>
+                    <option value="PENDING_PAYMENT" className="bg-[#151c2f]">
+                      Pending
+                    </option>
                   </select>
                 </div>
 
@@ -1441,7 +1478,6 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                   <td colSpan="7" className="p-0">
                                     <div className="p-4 sm:p-6">
                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-
                                         {/* ── Server Specifications Card ── */}
                                         <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
                                           <div className="flex items-center gap-3 mb-4 sm:mb-6">
@@ -1571,7 +1607,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                 <span>Monthly Cost</span>
                                               </div>
                                               <p className="text-2xl font-bold text-emerald-300">
-                                                {formatCurrency(order.priceTotal)}
+                                                {formatCurrency(
+                                                  order.priceTotal,
+                                                )}
                                               </p>
                                             </div>
 
@@ -1601,6 +1639,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               const renewConfig =
                                                 getRenewButtonConfig(
                                                   order.expiresAt,
+                                                  order.status,
                                                 );
                                               return (
                                                 renewConfig && (
@@ -1929,8 +1968,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                       "start",
                                                     ) ||
                                                     !!powerLoading[
-                                                      order.originalData?.vmId ||
-                                                        order.id
+                                                      order.originalData
+                                                        ?.vmId || order.id
                                                     ]
                                                   }
                                                   className="flex items-center justify-center gap-2 p-2 bg-green-900/30 hover:bg-green-900/50 disabled:opacity-50 text-green-300 rounded text-sm transition-colors"
@@ -1952,8 +1991,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                       "stop",
                                                     ) ||
                                                     !!powerLoading[
-                                                      order.originalData?.vmId ||
-                                                        order.id
+                                                      order.originalData
+                                                        ?.vmId || order.id
                                                     ]
                                                   }
                                                   className="flex items-center justify-center gap-2 p-2 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-50 text-red-300 rounded text-sm transition-colors"
@@ -1975,8 +2014,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                       "reboot",
                                                     ) ||
                                                     !!powerLoading[
-                                                      order.originalData?.vmId ||
-                                                        order.id
+                                                      order.originalData
+                                                        ?.vmId || order.id
                                                     ]
                                                   }
                                                   className="flex items-center justify-center gap-2 p-2 bg-purple-900/30 hover:bg-purple-900/50 disabled:opacity-50 text-purple-300 rounded text-sm transition-colors"
@@ -2004,8 +2043,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   }}
                                                   disabled={
                                                     !!powerLoading[
-                                                      order.originalData?.vmId ||
-                                                        order.id
+                                                      order.originalData
+                                                        ?.vmId || order.id
                                                     ] || isRebuildBlockedTime()
                                                   }
                                                   title={
@@ -2086,27 +2125,22 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                 </button>
                               );
                             })}
-                            {totalPages > 5 &&
-                              currentPage < totalPages - 2 && (
-                                <>
-                                  <span className="text-gray-500 px-1">
-                                    ...
-                                  </span>
-                                  <button
-                                    onClick={() => setCurrentPage(totalPages)}
-                                    className="px-3 py-1 rounded-md border border-indigo-900/50 text-gray-400 hover:bg-indigo-900/20 text-sm"
-                                  >
-                                    {totalPages}
-                                  </button>
-                                </>
-                              )}
+                            {totalPages > 5 && currentPage < totalPages - 2 && (
+                              <>
+                                <span className="text-gray-500 px-1">...</span>
+                                <button
+                                  onClick={() => setCurrentPage(totalPages)}
+                                  className="px-3 py-1 rounded-md border border-indigo-900/50 text-gray-400 hover:bg-indigo-900/20 text-sm"
+                                >
+                                  {totalPages}
+                                </button>
+                              </>
+                            )}
                           </div>
 
                           <button
                             onClick={() =>
-                              setCurrentPage((p) =>
-                                Math.min(totalPages, p + 1),
-                              )
+                              setCurrentPage((p) => Math.min(totalPages, p + 1))
                             }
                             disabled={currentPage === totalPages}
                             className="px-4 py-2 border border-indigo-900/50 rounded-lg text-indigo-300 hover:bg-indigo-900/20 disabled:opacity-50 text-sm"
@@ -2183,9 +2217,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0e1525] w-full max-w-md rounded-xl border border-indigo-900/50">
             <div className="p-6 border-b border-indigo-900/40 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-white">
-                Complete Payment
-              </h2>
+              <h2 className="text-lg font-bold text-white">Complete Payment</h2>
               <button
                 onClick={() => setShowRetryPayment(false)}
                 className="text-gray-400 hover:text-white"

@@ -43,6 +43,8 @@ export default function AdminMailSettings() {
   const [testResult, setTestResult] = useState(null);
   const [activeTab, setActiveTab] = useState("smtp");
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [smtpLogs, setSmtpLogs] = useState([]);
+  const [smtpStatus, setSmtpStatus] = useState(null);
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -133,29 +135,74 @@ export default function AdminMailSettings() {
 
   // Test SMTP Connection
   const testConnection = async () => {
+    // Validation
+    if (
+      !form.host ||
+      !form.port ||
+      !form.username ||
+      !form.password ||
+      !form.senderEmail
+    ) {
+      toast.error("Please fill all SMTP fields");
+      return;
+    }
+
     try {
       setTesting(true);
+      setSmtpLogs([]);
+      setSmtpStatus(null);
       setTestResult(null);
 
-      // Simulate connection test (replace with actual API call)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const payload = {
+        host: form.host,
+        port: Number(form.port),
+        from: form.senderEmail,
+        to: form.senderEmail,
+        user: form.username,
+        pass: form.password === "******" ? "" : form.password,
+      };
 
-      // Mock success (replace with actual test)
-      setTestResult({
-        success: true,
-        message: "SMTP connection successful! Server responded within 300ms",
-        latency: "230ms",
+      const res = await fetch("https://getwebup.com/server/smtp/api.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      toast.success("Connection test successful!");
+      const data = await res.json();
+
+      if (data.status === "success") {
+        setSmtpLogs(data.data.logs || []);
+        setSmtpStatus("success");
+
+        if (data.status === "success") {
+          setSmtpLogs(data.data.logs || []);
+          setSmtpStatus("success");
+
+          setTestResult({
+            success: true,
+            message:
+              data.data.logs?.find((l) => l.type === "resp")?.message ||
+              "SMTP connection successful",
+          });
+        }
+
+        toast.success("SMTP test successful");
+      } else {
+        setSmtpLogs(data.data.logs || []);
+        setSmtpStatus(data.message || "SMTP test failed");
+
+        setTestResult({
+          success: false,
+          message:
+            data.data.logs?.find((l) => l.type === "error")?.message ||
+            data.message,
+        });
+
+        toast.error(data.message || "SMTP test failed");
+      }
     } catch (error) {
-      setTestResult({
-        success: false,
-        message:
-          "Failed to connect to SMTP server. Please check your settings.",
-        error: error.message,
-      });
-      toast.error("Connection test failed");
+      setSmtpStatus("SMTP test failed");
+      toast.error("SMTP test failed");
     } finally {
       setTesting(false);
     }
@@ -314,6 +361,27 @@ export default function AdminMailSettings() {
                 ×
               </button>
             </div>
+          </div>
+        )}
+        {smtpLogs.length > 0 && (
+          <div className="mb-6 bg-black/40 border border-indigo-900/40 rounded-xl p-4 max-h-80 overflow-y-auto">
+            <h3 className="text-sm text-gray-300 mb-3">SMTP Logs</h3>
+
+            {smtpLogs.map((log, index) => (
+              <div
+                key={index}
+                className={`text-xs mb-2 p-2 rounded ${
+                  log.type === "cmd"
+                    ? "text-yellow-400"
+                    : log.type === "resp"
+                      ? "text-green-400"
+                      : "text-gray-400"
+                }`}
+              >
+                <span className="opacity-60 mr-2">[{log.time}]</span>
+                {log.message}
+              </div>
+            ))}
           </div>
         )}
 

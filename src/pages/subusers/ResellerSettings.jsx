@@ -12,7 +12,6 @@ import {
   Globe,
   Lock,
   User,
-  ChevronDown,
   Info,
   ArrowLeft,
   Briefcase,
@@ -66,9 +65,71 @@ const ResellerSettings = () => {
   const [initialSmtp, setInitialSmtp] = useState({});
 
   const token = localStorage.getItem("token");
+  const [smtpTestLoading, setSmtpTestLoading] = useState(false);
+  const [smtpLogs, setSmtpLogs] = useState([]);
+  const [smtpTestStatus, setSmtpTestStatus] = useState(null);
 
+  // ✅ GET APIs — prefill both forms on mount
   useEffect(() => {
-    setLoading(false);
+    const fetchSettings = async () => {
+      try {
+        setLoading(true);
+
+        const [companyRes, smtpRes] = await Promise.all([
+          fetch(COMPANY_API, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(SMTP_API, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        // Prefill company form
+        if (companyRes.ok) {
+          const json = await companyRes.json();
+          const c = json.data || json;
+          const mapped = {
+            companyName: c.companyName || "",
+            supportEmail: c.supportEmail || "",
+            supportPhone: c.supportPhone || "",
+            addressLine1: c.addressLine1 || "",
+            city: c.city || "",
+            state: c.state || "",
+            country: c.country || "",
+            zipCode: c.zipCode || "",
+            taxId: c.taxId || "",
+          };
+          setCompany(mapped);
+          setInitialCompany(mapped);
+        }
+
+        // Prefill SMTP form
+        if (smtpRes.ok) {
+          const json = await smtpRes.json();
+          const s = json.data || json;
+          const mapped = {
+            smtpHost: s.smtpHost || "",
+            smtpPort: s.smtpPort || "",
+            smtpUsername: s.smtpUsername || "",
+            smtpPassword: s.smtpPassword || "",
+            smtpSenderEmail: s.smtpSenderEmail || "",
+            smtpSenderName: s.smtpSenderName || "",
+            smtpAuth: s.smtpAuth ?? true,
+            domainUrl: s.domainUrl || "",
+            brandName: s.brandName || "",
+          };
+          setSmtp(mapped);
+          setInitialSmtp(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+        toast.error("Failed to load settings");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettings();
   }, []);
 
   useEffect(() => {
@@ -125,7 +186,6 @@ const ResellerSettings = () => {
         smtpSenderEmail: smtp.smtpSenderEmail,
         smtpSenderName: smtp.smtpSenderName,
         smtpAuth: smtp.smtpAuth,
-        
         domainUrl: smtp.domainUrl,
         brandName: smtp.brandName,
       };
@@ -151,7 +211,6 @@ const ResellerSettings = () => {
           },
           body: JSON.stringify(payload),
         });
-
         data = await res.json();
       }
 
@@ -169,6 +228,58 @@ const ResellerSettings = () => {
     }
   };
 
+  const handleSmtpTest = async () => {
+    // ✅ Validate before sending
+    if (
+      !smtp.smtpHost ||
+      !smtp.smtpPort ||
+      !smtp.smtpUsername ||
+      !smtp.smtpPassword ||
+      !smtp.smtpSenderEmail
+    ) {
+      toast.error("Please fill in all SMTP fields before testing");
+      return;
+    }
+
+    try {
+      setSmtpTestLoading(true);
+      setSmtpLogs([]);
+      setSmtpTestStatus(null);
+
+      const payload = {
+        host: smtp.smtpHost,
+        port: Number(smtp.smtpPort),
+        from: smtp.smtpSenderEmail,
+        to: smtp.smtpSenderEmail,
+        user: smtp.smtpUsername,
+        pass: smtp.smtpPassword,
+      };
+
+      const res = await fetch("https://getwebup.com/server/smtp/api.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (data.status === "success") {
+        setSmtpLogs(data.data.logs || []);
+        setSmtpTestStatus("success");
+        toast.success("SMTP test successful");
+      } else {
+        setSmtpLogs(data.data.logs || []);
+        setSmtpTestStatus(data.message || "SMTP test failed"); // ✅ IMPORTANT
+        toast.error(data.message || "SMTP test failed");
+      }
+    } catch (error) {
+      setSmtpTestStatus(data.message || "SMTP test failed");
+      toast.error("SMTP test failed");
+    } finally {
+      setSmtpTestLoading(false);
+    }
+  };
+
   const handleDiscardCompany = () => {
     setCompany(initialCompany);
     toast.success("Company changes discarded");
@@ -179,13 +290,11 @@ const ResellerSettings = () => {
     toast.success("SMTP changes discarded");
   };
 
-  // Tabs configuration
   const tabs = [
     { id: "branding", label: "Company Branding", icon: Building2 },
     { id: "email", label: "Email Configuration", icon: Mail },
   ];
 
-  // Calculate completion percentage
   const calculateCompanyCompletion = () => {
     const requiredFields = ["companyName", "supportEmail", "supportPhone"];
     const filled = requiredFields.filter(
@@ -271,7 +380,7 @@ const ResellerSettings = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Branding Tab */}
+            {/* ── Branding Tab ── */}
             {activeTab === "branding" && (
               <div className="bg-[#0f1425] border border-indigo-900/40 rounded-2xl p-8 shadow-lg">
                 <div className="space-y-6">
@@ -280,7 +389,6 @@ const ResellerSettings = () => {
                       <Building2 className="w-5 h-5 text-indigo-400" />
                       Company Information
                     </h2>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Input
                         label="Company Name"
@@ -292,7 +400,6 @@ const ResellerSettings = () => {
                         placeholder="Enter company name"
                         required
                       />
-
                       <Input
                         label="Support Email"
                         value={company.supportEmail}
@@ -304,7 +411,6 @@ const ResellerSettings = () => {
                         type="email"
                         required
                       />
-
                       <Input
                         label="Support Phone"
                         value={company.supportPhone}
@@ -316,7 +422,6 @@ const ResellerSettings = () => {
                         type="tel"
                         required
                       />
-
                       <Input
                         label="Tax ID / GSTIN"
                         value={company.taxId}
@@ -332,7 +437,6 @@ const ResellerSettings = () => {
                       <MapPin className="w-5 h-5 text-indigo-400" />
                       Address Details
                     </h2>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Input
                         label="Address Line"
@@ -343,7 +447,6 @@ const ResellerSettings = () => {
                         icon={MapPin}
                         placeholder="Street address"
                       />
-
                       <Input
                         label="City"
                         value={company.city}
@@ -351,7 +454,6 @@ const ResellerSettings = () => {
                         icon={Globe}
                         placeholder="City"
                       />
-
                       <Input
                         label="State"
                         value={company.state}
@@ -359,7 +461,6 @@ const ResellerSettings = () => {
                         icon={Globe}
                         placeholder="State"
                       />
-
                       <Input
                         label="Country"
                         value={company.country}
@@ -367,7 +468,6 @@ const ResellerSettings = () => {
                         icon={Globe}
                         placeholder="Country"
                       />
-
                       <Input
                         label="Zip Code"
                         value={company.zipCode}
@@ -391,9 +491,7 @@ const ResellerSettings = () => {
                     <button
                       onClick={handleCompanySubmit}
                       disabled={savingCompany || !unsavedChanges.company}
-                      className={`flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 rounded-xl text-white font-medium shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100 ${
-                        unsavedChanges.company ? "animate-pulse" : ""
-                      }`}
+                      className={`flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 rounded-xl text-white font-medium shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100`}
                     >
                       {savingCompany ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -411,7 +509,7 @@ const ResellerSettings = () => {
               </div>
             )}
 
-            {/* Email Configuration Tab */}
+            {/* ── Email Configuration Tab ── */}
             {activeTab === "email" && (
               <div className="bg-[#0f1425] border border-indigo-900/40 rounded-2xl p-8 shadow-lg">
                 <div className="space-y-6">
@@ -420,7 +518,6 @@ const ResellerSettings = () => {
                       <Server className="w-5 h-5 text-indigo-400" />
                       SMTP Server Settings
                     </h2>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Input
                         label="SMTP Host"
@@ -430,7 +527,6 @@ const ResellerSettings = () => {
                         placeholder="smtp.gmail.com"
                         required
                       />
-
                       <Input
                         label="SMTP Port"
                         value={smtp.smtpPort}
@@ -442,7 +538,6 @@ const ResellerSettings = () => {
                         type="number"
                         required
                       />
-
                       <Input
                         label="SMTP Username"
                         value={smtp.smtpUsername}
@@ -451,7 +546,6 @@ const ResellerSettings = () => {
                         placeholder="user@example.com"
                         required
                       />
-
                       <Input
                         label="SMTP Password"
                         value={smtp.smtpPassword}
@@ -469,7 +563,6 @@ const ResellerSettings = () => {
                       <Mail className="w-5 h-5 text-indigo-400" />
                       Email Settings
                     </h2>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Input
                         label="Sender Email"
@@ -482,7 +575,6 @@ const ResellerSettings = () => {
                         type="email"
                         required
                       />
-
                       <Input
                         label="Sender Name"
                         value={smtp.smtpSenderName}
@@ -493,7 +585,6 @@ const ResellerSettings = () => {
                         placeholder="Your Company"
                         required
                       />
-
                       <Input
                         label="Domain URL"
                         value={smtp.domainUrl}
@@ -502,7 +593,6 @@ const ResellerSettings = () => {
                         placeholder="getwebup.com"
                         required
                       />
-
                       <Input
                         label="Brand Name"
                         value={smtp.brandName}
@@ -510,7 +600,6 @@ const ResellerSettings = () => {
                         icon={Building2}
                         placeholder="Your Brand"
                       />
-
                       <div className="flex items-center gap-3 mt-2">
                         <input
                           type="checkbox"
@@ -531,6 +620,62 @@ const ResellerSettings = () => {
                     </div>
                   </div>
 
+                  {/* ✅ Test SMTP — only inside email tab, with validation */}
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div>
+                      <button
+                        onClick={handleSmtpTest}
+                        disabled={smtpTestLoading}
+                        className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 px-5 py-2 rounded-lg text-white font-medium shadow hover:scale-105 transition disabled:opacity-50"
+                      >
+                        {smtpTestLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Test SMTP"
+                        )}
+                      </button>
+                    </div>
+
+                    {smtpTestStatus && (
+                      <div
+                        className={`text-sm font-medium ${
+                          smtpTestStatus === "success"
+                            ? "text-green-400"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {smtpTestStatus === "success"
+                          ? "✅ SMTP connection successful"
+                          : `❌ ${smtpTestStatus}`}
+                      </div>
+                    )}
+
+                    {smtpLogs.length > 0 && (
+                      <div className="bg-black/40 border border-indigo-900/40 rounded-xl p-4 max-h-80 overflow-y-auto">
+                        <h3 className="text-sm text-gray-300 mb-3">
+                          SMTP Logs
+                        </h3>
+                        {smtpLogs.map((log, index) => (
+                          <div
+                            key={index}
+                            className={`text-xs mb-2 p-2 rounded ${
+                              log.type === "cmd"
+                                ? "text-yellow-400"
+                                : log.type === "resp"
+                                  ? "text-green-400"
+                                  : "text-gray-400"
+                            }`}
+                          >
+                            <span className="opacity-60 mr-2">
+                              [{log.time}]
+                            </span>
+                            {log.message}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Action Buttons */}
                   <div className="flex items-center justify-end gap-4 pt-6 border-t border-indigo-900/40">
                     {unsavedChanges.smtp && (
@@ -544,9 +689,7 @@ const ResellerSettings = () => {
                     <button
                       onClick={handleSmtpSubmit}
                       disabled={savingSmtp || !unsavedChanges.smtp}
-                      className={`flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 rounded-xl text-white font-medium shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100 ${
-                        unsavedChanges.smtp ? "animate-pulse" : ""
-                      }`}
+                      className={`flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 rounded-xl text-white font-medium shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100`}
                     >
                       {savingSmtp ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
