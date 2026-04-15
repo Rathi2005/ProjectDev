@@ -94,7 +94,7 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
   // Memoize handlers to prevent recreation
   const handleGatewayChange = useCallback(
     (gateway) => {
-      setSelected((prev) => (prev === gateway ? null : gateway));
+      setSelected((prev) => (prev?.type === gateway.type ? null : gateway));
     },
     [setSelected],
   );
@@ -120,7 +120,7 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
         borderColor,
         label,
       } = getGatewayDetails(gateway);
-      const isSelected = selected === gatewayType;
+      const isSelected = selected?.type === gatewayType;
       const isHovered = hoveredGateway === gatewayType;
       const descriptionText = getDescriptionText(gateway);
 
@@ -150,7 +150,7 @@ const PaymentMethodSelector = ({ selected, setSelected }) => {
               value={gatewayType}
               checked={isSelected}
               onChange={() => {}}
-              onClick={() => handleGatewayChange(gatewayType)}
+              onClick={() => handleGatewayChange(gateway)}
               className="peer sr-only"
             />
             <div

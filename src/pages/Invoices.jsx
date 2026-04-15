@@ -148,23 +148,34 @@ export default function Invoices() {
     setTotalItems(ordersData.totalItems || 0);
     setTotalPages(ordersData.totalPages || 0);
 
-    const normalized = (ordersData.orders || []).map((o) => ({
-      id: o.virtualMachineId || o.orderId,
-      orderId: o.orderId,
-      paymentId: o.paymentId,
-      vmName: o.serverName || "N/A",
-      ipAddress: o.ip || "N/A",
-      specs: formatSpecs(o.specs),
-      amount: o.totalPaidAmount || 0,
-      osName: o.osName || "N/A",
-      osType: o.osType || "N/A",
-      planType: o.planType || "N/A",
-      deletionStatus: o.deletionStatus || "UNKNOWN",
-      creationTime: o.creationTime,
-      deletionTime: o.deletionTime,
-      expiryTime: o.expiryTime,
-      rawData: o,
-    }));
+    const normalized = (ordersData.orders || []).map((o) => {
+      // Prioritize numeric IDs for the invoice API
+      // Ensure we convert strings like "null" to actual null
+      const rawPaymentId = o.paymentId === "null" || o.paymentId === "undefined" ? null : o.paymentId;
+      const rawOrderId = o.orderId || o.id;
+      
+      // Specifically capture recordId if it exists (numeric payment ID)
+      const recordId = o.recordId || o.paymentRecordId || null;
+
+      return {
+        id: o.virtualMachineId || rawOrderId || o.id,
+        orderId: rawOrderId,
+        paymentId: rawPaymentId,
+        recordId: recordId,
+        vmName: o.serverName || "N/A",
+        ipAddress: o.ip || "N/A",
+        specs: formatSpecs(o.specs),
+        amount: o.totalPaidAmount || 0,
+        osName: o.osName || "N/A",
+        osType: o.osType || "N/A",
+        planType: o.planType || "N/A",
+        deletionStatus: o.deletionStatus || "UNKNOWN",
+        creationTime: o.creationTime,
+        deletionTime: o.deletionTime,
+        expiryTime: o.expiryTime,
+        rawData: o,
+      };
+    });
 
     setOrders(normalized);
   }, [ordersData]);
@@ -174,10 +185,14 @@ export default function Invoices() {
     setPage(0);
   }, [debouncedSearch, month, year]);
 
-  // ── Invoice download (use paymentId as primary, orderId as fallback) ──
   const handleDownloadInvoice = async (order) => {
+    // Priority: paymentId (if exists) -> orderId
     const invoiceId = order.paymentId || order.orderId;
-    if (!invoiceId) return;
+
+    if (!invoiceId) {
+      toast.error("No valid order or payment ID found");
+      return;
+    }
 
     try {
       setDownloadingId(invoiceId);
@@ -473,20 +488,23 @@ export default function Invoices() {
                     <td className="py-4 px-6">
                       {(() => {
                         const invoiceId = order.paymentId || order.orderId;
-                        const hasPayment = order.amount > 0;
-                        const invoiceTitle = !hasPayment
-                          ? "No payment recorded for this order"
-                          : !invoiceId
-                            ? "No invoice available"
+                        const hasPaymentId = !!order.paymentId;
+                        const isDownloadable = !!invoiceId;
+                        
+                        const invoiceTitle = !isDownloadable
+                          ? "No invoice available (missing order/payment ID)"
+                          : order.amount === 0 
+                            ? "Download Bill" 
                             : "Download Invoice";
+
                         return (
                           <span className="inline-block" title={invoiceTitle}>
                             <button
                               onClick={() => handleDownloadInvoice(order)}
-                              disabled={!invoiceId || !hasPayment || downloadingId === invoiceId}
+                              disabled={!isDownloadable || downloadingId === invoiceId}
                               className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all
                                 ${
-                                  invoiceId && hasPayment
+                                  isDownloadable
                                     ? "bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-lg hover:shadow-indigo-600/20"
                                     : "bg-gray-700/50 text-gray-500 cursor-not-allowed"
                                 }`}
@@ -496,7 +514,7 @@ export default function Invoices() {
                               ) : (
                                 <Download className="w-4 h-4" />
                               )}
-                              {!hasPayment ? "No Payment" : "Invoice"}
+                              {order.amount === 0 ? "Bill" : "Invoice"}
                             </button>
                           </span>
                         );

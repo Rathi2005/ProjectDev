@@ -7,6 +7,7 @@ export default function AdminUserSearch({
   placeholder = "Search user by name, email or ID",
 }) {
   const [search, setSearch] = useState("");
+  const [searchBy, setSearchBy] = useState("");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -16,32 +17,37 @@ export default function AdminUserSearch({
       return;
     }
 
+    // Modern abort controller pattern to prevent detached responses
+    const controller = new AbortController();
     const delayDebounce = setTimeout(() => {
-      fetchUsers();
+      fetchUsers(controller.signal);
     }, 400); // debounce
 
-    return () => clearTimeout(delayDebounce);
-  }, [search]);
+    return () => {
+      clearTimeout(delayDebounce);
+      controller.abort();
+    };
+  }, [search, searchBy]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (signal) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("adminToken");
+      
+      let url = `${BASE_URL}/api/admin/users/overview?search=${encodeURIComponent(search)}&page=0&size=5`;
+      if (searchBy) url += `&searchBy=${searchBy}`;
 
-      const res = await fetch(
-        `${BASE_URL}/api/admin/users/overview?search=${encodeURIComponent(
-          search
-        )}&page=0&size=5`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal
+      });
 
       if (!res.ok) throw new Error("Failed to fetch users");
 
       const data = await res.json();
       setUsers(data.users || []);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error("User search error:", err);
       setUsers([]);
     } finally {
@@ -52,14 +58,25 @@ export default function AdminUserSearch({
   return (
     <div className="relative">
       {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="relative flex items-center">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+        <select 
+          value={searchBy}
+          onChange={(e) => setSearchBy(e.target.value)}
+          className="absolute left-9 py-2 bg-transparent border-none text-xs text-indigo-300 focus:ring-0 outline-none z-10 w-24 cursor-pointer"
+        >
+          <option value="">Global</option>
+          <option value="id">ID</option>
+          <option value="email">Email</option>
+          <option value="name">Name</option>
+          <option value="billing">Billing</option>
+        </select>
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={placeholder}
-          className="w-full pl-10 pr-4 py-2 bg-[#0e1525] border border-indigo-900/50 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          className="w-full pl-[9.5rem] pr-4 py-2 bg-[#0e1525] border border-indigo-900/50 rounded-lg focus:ring-2 focus:ring-indigo-500"
         />
       </div>
 

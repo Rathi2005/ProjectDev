@@ -182,6 +182,7 @@ export default function AdminDashboard() {
           region: locationName.charAt(0).toUpperCase() + locationName.slice(1),
           servers: serverData.total || 0,
           running: serverData.running || 0,
+          stopped: serverData.stopped || 0,
           status:
             serverData.status === "ONLINE"
               ? "healthy"
@@ -415,12 +416,12 @@ export default function AdminDashboard() {
 
         {/* Charts & Activity Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Server Locations Overview */}
+          {/* Server Node Overview */}
           <div className="lg:col-span-2 bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg md:text-xl font-semibold mb-1">
-                  Server Locations
+                  Server Status Overview
                 </h3>
                 <p className="text-gray-400 text-sm">
                   Proxmox nodes and their VM distribution
@@ -440,11 +441,11 @@ export default function AdminDashboard() {
                 <p className="text-gray-400">No server data available</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2 custom-scrollbar">
                 {serverLocations.map((location, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors"
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors gap-4"
                   >
                     <div className="flex items-center gap-4">
                       <div
@@ -467,32 +468,41 @@ export default function AdminDashboard() {
                         />
                       </div>
                       <div>
-                        <p className="font-medium">{location.name}</p>
+                        <p className="font-medium truncate max-w-[120px] sm:max-w-[200px]">{location.name}</p>
                         <p className="text-xs text-gray-400">
                           {location.region}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                      <div className="text-center">
-                        <p className="text-lg font-semibold">
-                          {location.servers}
-                        </p>
-                        <p className="text-xs text-gray-400">Total VMs</p>
+                    <div className="flex flex-1 items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto">
+                      <div className="flex items-center gap-4 sm:gap-6">
+                        <div className="text-center">
+                          <p className="text-base sm:text-lg font-semibold">
+                            {location.servers}
+                          </p>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Total</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-base sm:text-lg font-semibold text-green-400">
+                            {location.running}
+                          </p>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Run</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-base sm:text-lg font-semibold text-red-400">
+                            {location.stopped}
+                          </p>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Stop</p>
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <p className="text-lg font-semibold">
-                          {location.running}
-                        </p>
-                        <p className="text-xs text-gray-400">Running</p>
-                      </div>
-                      <div className="w-32">
+
+                      <div className="hidden xl:block w-32">
                         <div className="flex justify-between text-xs text-gray-400 mb-1">
-                          <span>Utilization</span>
+                          <span>Usage</span>
                           <span>{location.utilization}%</span>
                         </div>
-                        <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
                           <div
                             className={`h-full ${
                               location.utilization >= 80
@@ -505,8 +515,9 @@ export default function AdminDashboard() {
                           ></div>
                         </div>
                       </div>
+
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                        className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold ${getStatusColor(
                           location.status,
                         )}`}
                       >
@@ -519,28 +530,103 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* Recent Activity */}
+          {/* Quick Actions */}
+          <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6 flex flex-col">
+            <div className="mb-6">
+              <h3 className="text-lg md:text-xl font-semibold mb-1">
+                Quick Actions
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Frequently used tasks
+              </p>
+            </div>
+
+            <div className="space-y-3 flex-1">
+              <button
+                onClick={() => navigate("/admin/metrics")}
+                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-blue-500/20 border border-gray-700 hover:border-blue-500 rounded-lg transition-all group"
+              >
+                <div className="p-2 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30">
+                  <LineChart className="w-5 h-5 text-blue-400 group-hover:text-blue-300" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-sm">Metrics</p>
+                  <p className="text-[10px] text-gray-400">
+                    Live performance
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate("/admin/invoices")}
+                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-green-500/20 border border-gray-700 hover:border-green-500 rounded-lg transition-all group"
+              >
+                <div className="p-2 bg-green-500/20 rounded-lg group-hover:bg-green-500/30">
+                  <CreditCard className="w-5 h-5 text-green-400 group-hover:text-green-300" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-sm">Invoices</p>
+                  <p className="text-[10px] text-gray-400">
+                    Billing management
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate("/admin/orders")}
+                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-purple-500/20 border border-gray-700 hover:border-purple-500 rounded-lg transition-all group"
+              >
+                <div className="p-2 bg-purple-500/20 rounded-lg group-hover:bg-purple-500/30">
+                  <CpuIcon className="w-5 h-5 text-purple-400 group-hover:text-purple-300" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-sm">Manage VMs</p>
+                  <p className="text-[10px] text-gray-400">
+                    All virtual machines
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-gray-800/50">
+              <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
+                <Shield className="w-5 h-5 text-yellow-400" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">System Status</p>
+                  <p className="text-[10px] text-gray-400 truncate">
+                    {stats.onlineServers === stats.totalServers && stats.totalServers > 0
+                      ? "All systems operational"
+                      : `${stats.offlineServers} server(s) offline`}
+                  </p>
+                </div>
+                <div className={`w-2 h-2 rounded-full ${stats.onlineServers === stats.totalServers ? "bg-green-500" : "bg-red-500"} animate-pulse shrink-0`}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Row - Activity */}
+        <div className="grid grid-cols-1 gap-6">
           <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg md:text-xl font-semibold mb-1">
                   Recent Activity
                 </h3>
-                <p className="text-gray-400 text-sm">Latest VM operations</p>
+                <p className="text-gray-400 text-sm">Latest VM operations across cloud</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={exportAuditLogs}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white rounded-lg transition-colors"
-                  title="Export to CSV"
                 >
                   <Download className="w-4 h-4" />
-                  Export
+                  <span className="hidden sm:inline">Export CSV</span>
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
               {activityLoading ? (
                 <div className="text-center py-8">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-2"></div>
@@ -557,256 +643,49 @@ export default function AdminDashboard() {
                 auditLogs.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-start gap-3 p-3 hover:bg-gray-800/30 rounded-lg transition-colors"
+                    className="flex items-center gap-4 p-4 bg-gray-800/20 border border-gray-700/30 rounded-xl hover:border-indigo-500/30 transition-all group"
                   >
-                    <div className="pt-1">{getActivityIcon(activity.type)}</div>
+                    <div className="p-2 bg-gray-800/50 rounded-lg group-hover:bg-indigo-500/10 transition-colors">
+                      {getActivityIcon(activity.type)}
+                    </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-medium text-gray-200 truncate">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                      <div className="col-span-1 md:col-span-1">
+                        <p className="text-sm font-bold text-gray-200 truncate uppercase tracking-tight">
                           {activity.user || "System"}
                         </p>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            activity.type,
-                          )}`}
-                        >
-                          {activity.type}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-400 truncate">
-                        {activity.action}
-                      </p>
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                          <Server className="w-3 h-3" />
-                          {activity.node || "Unknown Node"}
-                        </p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <p className="text-[10px] text-indigo-400 font-mono flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {activity.time}
                         </p>
+                      </div>
+
+                      <div className="col-span-1 md:col-span-1">
+                        <p className="text-xs font-semibold text-gray-300">
+                          {activity.action}
+                        </p>
+                      </div>
+
+                      <div className="col-span-1 md:col-span-1 flex items-center gap-2">
+                        <div className="px-2 py-1 bg-gray-800/50 rounded border border-gray-700 text-[10px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                          <Server className="w-3 h-3" />
+                          {activity.node || "Global"}
+                        </div>
+                      </div>
+
+                      <div className="col-span-1 md:col-span-1 flex justify-end">
+                        <span
+                          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${getStatusColor(
+                            activity.type,
+                          ).replace("bg-", "border-").replace("/10", "/30")}`}
+                        >
+                          {activity.type}
+                        </span>
                       </div>
                     </div>
                   </div>
                 ))
               )}
-
-              {/* Load More indicator (if you want pagination) */}
-              {auditLogs.length >= 5 && (
-                <div className="text-center pt-4 border-t border-gray-800/50">
-                  <p className="text-xs text-gray-500">
-                    Scroll to view more activities
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions & VM Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* VM Breakdown by Server */}
-          <div className="lg:col-span-2 bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg md:text-xl font-semibold mb-1">
-                  VM Distribution
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  Virtual machines across Proxmox nodes
-                </p>
-              </div>
-            </div>
-
-            {vmLoading ? (
-              <div className="text-center py-8">
-                <p className="text-gray-400">Loading VM distribution...</p>
-              </div>
-            ) : !vmData?.serverBreakdown ? (
-              <div className="text-center py-8">
-                <p className="text-gray-400">
-                  No VM distribution data available
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {Object.entries(vmData.serverBreakdown).map(
-                  ([serverName, serverData]) => (
-                    <div
-                      key={serverName}
-                      className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`p-3 rounded-lg ${
-                            serverData.status === "ONLINE"
-                              ? "bg-green-500/20"
-                              : serverData.status === "OFFLINE"
-                                ? "bg-red-500/20"
-                                : "bg-yellow-500/20"
-                          }`}
-                        >
-                          <Server
-                            className={`w-5 h-5 ${
-                              serverData.status === "ONLINE"
-                                ? "text-green-400"
-                                : serverData.status === "OFFLINE"
-                                  ? "text-red-400"
-                                  : "text-yellow-400"
-                            }`}
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium">{serverName}</p>
-                          <p className="text-xs text-gray-400 capitalize">
-                            Status:{" "}
-                            {serverData.status?.toLowerCase() || "unknown"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-8">
-                        <div className="text-center">
-                          <p className="text-lg font-semibold">
-                            {serverData.total || 0}
-                          </p>
-                          <p className="text-xs text-gray-400">Total VMs</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-green-400">
-                            {serverData.running || 0}
-                          </p>
-                          <p className="text-xs text-gray-400">Running</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-red-400">
-                            {serverData.stopped || 0}
-                          </p>
-                          <p className="text-xs text-gray-400">Stopped</p>
-                        </div>
-                        <div className="w-24">
-                          <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${
-                                serverData.total > 0 &&
-                                serverData.running / serverData.total >= 0.8
-                                  ? "bg-green-500"
-                                  : serverData.total > 0 &&
-                                      serverData.running / serverData.total >=
-                                        0.5
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
-                              }`}
-                              style={{
-                                width:
-                                  serverData.total > 0
-                                    ? `${
-                                        (serverData.running /
-                                          serverData.total) *
-                                        100
-                                      }%`
-                                    : "0%",
-                              }}
-                            ></div>
-                          </div>
-                          <p className="text-xs text-gray-400 text-center mt-1">
-                            {serverData.total > 0
-                              ? `${Math.round(
-                                  (serverData.running / serverData.total) * 100,
-                                )}% running`
-                              : "No VMs"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-gradient-to-br from-[#1d2438] to-[#1a2237] rounded-xl border border-gray-800/50 p-5 md:p-6">
-            <div className="mb-6">
-              <h3 className="text-lg md:text-xl font-semibold mb-1">
-                Quick Actions
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Frequently used admin tasks
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => navigate("/admin/metrics")}
-                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-blue-500/20 border border-gray-700 hover:border-blue-500 rounded-lg transition-all group"
-              >
-                <div className="p-2 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30">
-                  <LineChart className="w-5 h-5 text-blue-400 group-hover:text-blue-300" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">Performance Metrics</p>
-                  <p className="text-xs text-gray-400">
-                    View detailed server metrics
-                  </p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate("/admin/invoices")}
-                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-green-500/20 border border-gray-700 hover:border-green-500 rounded-lg transition-all group"
-              >
-                <div className="p-2 bg-green-500/20 rounded-lg group-hover:bg-green-500/30">
-                  <Server className="w-5 h-5 text-green-400 group-hover:text-green-300" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">Manage Invoices</p>
-                  <p className="text-xs text-gray-400">
-                    Manage & view all invoices
-                  </p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate("/admin/orders")}
-                className="w-full flex items-center gap-3 p-4 bg-gray-800/30 hover:bg-purple-500/20 border border-gray-700 hover:border-purple-500 rounded-lg transition-all group"
-              >
-                <div className="p-2 bg-purple-500/20 rounded-lg group-hover:bg-purple-500/30">
-                  <CpuIcon className="w-5 h-5 text-purple-400 group-hover:text-purple-300" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium">Manage VMs</p>
-                  <p className="text-xs text-gray-400">
-                    View and manage all virtual machines
-                  </p>
-                </div>
-              </button>
-            </div>
-
-            <div className="mt-6 pt-5 border-t border-gray-800/50">
-              <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
-                <Shield className="w-5 h-5 text-yellow-400" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">System Status</p>
-                  <p className="text-xs text-gray-400">
-                    {stats.onlineServers === stats.totalServers &&
-                    stats.totalServers > 0
-                      ? "All systems operational"
-                      : stats.offlineServers > 0
-                        ? `${stats.offlineServers} server(s) offline`
-                        : "Loading status..."}
-                  </p>
-                </div>
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    stats.onlineServers === stats.totalServers &&
-                    stats.totalServers > 0
-                      ? "bg-green-500 animate-pulse"
-                      : "bg-red-500 animate-pulse"
-                  }`}
-                ></div>
-              </div>
             </div>
           </div>
         </div>
