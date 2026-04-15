@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 import { apiFetch } from "../../utils/api";
@@ -6,8 +7,18 @@ import { apiFetch } from "../../utils/api";
 const BILLING = `${BASE_URL}/api/reseller/auth/billing`;
 
 const BillingAddress = ({ email }) => {
+  const token = localStorage.getItem("token");
+
+  let userEmail = "";
+
+  if (token) {
+    const decoded = jwtDecode(token);
+    userEmail = decoded.email; // make sure backend sends email in token
+  }
+
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    email: userEmail,
     companyName: "",
     phoneNumber: "",
     streetAddress: "",
@@ -54,7 +65,6 @@ const BillingAddress = ({ email }) => {
       setTimeout(() => {
         navigate("/login");
       }, 2000);
-
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {

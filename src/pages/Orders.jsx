@@ -160,7 +160,7 @@ export default function UserOrdersPage() {
   const getDefaultUsername = useCallback((osType) => {
     if (!osType) return "root";
     const normalized = osType.toUpperCase();
-    if (normalized === "WINDOWS") return "Administrator";
+    if (normalized.includes("WINDOWS")) return "Administrator";
     return "root";
   }, []);
 
