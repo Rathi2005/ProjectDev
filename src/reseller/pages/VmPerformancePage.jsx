@@ -20,7 +20,7 @@ export default function UserVMPerformancePage() {
 
   return (
     <VMPerformance
-      apiUrl={`/api/users/${userId}/vms/${vmid}/metrics`}
+      apiUrl={`/api/users/vms/${vmid}/metrics`}
       tokenKey="token"             
       vmid={vmid}
       vmName={vmName}

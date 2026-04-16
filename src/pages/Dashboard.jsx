@@ -30,8 +30,7 @@ export default function Dashboard() {
   const [shouldRedirect, setShouldRedirect] = useState(false);
 
   const { startPayment, qrData, setQrData, stopPolling } = usePayment();
-  const [gateway, setGateway] = useState("CASHFREE");
-
+  const [gateway, setGateway] = useState(null);
   const mainContentRef = useRef(null);
 
   useEffect(() => {
@@ -197,23 +196,15 @@ export default function Dashboard() {
 
   const cashfreeRef = useRef(null);
 
-  const CASHFREE_MODE =
-    import.meta.env.VITE_CASHFREE_MODE === "production"
-      ? "production"
-      : "sandbox";
-
   useEffect(() => {
-    if (!window.Cashfree) {
-      console.error("Cashfree SDK not loaded");
-      return;
-    }
+    if (!window.Cashfree || !gateway) return;
 
     cashfreeRef.current = window.Cashfree({
-      mode: CASHFREE_MODE,
+      mode: gateway?.mode?.toLowerCase() || "sandbox",
     });
 
-    console.log("Cashfree initialized in", CASHFREE_MODE, "mode");
-  }, []);
+    console.log("Cashfree initialized in", gateway.mode);
+  }, [gateway]);
 
   const token = localStorage.getItem("token");
 
@@ -503,22 +494,6 @@ export default function Dashboard() {
                 />
               </div>
             </div>
-
-            {/* Other Sections */}
-            {/* <div
-              id="security"
-              className="min-h-screen px-4 sm:px-6 lg:px-8 py-6 lg:py-16"
-            >
-              <h1 className="text-2xl sm:text-3xl font-bold">Security</h1>
-            </div>
-
-            <div
-              id="settings"
-              className="min-h-screen px-4 sm:px-6 lg:px-8 py-6 lg:py-16"
-            >
-              <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
-            </div> */}
-
             {/* Footer - Placed inside the scrollable content at the bottom */}
             <Footer />
           </div>
@@ -576,7 +551,6 @@ export default function Dashboard() {
                 : "opacity-0 pointer-events-none"
             }`}
           >
-            {/* Backdrop */}
             <div
               className={`absolute inset-0 bg-black transition-opacity duration-300 ${
                 isMobileSummaryOpen ? "opacity-50" : "opacity-0"

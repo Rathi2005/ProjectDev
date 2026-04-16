@@ -199,7 +199,6 @@ const SummarySidebar = ({
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
-        "X-Requested-With": "XMLHttpRequest",
         ...options.headers,
       },
     };

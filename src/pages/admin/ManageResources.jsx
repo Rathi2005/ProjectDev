@@ -92,6 +92,14 @@ export default function ManageResourcesPage({
   const [inUseFilter, setInUseFilter] = useState("all");
   const [editingItem, setEditingItem] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopy = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success("Copied to clipboard!");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // 🔄 RESOLVE FIELDS BASED ON ENDPOINT AND MODE
   const resolvedFields = useMemo(() => {
@@ -412,26 +420,52 @@ export default function ManageResourcesPage({
       else if (extraForm === "disks") {
         for (const row of rows) {
           const payload = {
-            diskName: row.diskName,
-            maxVms: Number(row.maxVms) || 0,
-            usableDiskPercentage: Number(row.usableDiskPercentage) || 100,
+            diskName: row.diskName?.trim(),
+            maxVms: Number(row.maxVms || 1),
+            usableDiskPercentage: Number(row.usableDiskPercentage || 100),
           };
 
-          const res = await fetch(
-            `${BASE_URL}/api/admin/servers/${id}/storage`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify(payload),
-            },
-          );
+          // ✅ Validation (VERY IMPORTANT)
+          if (!payload.diskName) {
+            toast.error("Disk name is required");
+            continue;
+          }
 
-          if (!res.ok) {
-            const error = await res.text();
-            throw new Error(`Failed to add disk: ${error}`);
+          if (payload.maxVms < 1) {
+            toast.error("Max VMs must be at least 1");
+            continue;
+          }
+
+          if (
+            payload.usableDiskPercentage < 1 ||
+            payload.usableDiskPercentage > 100
+          ) {
+            toast.error("Percentage must be between 1 and 100");
+            continue;
+          }
+
+          try {
+            const res = await fetch(
+              `${BASE_URL}/api/admin/servers/${id}/storage`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+              },
+            );
+
+            const data = await res.json(); // ✅ IMPORTANT
+
+            if (!res.ok) {
+              throw new Error(data.error || "Failed to add storage");
+            }
+
+            toast.success(data.message || "Storage added successfully");
+          } catch (err) {
+            toast.error(err.message);
           }
         }
       }
@@ -462,20 +496,39 @@ export default function ManageResourcesPage({
     try {
       let url = "";
       let method = "PUT";
+      let payload = {}; // ✅ FIX: define outside
 
       if (endpoint === "/ips") {
         url = `${BASE_URL}/api/admin/zones/${id}/ips/${editingItem.id}`;
+        payload = editFormData;
       } else if (extraForm === "disks") {
-        const diskId =
-          editingItem.id ||
-          editingItem.ID ||
-          editingItem.Id ||
-          editingItem.storage_id;
+        const diskId = editingItem.id;
 
         url = `${BASE_URL}/api/admin/servers/${id}/storage/${diskId}`;
-        method = "PATCH";
+        method = "PUT";
+
+        payload = {
+          diskName: editFormData.diskName?.trim(),
+          maxVms: Number(editFormData.maxVms || 1),
+          usableDiskPercentage: Number(
+            editFormData.usableDiskPercentage || 100,
+          ),
+        };
+
+        // ✅ Validation
+        if (payload.maxVms < 1) {
+          return toast.error("Max VMs must be at least 1");
+        }
+
+        if (
+          payload.usableDiskPercentage < 1 ||
+          payload.usableDiskPercentage > 100
+        ) {
+          return toast.error("Percentage must be between 1 and 100");
+        }
       } else {
         url = `${BASE_URL}/api/admin/servers/${id}${endpoint}/${editingItem.id}`;
+        payload = editFormData;
       }
 
       const res = await fetch(url, {
@@ -484,15 +537,16 @@ export default function ManageResourcesPage({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify(payload), // ✅ now works
       });
 
+      const data = await res.json(); // ✅ IMPORTANT
+
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "Update failed");
+        throw new Error(data.error || "Update failed");
       }
 
-      toast.success("Updated successfully");
+      toast.success(data.message || "Updated successfully");
       setEditingItem(null);
       await reloadData();
     } catch (err) {
@@ -577,7 +631,7 @@ export default function ManageResourcesPage({
 
     return data;
   }, [existing, debouncedSearchQuery, inUseFilter, endpoint]);
-  
+
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchQuery, inUseFilter]);
@@ -624,10 +678,6 @@ export default function ManageResourcesPage({
           border: 1px solid rgba(255,255,255,0.06);
           color: #e6e6e6;
           box-shadow: none;
-        }
-        .swal2-select {
-          color: #000 !important;
-          background: #ffffff !important;
         }
       `}</style>
 
@@ -1102,10 +1152,39 @@ export default function ManageResourcesPage({
                                 (Number(val) / 1024).toFixed(2) + " TB";
                             }
 
+                            if (key.toLowerCase().includes("ip") && val && !["startip", "endip"].includes(key.toLowerCase())) {
+                              return (
+                                <td
+                                  key={j}
+                                  className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 font-mono text-sm"
+                                >
+                                  <div className="group flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/5 border border-indigo-500/20 rounded-lg shadow-sm hover:border-indigo-500/30 transition-all">
+                                      <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span className="font-medium text-indigo-100">
+                                        {val}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleCopy(val, item.id + key)}
+                                      className="p-1.5 hover:bg-indigo-500/10 rounded-md text-gray-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all"
+                                      title="Copy"
+                                    >
+                                      {copiedId === item.id + key ? (
+                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                      ) : (
+                                        <Layers className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </td>
+                              );
+                            }
+
                             return (
                               <td
                                 key={j}
-                                className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 text-sm md:text-base"
+                                className="px-3 md:px-6 py-2 md:py-3 border-b border-indigo-900/30 text-sm md:text-base text-gray-300"
                               >
                                 {displayValue}
                               </td>
@@ -1255,21 +1334,42 @@ export default function ManageResourcesPage({
             }
           `}</style>
 
-          <div className="edit-modal bg-[#111827] w-full max-w-2xl rounded-2xl border border-white/[0.06] overflow-hidden"
-               style={{ boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 40px -10px rgba(99, 102, 241, 0.08)' }}>
-
+          <div
+            className="edit-modal bg-[#111827] w-full max-w-2xl rounded-2xl border border-white/[0.06] overflow-hidden"
+            style={{
+              boxShadow:
+                "0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 40px -10px rgba(99, 102, 241, 0.08)",
+            }}
+          >
             {/* ── Header ── */}
-            <div className="px-7 py-5 border-b border-white/[0.06]"
-                 style={{ background: 'linear-gradient(135deg, #111827 0%, #0f172a 100%)' }}>
+            <div
+              className="px-7 py-5 border-b border-white/[0.06]"
+              style={{
+                background: "linear-gradient(135deg, #111827 0%, #0f172a 100%)",
+              }}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="edit-modal-icon p-2.5 rounded-xl text-white"
-                       style={{
-                         background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                         boxShadow: '0 8px 20px -4px rgba(99, 102, 241, 0.35)'
-                       }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <div
+                    className="edit-modal-icon p-2.5 rounded-xl text-white"
+                    style={{
+                      background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                      boxShadow: "0 8px 20px -4px rgba(99, 102, 241, 0.35)",
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
                     </svg>
                   </div>
                   <div>
@@ -1295,7 +1395,9 @@ export default function ManageResourcesPage({
             <form
               onSubmit={handleEditSubmit}
               className="p-7 max-h-[70vh] overflow-y-auto"
-              style={{ background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)' }}
+              style={{
+                background: "linear-gradient(180deg, #111827 0%, #0f172a 100%)",
+              }}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {resolvedFields.map((field, index) => {
@@ -1323,18 +1425,53 @@ export default function ManageResourcesPage({
                   // ── Gradient colors per field ──
                   const getFieldGradient = (fieldName) => {
                     const gradients = {
-                      ip: { bg: 'linear-gradient(135deg, #3b82f6, #06b6d4)', shadow: 'rgba(59, 130, 246, 0.3)' },
-                      cidr: { bg: 'linear-gradient(135deg, #8b5cf6, #ec4899)', shadow: 'rgba(139, 92, 246, 0.3)' },
-                      gateway: { bg: 'linear-gradient(135deg, #f59e0b, #f97316)', shadow: 'rgba(245, 158, 11, 0.3)' },
-                      mac: { bg: 'linear-gradient(135deg, #10b981, #14b8a6)', shadow: 'rgba(16, 185, 129, 0.3)' },
-                      inUse: { bg: 'linear-gradient(135deg, #10b981, #22c55e)', shadow: 'rgba(16, 185, 129, 0.3)' },
-                      startIp: { bg: 'linear-gradient(135deg, #3b82f6, #6366f1)', shadow: 'rgba(59, 130, 246, 0.3)' },
-                      endIp: { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', shadow: 'rgba(99, 102, 241, 0.3)' },
-                      diskName: { bg: 'linear-gradient(135deg, #3b82f6, #22d3ee)', shadow: 'rgba(59, 130, 246, 0.3)' },
-                      maxVms: { bg: 'linear-gradient(135deg, #8b5cf6, #a855f7)', shadow: 'rgba(139, 92, 246, 0.3)' },
-                      usableDiskPercentage: { bg: 'linear-gradient(135deg, #f43f5e, #ec4899)', shadow: 'rgba(244, 63, 94, 0.3)' },
+                      ip: {
+                        bg: "linear-gradient(135deg, #3b82f6, #06b6d4)",
+                        shadow: "rgba(59, 130, 246, 0.3)",
+                      },
+                      cidr: {
+                        bg: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                        shadow: "rgba(139, 92, 246, 0.3)",
+                      },
+                      gateway: {
+                        bg: "linear-gradient(135deg, #f59e0b, #f97316)",
+                        shadow: "rgba(245, 158, 11, 0.3)",
+                      },
+                      mac: {
+                        bg: "linear-gradient(135deg, #10b981, #14b8a6)",
+                        shadow: "rgba(16, 185, 129, 0.3)",
+                      },
+                      inUse: {
+                        bg: "linear-gradient(135deg, #10b981, #22c55e)",
+                        shadow: "rgba(16, 185, 129, 0.3)",
+                      },
+                      startIp: {
+                        bg: "linear-gradient(135deg, #3b82f6, #6366f1)",
+                        shadow: "rgba(59, 130, 246, 0.3)",
+                      },
+                      endIp: {
+                        bg: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                        shadow: "rgba(99, 102, 241, 0.3)",
+                      },
+                      diskName: {
+                        bg: "linear-gradient(135deg, #3b82f6, #22d3ee)",
+                        shadow: "rgba(59, 130, 246, 0.3)",
+                      },
+                      maxVms: {
+                        bg: "linear-gradient(135deg, #8b5cf6, #a855f7)",
+                        shadow: "rgba(139, 92, 246, 0.3)",
+                      },
+                      usableDiskPercentage: {
+                        bg: "linear-gradient(135deg, #f43f5e, #ec4899)",
+                        shadow: "rgba(244, 63, 94, 0.3)",
+                      },
                     };
-                    return gradients[fieldName] || { bg: 'linear-gradient(135deg, #6b7280, #9ca3af)', shadow: 'rgba(107, 114, 128, 0.3)' };
+                    return (
+                      gradients[fieldName] || {
+                        bg: "linear-gradient(135deg, #6b7280, #9ca3af)",
+                        shadow: "rgba(107, 114, 128, 0.3)",
+                      }
+                    );
                   };
 
                   // ── Grid balancing ──
@@ -1343,7 +1480,9 @@ export default function ManageResourcesPage({
                     field.name === "diskName" ||
                     (fields.length === 3 && index === 0);
 
-                  const fieldClassName = isFullWidthField ? "md:col-span-2" : "";
+                  const fieldClassName = isFullWidthField
+                    ? "md:col-span-2"
+                    : "";
                   const gradient = getFieldGradient(field.name);
 
                   return (
@@ -1357,7 +1496,7 @@ export default function ManageResourcesPage({
                           className="edit-modal-icon p-2 rounded-xl text-white"
                           style={{
                             background: gradient.bg,
-                            boxShadow: `0 6px 16px -4px ${gradient.shadow}`
+                            boxShadow: `0 6px 16px -4px ${gradient.shadow}`,
                           }}
                         >
                           {getFieldIcon(field.name)}
@@ -1390,11 +1529,13 @@ export default function ManageResourcesPage({
 
                       {/* ── Input / Toggle ── */}
                       {field.type === "checkbox" ? (
-                        <div className="flex items-center gap-3 p-4 rounded-xl transition-all duration-300"
-                             style={{
-                               background: 'rgba(13, 17, 23, 0.6)',
-                               border: '1px solid rgba(255, 255, 255, 0.06)'
-                             }}>
+                        <div
+                          className="flex items-center gap-3 p-4 rounded-xl transition-all duration-300"
+                          style={{
+                            background: "rgba(13, 17, 23, 0.6)",
+                            border: "1px solid rgba(255, 255, 255, 0.06)",
+                          }}
+                        >
                           <button
                             type="button"
                             onClick={() =>
@@ -1406,9 +1547,11 @@ export default function ManageResourcesPage({
                             className="relative w-14 h-7 rounded-full transition-all duration-300 ease-in-out"
                             style={{
                               background: value
-                                ? 'linear-gradient(135deg, #10b981, #22c55e)'
-                                : '#374151',
-                              boxShadow: value ? '0 4px 12px -2px rgba(16, 185, 129, 0.4)' : 'none'
+                                ? "linear-gradient(135deg, #10b981, #22c55e)"
+                                : "#374151",
+                              boxShadow: value
+                                ? "0 4px 12px -2px rgba(16, 185, 129, 0.4)"
+                                : "none",
                             }}
                           >
                             <span
@@ -1419,7 +1562,9 @@ export default function ManageResourcesPage({
                           </button>
                           <div className="flex flex-col">
                             <span className="text-sm text-gray-300 font-medium">
-                              {value ? "Resource is in use" : "Resource is available"}
+                              {value
+                                ? "Resource is in use"
+                                : "Resource is available"}
                             </span>
                             <span className="text-xs text-gray-500">
                               Toggle to change status
@@ -1444,11 +1589,13 @@ export default function ManageResourcesPage({
                           {/* Optional badge */}
                           {!isRequired && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                              <span className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-gray-500 rounded-md"
-                                    style={{
-                                      background: 'rgba(31, 41, 55, 0.8)',
-                                      border: '1px solid rgba(255, 255, 255, 0.06)'
-                                    }}>
+                              <span
+                                className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-gray-500 rounded-md"
+                                style={{
+                                  background: "rgba(31, 41, 55, 0.8)",
+                                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                                }}
+                              >
                                 optional
                               </span>
                             </div>
@@ -1461,7 +1608,10 @@ export default function ManageResourcesPage({
               </div>
 
               {/* ── Footer ── */}
-              <div className="flex items-center justify-between gap-3 mt-8 pt-6" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+              <div
+                className="flex items-center justify-between gap-3 mt-8 pt-6"
+                style={{ borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}
+              >
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full edit-status-dot"></span>
                   <span className="text-xs text-gray-500 font-normal">
@@ -1481,8 +1631,8 @@ export default function ManageResourcesPage({
                     type="submit"
                     className="edit-modal-save px-7 py-2.5 text-sm font-semibold text-white rounded-xl"
                     style={{
-                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                      boxShadow: '0 8px 20px -6px rgba(99, 102, 241, 0.35)'
+                      background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                      boxShadow: "0 8px 20px -6px rgba(99, 102, 241, 0.35)",
                     }}
                   >
                     Save Changes
@@ -1493,7 +1643,6 @@ export default function ManageResourcesPage({
           </div>
         </div>
       )}
-
     </div>
   );
 }

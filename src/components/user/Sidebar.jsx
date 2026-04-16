@@ -8,7 +8,8 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import useLogout from "./Logout"; // Correct import for your custom hook
+import useLogout from "./Logout"; 
+import { useSettings } from "../../context/AppSettingsContext";
 
 export default function Sidebar() {
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -18,6 +19,7 @@ export default function Sidebar() {
 
   // ✅ Get logout function from hook
   const logout = useLogout();
+  const { settings } = useSettings();
 
   const links = [
     { name: "Dashboard", icon: <Home size={18} />, id: "dashboard" },
@@ -130,8 +132,24 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="bg-[#121a2a] text-gray-300 w-64 h-screen fixed border-r border-indigo-900/30">
-      <nav className="py-20 px-4 space-y-1 text-sm overflow-y-auto">
+    <aside className="bg-[#121a2a] text-gray-300 w-64 h-screen fixed border-r border-indigo-900/30 flex flex-col">
+      <div className="p-6 border-b border-indigo-900/30 flex items-center gap-3">
+        {settings?.logoUrl ? (
+          <img
+            src={settings.logoUrl}
+            alt="Logo"
+            className="w-10 h-10 object-contain"
+          />
+        ) : (
+          <div className="w-10 h-10 bg-indigo-600 rounded flex items-center justify-center font-bold text-white text-xl">
+            {settings?.companyName?.charAt(0) || "S"}
+          </div>
+        )}
+        <span className="font-bold text-lg text-white truncate">
+          {settings?.companyName || "Our Platform"}
+        </span>
+      </div>
+      <nav className="flex-1 py-8 px-4 space-y-1 text-sm overflow-y-auto">
         {links.map((link) => (
           <div key={link.id}>
             <button

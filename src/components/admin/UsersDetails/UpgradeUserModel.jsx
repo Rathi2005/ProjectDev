@@ -8,11 +8,11 @@ import {
   Crown,
   Sparkles,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 export default function UpgradeUserModal({ user, onClose }) {
-  const { mutate, isLoading } = useUpgradeUserMutation();
-
+  const { mutate, isPending: isLoading } = useUpgradeUserMutation();
   const [form, setForm] = useState({
     domainUrl: "",
     supportEmail: "",
@@ -21,15 +21,19 @@ export default function UpgradeUserModal({ user, onClose }) {
 
   const [errors, setErrors] = useState({});
 
+  onSuccess: () => {
+    setTimeout(() => {
+      onClose();
+    }, 500);
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
     if (!form.domainUrl) {
       newErrors.domainUrl = "Domain URL is required";
     } else if (
-      !/^(?!:\/\/)([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(
-        form.domainUrl,
-      )
+      !/^(?!:\/\/)([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(form.domainUrl)
     ) {
       newErrors.domainUrl = "Please enter a valid domain (e.g., example.com)";
     }
@@ -57,8 +61,8 @@ export default function UpgradeUserModal({ user, onClose }) {
 
     mutate(
       {
-        userId: user.id, 
-        payload: form, 
+        userId: user.id,
+        payload: form,
       },
       {
         onSuccess: () => {
@@ -72,9 +76,16 @@ export default function UpgradeUserModal({ user, onClose }) {
     <div className="fixed inset-0 flex items-center justify-center z-50">
       {/* Backdrop with blur effect */}
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-
       {/* Modal */}
       <div className="relative bg-gradient-to-br from-[#1a1f35] to-[#0d1225] rounded-2xl w-full max-w-md shadow-2xl border border-indigo-500/30 animate-fadeIn">
+        {isLoading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-2xl">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <p className="text-sm text-white">Upgrading user...</p>
+            </div>
+          </div>
+        )}
         {/* Header with gradient */}
         <div className="relative p-6 border-b border-indigo-500/30">
           <div className="flex items-start justify-between">
@@ -92,8 +103,9 @@ export default function UpgradeUserModal({ user, onClose }) {
               </div>
             </div>
             <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
+              onClick={!isLoading ? onClose : undefined}
+              disabled={isLoading}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors group disabled:opacity-50"
             >
               <X className="w-5 h-5 text-indigo-300 group-hover:text-white" />
             </button>
@@ -200,7 +212,8 @@ export default function UpgradeUserModal({ user, onClose }) {
           <div className="flex gap-3 pt-4">
             <button
               type="button"
-              onClick={onClose}
+              onClick={!isLoading ? onClose : undefined}
+              disabled={isLoading}
               className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-indigo-500/30 rounded-xl text-indigo-200 font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Cancel
@@ -213,7 +226,7 @@ export default function UpgradeUserModal({ user, onClose }) {
             >
               {isLoading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />{" "}
                   <span>Upgrading...</span>
                 </>
               ) : (
@@ -234,7 +247,7 @@ export default function UpgradeUserModal({ user, onClose }) {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

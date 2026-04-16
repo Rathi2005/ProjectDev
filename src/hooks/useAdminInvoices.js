@@ -10,7 +10,7 @@ export const useAdminInvoices = ({
     queryKey: ["admin-invoices", page, size, searchTerm],
     queryFn: () =>
       fetchAdminInvoices({ page, size, searchTerm }),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,  // v5 syntax (replaces keepPreviousData)
     staleTime: 60 * 1000,
   });
 };

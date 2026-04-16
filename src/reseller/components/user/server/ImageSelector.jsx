@@ -479,7 +479,7 @@ const ImageSelector = ({ zoneId, setSelectedOS }) => {
       </div>
 
       {/* Custom scrollbar styles */}
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }

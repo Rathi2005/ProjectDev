@@ -29,7 +29,7 @@ const SummarySidebar = ({
   gateway,
   setGateway,
 }) => {
-  const [vmName, setVmName] = useState("my-shared-vm-test-3");
+  const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [months, setMonths] = useState("1");
   const [configExpanded, setConfigExpanded] = useState(true);
@@ -53,7 +53,7 @@ const SummarySidebar = ({
   const [couponError, setCouponError] = useState("");
   const [couponData, setCouponData] = useState(null);
 
-  const [vmNameTouched, setVmNameTouched] = useState(false);
+  // const [vmNameTouched, setVmNameTouched] = useState(false);
 
   const canApplyDiscounts = useMemo(() => {
     return (
@@ -69,18 +69,7 @@ const SummarySidebar = ({
     return useCoupon && !couponValidated;
   }, [useCoupon, couponValidated]);
 
-  useEffect(() => {
-    if (vmNameTouched) return;
-
-    if (selectedOS?.name && selectedResources?.ram) {
-      const os = selectedOS.name.toLowerCase().replace(/\s+/g, "");
-      const ram = extractDisplayName(selectedResources.ram)
-        .toLowerCase()
-        .replace(/\s+/g, "");
-
-      setVmName(`${os}`);
-    }
-  }, [selectedOS, selectedResources, vmNameTouched]);
+  // Auto-naming handled by backend
 
   useEffect(() => {
     fetchWalletBalance();
@@ -118,11 +107,12 @@ const SummarySidebar = ({
     return calculatePricing.monthlyTotal + calculatePricing.ipv4Price;
   }, [calculatePricing]);
 
-  // Calculate total payable amount (monthlyTotal * months)
+  // Calculate total payable amount (monthlyTotal * months * quantity)
   const totalPayable = useMemo(() => {
     const monthsNum = Number(months) || 1;
-    return monthlyTotal * monthsNum;
-  }, [monthlyTotal, months]);
+    const qtyNum = Number(quantity) || 1;
+    return monthlyTotal * monthsNum * qtyNum;
+  }, [monthlyTotal, months, quantity]);
 
   const discountAmount = useMemo(() => {
     if (!couponValidated || !couponData) return 0;
@@ -141,7 +131,6 @@ const SummarySidebar = ({
   // Prepare the complete server configuration object
   const serverConfig = useMemo(() => {
     return {
-      vmName: vmName,
       zoneId: Number(zoneId),
       zoneIsoId: Number(selectedOS?.id),
       planType: selectedType?.toLowerCase().includes("dedicated")
@@ -152,36 +141,29 @@ const SummarySidebar = ({
       diskPriceId: selectedResources?.diskPriceId || null,
       bandwidthPriceId: selectedResources?.bandwidthPriceId || null,
       months: Number(months),
+      quantity: Number(quantity),
       useWalletBalance,
       couponCode: useCoupon && couponCode.trim() ? couponCode.trim() : null,
-      clientReferenceId: `vm-${Date.now()}`,
-      payableAmount: finalPayable,
+      clientReferenceId: `cart-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     };
   }, [
-    vmName,
     zoneId,
     selectedOS,
     selectedType,
     selectedResources,
     months,
+    quantity,
     useWalletBalance,
     useCoupon,
     couponCode,
   ]);
 
-  // Handle VM name change
+  // Handle VM name change (Removed as backend handles naming)
+  /*
   const handleVmNameChange = (e) => {
-    const value = e.target.value;
-    setVmName(value);
-
-    // If user types anything → lock manual mode
-    if (value.trim().length > 0) {
-      setVmNameTouched(true);
-    } else {
-      // If user clears input → resume auto naming
-      setVmNameTouched(false);
-    }
+    ...
   };
+  */
 
   // Function to check if token is valid
   const isTokenValid = (token) => {
@@ -209,7 +191,6 @@ const SummarySidebar = ({
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
-        "X-Requested-With": "XMLHttpRequest",
         ...options.headers,
       },
     };
@@ -379,8 +360,9 @@ const SummarySidebar = ({
       selectedResources?.diskPriceId &&
       selectedResources?.bandwidthPriceId &&
       months &&
-      vmName.trim().length > 0 &&
-      Number(months) > 0;
+      quantity &&
+      Number(months) > 0 &&
+      Number(quantity) > 0;
 
     return complete;
   };
@@ -474,15 +456,17 @@ const SummarySidebar = ({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                <Server className="inline w-4 h-4 mr-2" />
-                Server Name
+                <Package className="inline w-4 h-4 mr-2" />
+                Number of Orders
               </label>
               <input
-                type="text"
-                value={vmName}
-                onChange={handleVmNameChange}
+                type="number"
+                min="1"
+                max="100"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
                 className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="Enter server name"
+                placeholder="1"
                 disabled={isLoading}
               />
             </div>
@@ -576,7 +560,7 @@ const SummarySidebar = ({
 
                     {couponValidated && discountAmount > 0 && (
                       <div className="text-xs text-green-400 mt-1">
-                        Coupon Discount: −₹{discountAmount.toFixed(2)}
+                        Total Discount: −₹{discountAmount.toFixed(2)}
                       </div>
                     )}
                   </div>

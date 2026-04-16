@@ -1,5 +1,5 @@
 // SystemRecordsPage.jsx - Complete updated file
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
@@ -39,6 +39,8 @@ import {
   MapPin,
   CreditCard,
   Eye,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -56,6 +58,34 @@ export default function SystemRecordsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const [searchBy, setSearchBy] = useState("");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
+  const [sortConfig, setSortConfig] = useState({
+    key: "id",
+    direction: "desc",
+  });
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        filterDropdownRef.current &&
+        !filterDropdownRef.current.contains(event.target)
+      ) {
+        setIsFilterOpen(false);
+      }
+    };
+    const handleEsc = (event) => {
+      if (event.key === "Escape") setIsFilterOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, []);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [stats, setStats] = useState({
     total: 0,
@@ -68,6 +98,7 @@ export default function SystemRecordsPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedUpgradeUser, setSelectedUpgradeUser] = useState(null);
+  const [upgradingUserId, setUpgradingUserId] = useState(null);
 
   const initialForm = {
     vmName: "",
@@ -122,11 +153,20 @@ export default function SystemRecordsPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [pageType, page, size, debouncedSearchTerm, selectedFilter]);
+  }, [
+    pageType,
+    page,
+    size,
+    debouncedSearchTerm,
+    searchBy,
+    selectedFilter,
+    sortConfig.key,
+    sortConfig.direction,
+  ]);
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearchTerm, pageType, selectedFilter]);
+  }, [debouncedSearchTerm, searchBy, pageType, selectedFilter]);
 
   // Fetch ISOs when server is selected (Step 2)
   useEffect(() => {
@@ -345,15 +385,18 @@ export default function SystemRecordsPage() {
           break;
         }
 
-        case "users-overview":
+        case "users-overview": {
           const searchParam = debouncedSearchTerm
-            ? `search=${encodeURIComponent(debouncedSearchTerm)}&`
+            ? `&search=${encodeURIComponent(debouncedSearchTerm)}`
             : "";
+          const searchByParam =
+            debouncedSearchTerm && searchBy ? `&searchBy=${searchBy}` : "";
           const filterParam =
             selectedFilter !== "all" ? `&filter=${selectedFilter}` : "";
 
-          endpoint = `${BASE_URL}/api/admin/users/overview?page=${page}&size=${size}&search=${encodeURIComponent(debouncedSearchTerm)}${filterParam}&sortBy=id&sortDir=desc`;
+          endpoint = `${BASE_URL}/api/admin/users/overview?page=${page}&size=${size}${searchParam}${searchByParam}${filterParam}&sortBy=${sortConfig.key}&sortDir=${sortConfig.direction}`;
           break;
+        }
         default:
           return;
       }
@@ -826,15 +869,22 @@ export default function SystemRecordsPage() {
         switch (column.key) {
           case "name":
             return (
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-400/10 rounded-lg">
-                  <User className="w-5 h-5 text-blue-400" />
-                </div>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showUserDetailsModal(record);
+                }}
+                className="flex items-center gap-3 cursor-pointer group hover:bg-white/5 p-2 -m-2 rounded-lg transition-colors"
+                title="View Details"
+              >
+                {/* <div className="p-2 bg-blue-400/10 rounded-lg group-hover:bg-blue-400/20 transition-colors">
+                  `<User className="w-5 h-5 text-blue-400 group-hover:text-blue-300" />`
+                </div> */}
                 <div>
-                  <div className="font-semibold">
+                  <div className="font-semibold group-hover:text-indigo-300 group-hover:underline transition-all">
                     {record.firstName} {record.lastName}
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-gray-400 group-hover:text-indigo-400/80 transition-colors">
                     User ID: {record.id}
                   </div>
                 </div>
@@ -1144,23 +1194,94 @@ export default function SystemRecordsPage() {
           {/* Search and Filters */}
           <div className="bg-[#151c2f] border border-indigo-900/30 rounded-xl p-4 mb-6">
             <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search records..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-[#0e1525] border border-indigo-900/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
+              {(() => {
+                const searchOptions = [
+                  { value: "", label: "All Fields" },
+                  { value: "id", label: "User ID" },
+                  { value: "email", label: "Email Address" },
+                  { value: "name", label: "Full Name" },
+                  { value: "billing", label: "Billing Info" },
+                ];
+                const activeLabel =
+                  searchOptions.find((o) => o.value === searchBy)?.label ||
+                  "All Fields";
+
+                return (
+                  <div
+                    className="flex-1 relative group"
+                    ref={filterDropdownRef}
+                  >
+                    <div className="flex items-center bg-[#0e1525] border border-indigo-900/50 rounded-xl focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all duration-300">
+                      <div className="pl-4 text-gray-400">
+                        <Search className="w-4 h-4" />
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder={`Search by ${activeLabel.toLowerCase()}...`}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-transparent border-none text-white focus:ring-0 px-4 py-2.5 flex-1 placeholder-gray-500 text-sm"
+                      />
+
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm("")}
+                          className="p-1 hover:bg-gray-700/50 rounded-full transition-colors mr-2 text-gray-400"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      <div className="relative border-l border-indigo-900/30">
+                        <button
+                          onClick={() => setIsFilterOpen(!isFilterOpen)}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-indigo-300 hover:text-white hover:bg-indigo-600/10 transition-all"
+                        >
+                          <span className="opacity-60 font-normal">
+                            Filter:
+                          </span>{" "}
+                          {activeLabel}
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 transition-transform duration-300 ${isFilterOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        {isFilterOpen && (
+                          <div className="absolute right-0 top-full mt-2 w-48 bg-[#0e1525] border border-indigo-900/50 rounded-xl shadow-2xl z-[60] py-1.5 animate-in fade-in zoom-in duration-200">
+                            <div className="px-3 pb-1.5 mb-1.5 border-b border-indigo-900/30 text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                              Search Field
+                            </div>
+                            {searchOptions.map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => {
+                                  setSearchBy(opt.value);
+                                  setIsFilterOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                                  searchBy === opt.value
+                                    ? "bg-indigo-600/20 text-indigo-300 font-medium"
+                                    : "text-gray-400 hover:bg-white/5 hover:text-gray-100"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-gray-400" />
                 <select
                   value={selectedFilter}
                   onChange={(e) => setSelectedFilter(e.target.value)}
-                  className="px-3 py-2 bg-[#0e1525] border border-indigo-900/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-2 bg-[#0e1525] border border-indigo-900/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-200"
                 >
                   <option value="all">All Records</option>
                   <option value="recent">Recent (Last 7 days)</option>
@@ -1215,9 +1336,26 @@ export default function SystemRecordsPage() {
                         {config.columns.map((col, index) => (
                           <th
                             key={index}
-                            className={`py-3 px-4 text-left text-gray-300 text-sm font-medium ${col.width}`}
+                            onClick={() =>
+                              setSortConfig({
+                                key: col.key,
+                                direction:
+                                  sortConfig.key === col.key &&
+                                  sortConfig.direction === "desc"
+                                    ? "asc"
+                                    : "desc",
+                              })
+                            }
+                            className={`py-3 px-4 text-left text-gray-300 text-sm font-medium ${col.width} cursor-pointer hover:text-indigo-400 select-none`}
                           >
-                            {col.label}
+                            <div className="flex items-center gap-1">
+                              {col.label}
+                              {sortConfig.key === col.key && (
+                                <span className="text-[10px] text-indigo-400">
+                                  {sortConfig.direction === "desc" ? "▼" : "▲"}
+                                </span>
+                              )}
+                            </div>
                           </th>
                         ))}
 
@@ -1251,7 +1389,6 @@ export default function SystemRecordsPage() {
                             </td>
                           ))}
 
-                          {/* 🔐 Lock Status dropdown – users overview only */}
                           {/* 🔐 Lock Status dropdown – users overview only */}
                           {pageType === "users-overview" && (
                             <td className="py-3 px-4 align-middle">
@@ -1321,25 +1458,34 @@ export default function SystemRecordsPage() {
                               <ResellerActionButton
                                 user={record}
                                 BASE_URL={BASE_URL}
+                                isLoading={upgradingUserId === record.id}
                                 onUpgrade={(user) => {
+                                  if (upgradingUserId) return;
+
+                                  setUpgradingUserId(user.id);
                                   setSelectedUpgradeUser(user);
                                   setShowUpgradeModal(true);
                                 }}
-                                onSuccess={fetchRecords}
+                                onSuccess={() => {
+                                  setUpgradingUserId(null);
+                                  fetchRecords();
+                                }}
                               />
                             </td>
                           )}
 
                           <td className="py-3 px-4">
                             <div className="flex flex-col gap-2">
-                              {/* View Details – available for all pages */}
-                              <button
-                                onClick={() => showUserDetailsModal(record)}
-                                className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 rounded flex items-center gap-1 justify-center"
-                              >
-                                <Eye className="w-3 h-3" />
-                                Details
-                              </button>
+                              {/* View Details – available for non-user overview pages */}
+                              {pageType !== "users-overview" && (
+                                <button
+                                  onClick={() => showUserDetailsModal(record)}
+                                  className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 rounded flex items-center gap-1 justify-center"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  Details
+                                </button>
+                              )}
 
                               {/* ✅ ADD VM BUTTON – USERS OVERVIEW ONLY */}
                               {pageType === "users-overview" && (
@@ -1457,7 +1603,10 @@ export default function SystemRecordsPage() {
       {showUpgradeModal && selectedUpgradeUser && (
         <UpgradeUserModal
           user={selectedUpgradeUser}
-          onClose={() => setShowUpgradeModal(false)}
+          onClose={() => {
+            setShowUpgradeModal(false);
+            setUpgradingUserId(null); // ✅ reset loader
+          }}
         />
       )}
     </div>

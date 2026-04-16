@@ -1,24 +1,31 @@
+/**
+ * Admin Stats API — dashboard statistics.
+ *
+ * D-3 FIX: Each endpoint is individually validated via apiClient.
+ * If one endpoint fails, it returns {} — others still load.
+ * apiClient handles res.ok checks, safe JSON parsing, and logging.
+ */
+
+import { apiClient } from "../lib/apiClient.js";
+
+async function safeFetch(url) {
+  try {
+    return await apiClient(url, {}, { auth: "admin" });
+  } catch (err) {
+    // Don't crash the entire dashboard if one stat endpoint fails.
+    // The error is already logged by apiClient.
+    console.error(`[Stats] Fallback triggered for ${url}:`, err.message);
+    return {};
+  }
+}
+
 export const fetchAdminStats = async () => {
-  const adminToken = localStorage.getItem("adminToken");
+  const [orders, deleted, users, failed] = await Promise.all([
+    safeFetch("/api/admin/stats/orders"),
+    safeFetch("/api/admin/stats/deleted-vms"),
+    safeFetch("/api/admin/stats/users"),
+    safeFetch("/api/admin/stats/failed-orders"),
+  ]);
 
-  const headers = {
-    Authorization: `Bearer ${adminToken}`,
-  };
-
-  const BASE_URL = import.meta.env.VITE_BASE_URL;
-
-  const [ordersRes, deletedVmsRes, usersRes, failedOrdersRes] =
-    await Promise.all([
-      fetch(`${BASE_URL}/api/admin/stats/orders`, { headers }),
-      fetch(`${BASE_URL}/api/admin/stats/deleted-vms`, { headers }),
-      fetch(`${BASE_URL}/api/admin/stats/users`, { headers }),
-      fetch(`${BASE_URL}/api/admin/stats/failed-orders`, { headers }),
-    ]);
-
-  return {
-    orders: await ordersRes.json(),
-    deleted: await deletedVmsRes.json(),
-    users: await usersRes.json(),
-    failed: await failedOrdersRes.json(),
-  };
+  return { orders, deleted, users, failed };
 };
