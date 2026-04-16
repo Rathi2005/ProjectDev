@@ -122,6 +122,11 @@ export default function UserOrdersPage() {
       }
     }
 
+<<<<<<< HEAD
+  const canShowDropdown = useCallback((status) => {
+    const s = status?.toUpperCase();
+    return s === "ACTIVE" || s === "STOPPED" || s === "ERROR" || s === "SUSPENDED";
+=======
     fetchVMs(false);
 
     const intervalId = setInterval(() => {
@@ -132,6 +137,7 @@ export default function UserOrdersPage() {
       isSubscribed = false;
       clearInterval(intervalId);
     };
+>>>>>>> 6d69b8eaa840d4057eb74576f5e9a61d8b88e8b6
   }, []);
 
   // Fetch VM details
