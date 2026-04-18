@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
+import { apiFetch } from "../../utils/api";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-const VERIFY_REGISTER_OTP = `${BASE_URL}/api/reseller/auth/register/verify`;
-const VERIFY_LOGIN_OTP = `${BASE_URL}/api/reseller/auth/login/otp/verify`;
-const RESEND_OTP = `${BASE_URL}/api/reseller/auth/register/resend-otp`;
+const VERIFY_REGISTER_OTP = `/api/reseller/auth/register/verify`;
+const VERIFY_LOGIN_OTP = `/api/reseller/auth/login/otp/verify`;
+const RESEND_OTP = `/api/reseller/auth/register/resend-otp`;
 
 const OtpVerification = ({
   email,
@@ -56,11 +57,11 @@ const OtpVerification = ({
     setLoading(true);
 
     try {
-      let response;
+      let data;
+
       if (toggle === 0) {
-        response = await fetch(VERIFY_REGISTER_OTP, {
+        data = await apiFetch(VERIFY_REGISTER_OTP, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             firstName,
             lastName,
@@ -69,30 +70,30 @@ const OtpVerification = ({
             otp: otp.join(""),
           }),
         });
-      } else if (toggle === 1) {
-        response = await fetch(VERIFY_LOGIN_OTP, {
+      } else {
+        data = await apiFetch(VERIFY_LOGIN_OTP, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, otp: otp.join("") }),
+          body: JSON.stringify({
+            email,
+            otp: otp.join(""),
+          }),
         });
       }
 
-      const data = await response.json();
       console.log(data);
-      if (response.ok) {
-        if (data.token) {
-          localStorage.setItem("rToken", data.token);
-        }
-        setSuccess("OTP verified successfully!");
-        // Wait a moment to show success, then call onVerified
-        setTimeout(() => {
-          if (onVerified) onVerified();
-        }, 800);
-      } else {
-        setError(data.message || "Invalid or expired OTP. Please try again.");
+
+      // ✅ SUCCESS
+      if (data.token) {
+        localStorage.setItem("rToken", data.token);
       }
+
+      setSuccess("OTP verified successfully!");
+
+      setTimeout(() => {
+        if (onVerified) onVerified();
+      }, 800);
     } catch (err) {
-      setError("Network error. Please try again.");
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -105,19 +106,11 @@ const OtpVerification = ({
     setLoading(true);
 
     try {
-      const response = await fetch(RESEND_OTP, {
+      const data = await apiFetch(RESEND_OTP, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(data.message || "A new OTP has been sent to your email.");
-      } else {
-        setError(data.message || "Unable to resend OTP. Please try later.");
-      }
+      setSuccess(data.message || "A new OTP has been sent to your email.");
     } catch (err) {
       setError("Network error. Please try again.");
     } finally {
@@ -156,8 +149,12 @@ const OtpVerification = ({
 
           <div className="bg-yellow-900/10 border border-yellow-800/30 rounded-lg p-2.5 mx-auto max-w-xs">
             <p className="text-[11px] sm:text-xs text-yellow-500/90 leading-relaxed">
-              <span className="font-bold mr-1">Not receiving?</span> 
-              Please check your <span className="font-bold underline uppercase tracking-wider">Spam</span> or Junk folder.
+              <span className="font-bold mr-1">Not receiving?</span>
+              Please check your{" "}
+              <span className="font-bold underline uppercase tracking-wider">
+                Spam
+              </span>{" "}
+              or Junk folder.
             </p>
           </div>
         </div>

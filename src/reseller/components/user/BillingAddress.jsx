@@ -7,18 +7,11 @@ import { apiFetch } from "../../utils/api";
 const BILLING = `${BASE_URL}/api/reseller/auth/billing`;
 
 const BillingAddress = ({ email }) => {
-  const token = localStorage.getItem("token");
-
-  let userEmail = "";
-
-  if (token) {
-    const decoded = jwtDecode(token);
-    userEmail = decoded.email; // make sure backend sends email in token
-  }
+  const token = localStorage.getItem("rToken");
 
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: userEmail,
+    email: email,
     companyName: "",
     phoneNumber: "",
     streetAddress: "",
@@ -40,6 +33,7 @@ const BillingAddress = ({ email }) => {
     e.preventDefault();
 
     if (
+      !formData.email ||
       !formData.streetAddress ||
       !formData.city ||
       !formData.state ||
