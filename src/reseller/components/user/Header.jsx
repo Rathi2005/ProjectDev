@@ -3,12 +3,14 @@ import { Globe, Server, Ticket, Settings, User, Wallet, ShoppingBag } from "luci
 import useLogout from "./Logout";
 import { jwtDecode } from "jwt-decode";
 import toast from "react-hot-toast";
+import { useSettings } from "../../../context/AppSettingsContext";
 
 const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const dropdownRef = useRef(null);
+  const { settings } = useSettings();
 
   // ✅ Call your hook here — this gives you the logout function
   const logout = useLogout();
@@ -62,11 +64,20 @@ const Header = () => {
             href="/dashboard"
             className="flex items-center space-x-2 cursor-pointer hover:opacity-90 transition"
           >
-            <img
-              src="/favicon.ico"
-              alt="Logo"
-              className="h-9 w-9 object-contain"
-            />
+            {settings?.logoUrl ? (
+              <img
+                src={settings.logoUrl}
+                alt={settings?.companyName || "Logo"}
+                className="h-9 w-9 object-contain"
+              />
+            ) : (
+              <div className="h-9 w-9 bg-indigo-600 rounded flex items-center justify-center font-bold text-white text-lg">
+                {settings?.companyName?.charAt(0) || "S"}
+              </div>
+            )}
+            <span className="font-bold text-lg text-white truncate hidden sm:block">
+              {settings?.companyName || ""}
+            </span>
           </a>
         </div>
 
