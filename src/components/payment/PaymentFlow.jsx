@@ -44,7 +44,7 @@ const PaymentFlow = ({ onCreateSession, onClose, onShowQR }) => {
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
         onShowQR({
           upiString: data.upiString,
-          paymentId: data.paymentId,
+          paymentId: data.paymentId || data.id || data.orderId,
           amount: data.remainingToPay,
         });
         return;

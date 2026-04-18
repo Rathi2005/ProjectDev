@@ -49,13 +49,16 @@ export const usePayment = () => {
     (paymentId, gateway) => {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
+      if (!paymentId) {
+        console.error("Cannot start polling: paymentId is undefined");
+        return;
+      }
 
       let attempts = 0;
-      const maxAttempts = 40;
+      const maxAttempts = 100; // ~5 mins at 3s interval
 
       pollRef.current = setInterval(async () => {
         try {
-          // ✅ Check limit BEFORE making the network call
           if (attempts >= maxAttempts) {
             stopPolling();
             setQrData(null);
@@ -71,14 +74,21 @@ export const usePayment = () => {
           // - Missing `status` field in response
           const res = await verifyPayment(paymentId, gateway);
 
-          // D-1 FIX: Explicit success check.
-          // ONLY stop polling if the status is definitively NOT pending.
-          // `res.status` is guaranteed to be a string by verifyPayment.
-          if (res.status !== "PENDING") {
+          const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP"];
+          const failureStates = ["FAILED", "CANCELLED", "EXPIRED"];
+
+          if (successStates.includes(res.status)) {
             stopPolling();
             setQrData(null);
             toast.success("Payment successful");
             navigate("/orders");
+            return;
+          }
+
+          if (failureStates.includes(res.status)) {
+            stopPolling();
+            setQrData(null);
+            toast.error(`Payment ${res.status.toLowerCase()}`);
             return;
           }
         } catch (err) {
@@ -135,13 +145,21 @@ export const usePayment = () => {
 
         // Scenario A: Paytm QR Flow
         if (data.paymentUrl === "PAYTM_QR_FLOW") {
+          const resolvedPaymentId = data.paymentId || data.id || data.orderId;
+          
           setQrData({
             upiString: data.upiString,
-            paymentId: data.paymentId,
+            paymentId: resolvedPaymentId,
             // ✅ amount added — PaytmQRModal needs this to display ₹ value
             amount: data.remainingToPay ?? data.amount,
           });
-          startPolling(data.paymentId, "PAYTM");
+          
+          if (resolvedPaymentId) {
+            startPolling(resolvedPaymentId, "PAYTM");
+          } else {
+            console.error("No payment ID found in createVM response", data);
+            toast.error("Could not initiate payment tracking.");
+          }
           return;
         }
 
