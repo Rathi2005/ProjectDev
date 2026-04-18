@@ -96,15 +96,30 @@ export default function WalletPage() {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = null;
 
+    if (!paymentId) {
+      console.error("Cannot start polling: paymentId is undefined");
+      return;
+    }
+
     let attempts = 0;
-    const maxAttempts = 40;
+    const maxAttempts = 100; // ~5 mins at 3s interval
 
     pollRef.current = setInterval(async () => {
       try {
+        if (attempts >= maxAttempts) {
+          stopPolling();
+          setQrData(null);
+          toast("Payment not confirmed yet. You can retry.");
+          return;
+        }
+
         attempts++;
         const res = await verifyPayment(paymentId, "PAYTM");
 
-        if (res.status !== "PENDING" || res.status === "WALLET_TOPPED_UP") {
+        const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP", "PAID_AND_PROVISIONING"];
+        const failureStates = ["FAILED", "CANCELLED", "EXPIRED"];
+
+        if (successStates.includes(res.status)) {
           stopPolling();
           setQrData(null);
           toast.success("Wallet topped up successfully!");
@@ -113,10 +128,11 @@ export default function WalletPage() {
           return;
         }
 
-        if (attempts >= maxAttempts) {
+        if (failureStates.includes(res.status)) {
           stopPolling();
           setQrData(null);
-          toast("Payment not confirmed yet. You can retry.");
+          toast.error(`Payment ${res.status.toLowerCase()}`);
+          return;
         }
       } catch (err) {
         console.error("Polling error:", err);
@@ -137,13 +153,21 @@ export default function WalletPage() {
 
       // Case 1: Paytm QR
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
+        const resolvedPaymentId = data.paymentId || data.id || data.orderId;
+        
         setShowAddFunds(false);
         setQrData({
           upiString: data.upiString,
-          paymentId: data.paymentId,
+          paymentId: resolvedPaymentId,
           amount: Number(amount),
         });
-        startPolling(data.paymentId);
+        
+        if (resolvedPaymentId) {
+          startPolling(resolvedPaymentId);
+        } else {
+          console.error("No payment ID found in top-up response", data);
+          toast.error("Could not initiate payment tracking.");
+        }
         return;
       }
 

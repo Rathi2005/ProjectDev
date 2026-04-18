@@ -5,20 +5,21 @@ import PaymentMethodSelector from "./PaymentMethodSelector";
 const PaymentFlow = ({ onCreateSession, onClose, onShowQR }) => {
   const [loading, setLoading] = useState(false);
   const [gateway, setGateway] = useState(null);
+  const [useWallet, setUseWallet] = useState(false);
 
   const handlePayNow = async () => {
     if (loading) return;
 
     try {
       setLoading(true);
-      if (!gateway) {
+      if (!gateway && !useWallet) {
         Swal.fire("Error", "Please select payment method", "error");
         return;
       }
 
       const data = await onCreateSession({
-        gateway: gateway?.type,
-        useWallet: false,
+        gateway: gateway?.type || "CASHFREE", // Fallback to CASHFREE if wallet covers entirely
+        useWallet: useWallet,
       });
 
       if (!data) return;
@@ -44,8 +45,9 @@ const PaymentFlow = ({ onCreateSession, onClose, onShowQR }) => {
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
         onShowQR({
           upiString: data.upiString,
-          paymentId: data.paymentId,
+          paymentId: data.paymentId || data.id || data.orderId,
           amount: data.remainingToPay,
+          walletUsed: data.walletAmountUsed,
         });
         return;
       }
@@ -78,6 +80,20 @@ const PaymentFlow = ({ onCreateSession, onClose, onShowQR }) => {
 
   return (
     <div className="space-y-5">
+      {/* 💼 Wallet Checkbox */}
+      <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border-2 transition-all duration-300 ease-in-out border-indigo-500/20 bg-indigo-900/10 hover:bg-indigo-900/20 relative group text-white">
+        <input
+          type="checkbox"
+          checked={useWallet}
+          onChange={(e) => setUseWallet(e.target.checked)}
+          className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0 focus:ring-2 transition-all duration-200"
+        />
+        <div className="flex flex-col flex-1">
+          <span className="font-semibold text-white group-hover:text-indigo-300 transition-colors">Use Wallet Balance</span>
+          <span className="text-xs text-gray-400">If available, funds will be deducted automatically</span>
+        </div>
+      </label>
+
       {/* 🔥 Payment Methods UI */}
       <PaymentMethodSelector selected={gateway} setSelected={setGateway} />
 

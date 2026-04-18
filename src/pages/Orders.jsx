@@ -374,26 +374,46 @@ export default function UserOrdersPage() {
 
   const startPolling = useCallback(
     (paymentId) => {
-      if (pollRef.current) return;
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
+
+      if (!paymentId) {
+        console.error("Cannot start polling: paymentId is undefined");
+        return;
+      }
+
       let attempts = 0;
-      const maxAttempts = 40;
+      const maxAttempts = 100; // 5 mins at 3s interval
 
       pollRef.current = setInterval(async () => {
         try {
-          attempts++;
-          // D-1 FIX: verifyPayment now validates response shape.
-          // ApiError is thrown on HTTP errors or missing `status` field.
-          const res = await verifyPayment(paymentId, "PAYTM");
-          if (res.status !== "PENDING") {
-            stopPolling();
-            toast.success("Payment successful");
-            setQrData(null);
-            invalidateOrders();
-          }
           if (attempts >= maxAttempts) {
             stopPolling();
             setQrData(null);
             toast("Payment not confirmed yet. You can retry.");
+            return;
+          }
+          attempts++;
+          // D-1 FIX: verifyPayment now validates response shape.
+          // ApiError is thrown on HTTP errors or missing `status` field.
+          const res = await verifyPayment(paymentId, "PAYTM");
+
+          const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP", "PAID_AND_PROVISIONING"];
+          const failureStates = ["FAILED", "CANCELLED", "EXPIRED"];
+
+          if (successStates.includes(res.status)) {
+            stopPolling();
+            toast.success("Payment successful");
+            setQrData(null);
+            invalidateOrders();
+            return;
+          }
+
+          if (failureStates.includes(res.status)) {
+            stopPolling();
+            setQrData(null);
+            toast.error(`Payment ${res.status.toLowerCase()}`);
+            return;
           }
         } catch (err) {
           // D-1 FIX: Stop polling on errors instead of silently continuing.
@@ -886,13 +906,19 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         return { status: "COMPLETED" };
       }
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
+        const resolvedPaymentId = data.paymentId || data.id || data.orderId;
         setShowRetryPayment(false);
         setQrData({
           upiString: data.upiString,
-          paymentId: data.paymentId,
+          paymentId: resolvedPaymentId,
           amount: data.remainingToPay,
         });
-        startPolling(data.paymentId);
+        if (resolvedPaymentId) {
+          startPolling(resolvedPaymentId);
+        } else {
+          console.error("No payment ID found in upgrade response", data);
+          toast.error("Could not initiate payment tracking.");
+        }
         return { paymentUrl: "PAYTM_QR_FLOW" };
       }
       if (data.paymentSessionId) return data;
