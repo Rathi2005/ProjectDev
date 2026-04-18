@@ -7,6 +7,7 @@ import ResetPassword from "../components/user/ResetPassword";
 import { toast } from "react-hot-toast";
 import { jwtDecode } from "jwt-decode";
 import { apiFetch } from "../utils/api";
+import { useSettings } from "../../context/AppSettingsContext";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const LOGIN_API = `${BASE_URL}/api/reseller/auth/login/password`;
@@ -43,6 +44,8 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetStep, setResetStep] = useState(1); // 1=OTP input, 2=Password input
+  
+  const { settings } = useSettings();
 
   const navigate = useNavigate();
 
@@ -137,8 +140,18 @@ export default function LoginPage() {
         {!resetPasswordMode && !showOtpForm ? (
           <div className="w-full max-w-md bg-[#121a2a] rounded-2xl shadow-lg p-8 m-8">
             <div className="flex flex-col items-center mb-6">
-              <div className="bg-indigo-600 p-3 rounded-lg mb-3">
-                <LogoIcon />
+              <div className="mb-3">
+                {settings?.logoUrl ? (
+                  <img
+                    src={settings.logoUrl}
+                    alt={settings?.companyName || "Logo"}
+                    className="h-16 w-16 object-contain"
+                  />
+                ) : (
+                  <div className="bg-indigo-600 p-3 rounded-lg">
+                    <LogoIcon />
+                  </div>
+                )}
               </div>
               <h1 className="text-2xl font-bold">
                 {loginWithOtp ? "Login with OTP" : "Login to Your Account"}

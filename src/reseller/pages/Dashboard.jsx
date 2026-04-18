@@ -2,10 +2,11 @@ import React from "react";
 import { Outlet } from "react-router-dom";
 import Header from "../components/user/Header";
 import Sidebar from "../components/user/Sidebar";
+import Footer from "../../components/user/Footer";
 
 export default function Dashboard() {
   return (
-    <div className="bg-[#0e1525] text-gray-100 h-screen flex flex-col">
+    <div className="bg-[#0e1525] text-gray-100 min-h-screen flex flex-col">
       {/* Layout */}
       <div className="flex flex-1 overflow-hidden">
         
@@ -15,8 +16,11 @@ export default function Dashboard() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          <Outlet />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 p-6 overflow-y-auto">
+            <Outlet />
+          </div>
+          <Footer />
         </div>
 
       </div>

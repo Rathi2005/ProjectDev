@@ -133,17 +133,18 @@ export default function AdminMailSettings() {
     }
   };
 
-  // Test SMTP Connection
-  const testConnection = async () => {
-    // Validation
-    if (
-      !form.host ||
-      !form.port ||
-      !form.username ||
-      !form.password ||
-      !form.senderEmail
-    ) {
-      toast.error("Please fill all SMTP fields");
+  const triggerTestModal = () => {
+    if (!form.host || !form.port || !form.username || !form.password) {
+      toast.error("Please fill all SMTP fields before testing");
+      return;
+    }
+    setTestEmail(form.senderEmail || form.username || "");
+    setShowTestModal(true);
+  };
+
+  const executeTestSmtp = async () => {
+    if (!testEmail) {
+      toast.error("Please enter a test email address");
       return;
     }
 
@@ -156,10 +157,10 @@ export default function AdminMailSettings() {
       const payload = {
         host: form.host,
         port: Number(form.port),
-        from: form.senderEmail,
-        to: form.senderEmail,
         user: form.username,
         pass: form.password === "******" ? "" : form.password,
+        from: form.senderEmail || form.username,
+        to: testEmail,
       };
 
       const res = await fetch("https://getwebup.com/server/smtp/api.php", {
@@ -170,60 +171,32 @@ export default function AdminMailSettings() {
 
       const data = await res.json();
 
-      if (data.status === "success") {
-        setSmtpLogs(data.data.logs || []);
+      if (data.status === "success" || data.success) {
+        setSmtpLogs(data.data?.logs || []);
         setSmtpStatus("success");
-
-        if (data.status === "success") {
-          setSmtpLogs(data.data.logs || []);
-          setSmtpStatus("success");
-
-          setTestResult({
-            success: true,
-            message:
-              data.data.logs?.find((l) => l.type === "resp")?.message ||
-              "SMTP connection successful",
-          });
-        }
-
-        toast.success("SMTP test successful");
+        setTestResult({
+          success: true,
+          message:
+            data.data?.logs?.find((l) => l.type === "resp")?.message ||
+            "SMTP test successful!",
+        });
+        toast.success("Test email sent successfully!");
+        setShowTestModal(false);
       } else {
-        setSmtpLogs(data.data.logs || []);
+        setSmtpLogs(data.data?.logs || []);
         setSmtpStatus(data.message || "SMTP test failed");
-
         setTestResult({
           success: false,
           message:
-            data.data.logs?.find((l) => l.type === "error")?.message ||
-            data.message,
+            data.data?.logs?.find((l) => l.type === "error")?.message ||
+            data.message || "Failed to send test email",
         });
-
-        toast.error(data.message || "SMTP test failed");
+        toast.error(data.message || "Failed to send test email");
       }
     } catch (error) {
+      console.error(error);
       setSmtpStatus("SMTP test failed");
-      toast.error("SMTP test failed");
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const sendTestEmail = async () => {
-    if (!testEmail) {
-      toast.error("Please enter a test email address");
-      return;
-    }
-
-    try {
-      setTesting(true);
-      // Add your test email API call here
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.success(`Test email sent to ${testEmail}`);
-      setShowTestModal(false);
-      setTestEmail("");
-    } catch (error) {
-      toast.error("Failed to send test email");
+      toast.error("An error occurred while testing SMTP");
     } finally {
       setTesting(false);
     }
@@ -307,24 +280,16 @@ export default function AdminMailSettings() {
             </div>
 
             <button
-              onClick={testConnection}
+              onClick={triggerTestModal}
               disabled={testing}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1a2335] border border-indigo-900/40 rounded-xl text-gray-300 hover:border-green-500/50 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-medium hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
             >
               {testing ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <RefreshCw className="w-4 h-4" />
+                <Send className="w-4 h-4" />
               )}
-              Test Connection
-            </button>
-
-            <button
-              onClick={() => setShowTestModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl text-white font-medium hover:scale-105 transition-all"
-            >
-              <Send className="w-4 h-4" />
-              Send Test
+              Test Target SMTP
             </button>
           </div>
         </div>
@@ -609,43 +574,53 @@ export default function AdminMailSettings() {
 
         {/* Test Email Modal */}
         {showTestModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-[#0f1425] border border-indigo-900/40 rounded-2xl p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
-                <Send className="w-5 h-5 text-green-400" />
-                Send Test Email
-              </h3>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 shadow-2xl">
+            <div className="bg-[#0f1425] border border-indigo-900/40 rounded-2xl w-full max-w-md overflow-hidden transform transition-all mx-4">
+              <div className="p-6 border-b border-indigo-900/40 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Send className="w-5 h-5 text-green-400" />
+                    Send Test Email
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-1">Specify where to dispatch the connection test.</p>
+                </div>
+              </div>
 
-              <p className="text-sm text-gray-400 mb-4">
-                Enter an email address to receive a test message
-              </p>
+              <div className="p-6">
+                <Input
+                  label="Recipient Email Address"
+                  value={testEmail}
+                  onChange={setTestEmail}
+                  icon={Mail}
+                  placeholder="target@example.com"
+                  required
+                />
+              </div>
 
-              <input
-                type="email"
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                placeholder="recipient@example.com"
-                className="w-full bg-[#1a2335] border border-indigo-900/40 rounded-xl px-4 py-3 text-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 outline-none mb-4"
-              />
-
-              <div className="flex justify-end gap-3">
+              <div className="p-6 bg-[#0a0d1a] border-t border-indigo-900/40 flex items-center justify-end gap-4">
                 <button
                   onClick={() => setShowTestModal(false)}
-                  className="px-4 py-2 text-gray-400 hover:text-gray-300 transition-colors"
+                  className="px-6 py-2.5 text-sm font-medium text-gray-400 hover:text-white transition-colors outline-none"
+                  disabled={testing}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={sendTestEmail}
+                  onClick={executeTestSmtp}
                   disabled={testing || !testEmail}
-                  className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2 rounded-xl text-white font-medium hover:scale-105 transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-2.5 rounded-xl transition-all font-medium disabled:opacity-50 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
                 >
                   {testing ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Sending...
+                    </>
                   ) : (
-                    <Send className="w-4 h-4" />
+                    <>
+                      <Send className="w-5 h-5 mb-[1px]" />
+                      Dispatch Test
+                    </>
                   )}
-                  Send Test
                 </button>
               </div>
             </div>
@@ -673,6 +648,9 @@ function Input({
   help,
 }) {
   const [focused, setFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const finalType = type === "password" ? (showPassword ? "text" : "password") : type;
 
   return (
     <div>
@@ -691,7 +669,7 @@ function Input({
       </label>
       <div className="relative">
         <input
-          type={type}
+          type={finalType}
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -700,14 +678,23 @@ function Input({
           min={min}
           max={max}
           required={required}
-          className={`w-full bg-[#1a2335] border rounded-xl px-4 py-3 text-gray-200 outline-none transition-all ${
+          className={`w-full bg-[#1a2335] border rounded-xl pl-4 py-3 ${type === "password" || suffix ? "pr-12" : "pr-4"} text-gray-200 outline-none transition-all ${
             focused
               ? "border-green-500 ring-2 ring-green-500/20"
               : "border-indigo-900/40 hover:border-green-500/50"
           }`}
         />
+        {type === "password" && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-white transition-colors outline-none"
+          >
+            {showPassword ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+          </button>
+        )}
         {suffix && (
-          <span className="absolute right-3 top-3 text-sm text-gray-500">
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
             {suffix}
           </span>
         )}
