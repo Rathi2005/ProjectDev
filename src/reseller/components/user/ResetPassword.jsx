@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../../utils/api";
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-const RESET_PASSWORD_API = `${BASE_URL}/api/reseller/auth/password/reset`;
+const RESET_PASSWORD_PATH = "/api/reseller/auth/password/forgot/reset";
 
 const ResetPassword = ({ email, onSuccess }) => {
   const [resetStep, setResetStep] = useState(1); // 1=OTP, 2=Password
@@ -87,9 +87,8 @@ const ResetPassword = ({ email, onSuccess }) => {
           return;
         }
 
-        const res = await fetch(RESET_PASSWORD_API, {
+        const data = await apiFetch(RESET_PASSWORD_PATH, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email,
             otp: otp.join(""),
@@ -97,25 +96,15 @@ const ResetPassword = ({ email, onSuccess }) => {
           }),
         });
 
-        const data = await res.json();
-
-        if (res.ok) {
-          setSuccess(data.message || "Password reset successfully!");
-          setTimeout(() => {
-            onSuccess(); 
-          }, 1500);
-        } else if (res.status === 400) {
-          if (data.field === "otp") setError(data.message);
-          else if (data.field === "confirmPassword") setError(data.message);
-          else if (data.newPassword) setError(data.newPassword);
-          else setError("Something went wrong. Please try again.");
-        } else {
-          setError("Something went wrong. Please try again.");
-        }
+        setSuccess(data.message || "Password reset successfully!");
+        setTimeout(() => {
+          onSuccess();
+        }, 1500);
       }
     } catch (err) {
-      toast.error(err);
-      setError("Network error. Please try again.");
+      const msg = err.message || "Failed to reset password. Please try again.";
+      toast.error(msg);
+      setError(msg);
     } finally {
       setLoading(false);
     }
