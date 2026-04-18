@@ -4,12 +4,13 @@ import Footer from "../components/user/Footer";
 import OtpVerification from "../components/user/OtpVerification";
 import BillingAddress from "../components/user/BillingAddress";
 import { Link } from "react-router-dom";
+import { apiFetch } from "../utils/api";
 import { toast } from "react-hot-toast";
 
 // const VALIDATE_EMAIL = import.meta.env.VITE_VALIDATE;
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 // const VALIDATE_EMAIL = `${BASE_URL}/api/reseller/auth/register/verify`;
-const INITIATE_VERIFICATION = `${BASE_URL}/api/reseller/auth/register/initiate`;
+const INITIATE_VERIFICATION = `/api/reseller/auth/register/initiate`;
 
 const LogoIcon = () => (
   <svg
@@ -72,21 +73,20 @@ export default function CreateAccount() {
         password: formData.password,
       };
 
-      const initRes = await fetch(INITIATE_VERIFICATION, {
+      const initRes = await apiFetch(INITIATE_VERIFICATION, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       let initData = {};
-      try {
-        initData = await initRes.json();
-      } catch (err) {
-        initData = {};
-      }
 
-      if (initRes.ok) {
-        // Success -> OTP sent
+      try {
+        const initData = await apiFetch(INITIATE_VERIFICATION, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+
+        // SUCCESS
         setSuccessMsg(
           initData.message ||
             "Verification OTP sent to your email. Please check.",
@@ -95,30 +95,15 @@ export default function CreateAccount() {
           initData.message ||
             "Verification OTP sent to your email. Please check.",
         );
-        // small delay so user sees success toast, then show OTP form
+
         setTimeout(() => setShowOtp(true), 700);
-      } else if (initRes.status === 409) {
-        // Email already exists (server-side race condition)
-        setError(
-          initData.message || "An account with this email already exists.",
-        );
-        toast.error(
-          initData.message || "An account with this email already exists.",
-        );
-      } else if (initRes.status === 400) {
-        // validation errors (object with fields)
-        // pick first error message to display
-        const firstError =
-          Object.values(initData)[0] || "Validation failed. Check your input.";
-        setError(firstError);
-        toast.error(firstError);
-      } else {
-        setError("Could not initiate verification. Please try again.");
-        toast.error("Could not initiate verification. Please try again.");
+      } catch (err) {
+        setError(err.message || "Something went wrong");
+        toast.error(err.message || "Something went wrong");
       }
     } catch (err) {
-      setError("Network error. Please try again.");
-      toast.error("Network error. Please try again.");
+      setError(err.message || "Something went wrong");
+      toast.error(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }

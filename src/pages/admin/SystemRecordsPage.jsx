@@ -254,6 +254,45 @@ export default function SystemRecordsPage() {
     setServers(serversArray);
   };
 
+  const impersonateUser = async (userId) => {
+    const adminToken = localStorage.getItem("adminToken");
+
+    const confirm = await DarkSwal.fire({
+      title: "Impersonate User?",
+      text: "You will be logged in as this user.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Continue",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/admin/impersonate/${userId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Impersonation failed");
+      }
+
+      // 🔥 store impersonated token
+      localStorage.setItem("token", data.token);
+
+      DarkSwal.fire("Success", "Logged in as user", "success");
+
+      // 👉 redirect to user panel (change route if needed)
+      navigate("/dashboard");
+    } catch (err) {
+      DarkSwal.fire("Error", err.message, "error");
+    }
+  };
+
   // Fetch pricing when plan type is selected (Step 4)
   useEffect(() => {
     if (!form.planType) {
@@ -1508,6 +1547,15 @@ export default function SystemRecordsPage() {
                                   className="px-3 py-1 text-xs bg-purple-600 hover:bg-purple-700 rounded"
                                 >
                                   Create VM
+                                </button>
+                              )}
+                              {pageType === "users-overview" && (
+                                <button
+                                  onClick={() => impersonateUser(record.id)}
+                                  className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 rounded flex items-center gap-1 justify-center"
+                                >
+                                  <User className="w-3 h-3" />
+                                  Login
                                 </button>
                               )}
                             </div>

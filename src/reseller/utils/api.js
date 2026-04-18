@@ -5,7 +5,7 @@ export const apiFetch = async (url, options = {}) => {
 
   const domain =
     window.location.hostname === "localhost"
-      ? "somanione.com"
+      ? "test.coinnees.com"
       : window.location.hostname;
 
   const headers = {
