@@ -214,13 +214,32 @@ const PaytmQRModal = ({
               </div>
             )}
 
-            {/* Amount */}
+            {/* Amount breakdown */}
             {qrData.amount && (
-              <div className="mt-3 text-center">
-                <p className="text-xs text-gray-400">Amount to Pay</p>
-                <p className="text-2xl font-bold text-white">
-                  ₹{qrData.amount}
-                </p>
+              <div className="mt-3 text-center w-full">
+                {qrData.walletUsed > 0 ? (
+                  <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700 w-full mb-3 space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-400">Original Amount</span>
+                      <span className="text-white">₹{(Number(qrData.amount) + Number(qrData.walletUsed)).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-indigo-400">
+                      <span>Wallet Deducted</span>
+                      <span>- ₹{Number(qrData.walletUsed).toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-gray-700 pt-2 flex justify-between items-center text-sm font-bold">
+                      <span className="text-gray-300">Scan to pay remaining</span>
+                      <span className="text-white text-lg">₹{Number(qrData.amount).toFixed(2)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-400">Amount to Pay</p>
+                    <p className="text-2xl font-bold text-white">
+                      ₹{qrData.amount}
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
