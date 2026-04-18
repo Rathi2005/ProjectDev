@@ -116,7 +116,7 @@ export default function WalletPage() {
         attempts++;
         const res = await verifyPayment(paymentId, "PAYTM");
 
-        const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP"];
+        const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP", "PAID_AND_PROVISIONING"];
         const failureStates = ["FAILED", "CANCELLED", "EXPIRED"];
 
         if (successStates.includes(res.status)) {

@@ -398,7 +398,7 @@ export default function UserOrdersPage() {
           // ApiError is thrown on HTTP errors or missing `status` field.
           const res = await verifyPayment(paymentId, "PAYTM");
 
-          const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP"];
+          const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP", "PAID_AND_PROVISIONING"];
           const failureStates = ["FAILED", "CANCELLED", "EXPIRED"];
 
           if (successStates.includes(res.status)) {

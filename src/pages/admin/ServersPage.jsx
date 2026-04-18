@@ -37,6 +37,7 @@ export default function ServersPage() {
     tokenSecret: "",
     zoneId: "",
     ramAllocatedPercentage: 90,
+    sockets: 1,
   });
 
   const handleBack = () => {
@@ -484,6 +485,7 @@ export default function ServersPage() {
         tokenSecret: "",
         zoneId: "",
         ramAllocatedPercentage: 90,
+        sockets: 1,
       });
 
       toast.success(`Server "${editFormData.name}" updated successfully!`);
@@ -506,6 +508,7 @@ export default function ServersPage() {
       tokenSecret: server.tokenSecret || "",
       zoneId: server.zoneId || "",
       ramAllocatedPercentage: server.ramAllocatedPercentage ?? 90,
+      sockets: server.sockets ?? 1,
     });
     setEditModal(true);
   };
@@ -1121,6 +1124,7 @@ export default function ServersPage() {
                     tokenId: "",
                     tokenSecret: "",
                     zoneId: "",
+                    sockets: 1,
                   });
                 }}
                 className="p-2 hover:bg-red-500/20 rounded-lg transition-colors group"
@@ -1390,6 +1394,7 @@ export default function ServersPage() {
                         tokenId: "",
                         tokenSecret: "",
                         zoneId: "",
+                        sockets: 1,
                       });
                     }}
                     className="px-5 py-2.5 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200 text-sm font-medium"

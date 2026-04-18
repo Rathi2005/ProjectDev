@@ -74,7 +74,7 @@ export const usePayment = () => {
           // - Missing `status` field in response
           const res = await verifyPayment(paymentId, gateway);
 
-          const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP"];
+          const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP", "PAID_AND_PROVISIONING"];
           const failureStates = ["FAILED", "CANCELLED", "EXPIRED"];
 
           if (successStates.includes(res.status)) {
@@ -145,6 +145,9 @@ export const usePayment = () => {
 
         // Scenario A: Paytm QR Flow
         if (data.paymentUrl === "PAYTM_QR_FLOW") {
+          // IMPORTANT: paymentSessionId is a session string (e.g. "BULK-..."), NOT a numeric ID.
+          // The verify endpoint /api/payments/{paymentId}/verify expects a numeric Long.
+          // Only use fields that contain the numeric database payment ID.
           const resolvedPaymentId = data.paymentId || data.id || data.orderId;
           
           setQrData({

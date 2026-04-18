@@ -10,8 +10,8 @@ const CreateServerPage = ({
 }) => {
   // Scrolls only when selecting a location
   const handleLocationSelect = (locationName, serverIdValue) => {
-    setSelectedLocation(locationName);
-    setServerId(serverIdValue);
+    if (typeof setSelectedLocation === 'function') setSelectedLocation(locationName);
+    if (typeof setServerId === 'function') setServerId(serverIdValue);
 
     // Show success notification
     Swal.fire({
