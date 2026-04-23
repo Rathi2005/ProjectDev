@@ -227,21 +227,36 @@ export default function OrdersPage() {
     }
   };
 
-  // Poll details every 5 seconds for the expanded row
+  // Poll details every 10 seconds for the expanded row
   useEffect(() => {
     if (!expandedInternalVmid) return;
 
-    const fetchDetails = async () => {
+    let isActive = true;
+    let timeoutId = null;
+
+    const pollDetails = async () => {
+      if (!isActive) return;
       try {
         const details = await fetchAdminOrderDetails(expandedInternalVmid);
-        setOrderDetails((prev) => ({ ...prev, [expandedInternalVmid]: details }));
+        if (isActive) {
+          setOrderDetails((prev) => ({ ...prev, [expandedInternalVmid]: details }));
+        }
       } catch (err) {
         console.error("Failed to poll VM details", err);
       }
+      
+      if (isActive) {
+        timeoutId = setTimeout(pollDetails, 10000);
+      }
     };
 
-    const intervalId = setInterval(fetchDetails, 5000);
-    return () => clearInterval(intervalId);
+    // Wait 10 seconds before the first background poll
+    timeoutId = setTimeout(pollDetails, 10000);
+
+    return () => {
+      isActive = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [expandedInternalVmid]);
 
   const sortConfigObj = {
