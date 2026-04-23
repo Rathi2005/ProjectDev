@@ -61,28 +61,21 @@ function transformOrder(item) {
   return {
     id: item.vmId,
     orderId: item.orderId,
-    vmName: item.vmName,
-    status: item.status,
+    vmName: item.vmName || `Server-${item.vmId}`,
+    status: item.dbStatus,
     liveState: item.liveState,
     ipAddress: item.ipAddress,
-    createdAt: item.billing?.boughtAt,
-    planType: item.billing?.planType,
-    priceTotal: item.billing?.monthlyPlan,
-    cores: item.specs?.cores,
-    ramMb: item.specs?.ramMb,
-    diskGb: item.specs?.diskGb,
-    osType: item.specs?.osType,
-    expiresAt: item.billing?.expiresAt,
-    durationMonths: item.billing?.durationMonths,
-    serverLocation: item.serverLocation,
+    createdAt: item.createdAt, // Note: overview might not have createdAt, but details will
+    planType: item.serverPlan,
+    priceTotal: item.monthlyPrice,
+    cores: item.cores, // lightweight has 0 cores initially, details will populate
+    ramMb: item.ramMb,
+    diskGb: item.diskGb,
+    osType: item.os,
+    expiresAt: item.expiresAt,
     isProtected: item.isProtected,
+    isLocked: item.isLocked,
     originalData: item,
-    isoName: item.specs?.isoName,
-    macAddress:
-      item.macAddress ||
-      item.mac_address ||
-      item.mac ||
-      item.specs?.mac ||
-      "Not available",
+    // Note: macAddress and isoName are only in details now
   };
 }

@@ -23,6 +23,7 @@ import { apiClient } from "../lib/apiClient";
 import useSortableData from "../hooks/useSortableData";
 import { useUserOrders, USER_ORDERS_QUERY_KEY } from "../hooks/useUserOrders";
 import { useDebounce } from "../hooks/useDebounce";
+import { fetchUserOrderDetails } from "../api/userMyOrdersApi";
 
 import {
   Cpu,
@@ -53,6 +54,7 @@ import {
   Lock,
   ShieldOff,
   User,
+  MapPin,
 } from "lucide-react";
 
 export default function UserOrdersPage() {
@@ -71,6 +73,8 @@ export default function UserOrdersPage() {
 
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [expandedRow, setExpandedRow] = useState(null);
+  const [orderDetails, setOrderDetails] = useState({});
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   // Account status
   const [accountStatus, setAccountStatus] = useState(null);
@@ -354,11 +358,61 @@ export default function UserOrdersPage() {
   }, []);
 
   const toggleRow = useCallback(
-    (id) => {
-      setExpandedRow(expandedRow === id ? null : id);
+    async (vmId) => {
+      if (expandedRow === vmId) {
+        setExpandedRow(null);
+        return;
+      }
+      setExpandedRow(vmId);
+
+      // Fetch details if not already present in cache
+      if (!orderDetails[vmId]) {
+        setDetailsLoading(true);
+        try {
+          const details = await fetchUserOrderDetails(vmId);
+          setOrderDetails((prev) => ({ ...prev, [vmId]: details }));
+        } catch (err) {
+          toast.error("Failed to fetch VM details");
+          setExpandedRow(null);
+        } finally {
+          setDetailsLoading(false);
+        }
+      }
     },
-    [expandedRow],
+    [expandedRow, orderDetails],
   );
+
+  // Poll details every 10 seconds for the expanded row (recursive timeout)
+  useEffect(() => {
+    if (!expandedRow) return;
+
+    let isActive = true;
+    let timeoutId = null;
+
+    const pollDetails = async () => {
+      if (!isActive) return;
+      try {
+        const details = await fetchUserOrderDetails(expandedRow);
+        if (isActive) {
+          setOrderDetails((prev) => ({ ...prev, [expandedRow]: details }));
+        }
+      } catch (err) {
+        console.error("Failed to poll VM details", err);
+      }
+
+      if (isActive) {
+        timeoutId = setTimeout(pollDetails, 10000);
+      }
+    };
+
+    // Wait 10 seconds before the first background poll
+    timeoutId = setTimeout(pollDetails, 10000);
+
+    return () => {
+      isActive = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [expandedRow]);
 
   const handleCopy = useCallback((text, vmId) => {
     navigator.clipboard.writeText(text);
@@ -490,12 +544,13 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       try {
         setPowerLoading((prev) => ({ ...prev, [vmId]: action }));
 
+        const userId = order.originalData.userId || accountStatus?.id;
         let url = "";
 
         if (action === "rebuild") {
-          url = `/api/users/${order.originalData.userId}/vms/${vmId}/rebuild?isoId=${isoId}`;
+          url = `/api/users/${userId}/vms/${vmId}/rebuild?isoId=${isoId}`;
         } else {
-          url = `/api/users/${order.originalData.userId}/vms/${vmId}/control?action=${action}`;
+          url = `/api/users/${userId}/vms/${vmId}/control?action=${action}`;
         }
 
         await apiClient(url, { method: "POST" }, { auth: "user" });
@@ -1380,7 +1435,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                 <div className="text-xs">
                                   <div className="flex items-center gap-1">
                                     <Cpu className="w-3 h-3 text-gray-400" />
-                                    <span>{order.cores || 0} vCPU</span>
+                                    <span>{order.cores ? `${order.cores} vCPU` : "-"}</span>
                                   </div>
                                   <div className="flex items-center gap-1 mt-1">
                                     <MemoryStick className="w-3 h-3 text-gray-400" />
@@ -1457,7 +1512,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                   )}
 
                                   <button
-                                    onClick={() => toggleRow(order.id)}
+                                    onClick={() => toggleRow(order.id, order.originalData.vmId)}
                                     className="p-1.5 hover:bg-indigo-900/30 rounded-lg transition-colors"
                                     title={
                                       expandedRow === order.id
@@ -1480,678 +1535,371 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                               <tr className="bg-[#0f172a] border-t border-indigo-900/30">
                                 <td colSpan="7" className="p-0">
                                   <div className="p-4 sm:p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                                      {/* ── Server Specifications Card ── */}
-                                      <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
-                                        <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                          <div className="p-2 bg-indigo-900/30 rounded-lg">
-                                            <Server className="w-5 h-5 text-indigo-400" />
-                                          </div>
-                                          <h3 className="text-lg font-semibold text-indigo-300">
-                                            Server Specifications
-                                          </h3>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                          <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                <Cpu className="w-4 h-4" />
-                                                <span>CPU Cores</span>
-                                              </div>
-                                              <p className="text-xl font-bold text-white">
-                                                {order.cores || 0}
-                                                <span className="text-sm text-gray-400 ml-1">
-                                                  cores
-                                                </span>
-                                              </p>
-                                            </div>
-
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                <MemoryStick className="w-4 h-4" />
-                                                <span>RAM</span>
-                                              </div>
-                                              <p className="text-xl font-bold text-white">
-                                                {order.ramMb
-                                                  ? `${Math.round(order.ramMb / 1024)}`
-                                                  : "N/A"}
-                                                <span className="text-sm text-gray-400 ml-1">
-                                                  GB
-                                                </span>
-                                              </p>
-                                            </div>
-                                          </div>
-
-                                          <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                            <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                              <HardDrive className="w-4 h-4" />
-                                              <span>Storage</span>
-                                            </div>
-                                            <p className="text-xl font-bold text-white">
-                                              {order.diskGb ?? "N/A"}
-                                              <span className="text-sm text-gray-400 ml-1">
-                                                GB SSD
-                                              </span>
-                                            </p>
-                                          </div>
-
-                                          <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                            <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                              <Activity className="w-4 h-4" />
-                                              <span>VM ID</span>
-                                            </div>
-                                            <p className="text-sm font-semibold text-white font-mono">
-                                              #{order.id}
-                                            </p>
-                                          </div>
-
-                                          <div
-                                            className={`grid gap-4 grid-cols-2`}
-                                          >
-                                            {/* ISO Name */}
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                <FileText className="w-4 h-4 text-indigo-400" />
-                                                <span>ISO</span>
-                                              </div>
-                                              <p className="text-sm font-semibold text-white">
-                                                {order.isoName || "N/A"}
-                                              </p>
-                                            </div>
-
-                                            {/* Network Reconfigure */}
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
-                                              <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
-                                                <Zap className="w-4 h-4 text-blue-400" />
-                                                <span>Network Fix</span>
-                                              </div>
-
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleReconfigureNetwork(order);
-                                                }}
-                                                disabled={
-                                                  networkLoading[
-                                                    order.originalData?.vmId ||
-                                                      order.id
-                                                  ]
-                                                }
-                                                className="mt-auto relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold rounded-lg border border-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
-                                              >
-                                                {networkLoading[
-                                                  order.originalData?.vmId ||
-                                                    order.id
-                                                ] ? (
-                                                  <RefreshCw className="w-3 h-3 animate-spin" />
-                                                ) : (
-                                                  <Zap className="w-3 h-3 group-hover/btn:scale-110 transition-transform duration-300" />
-                                                )}
-                                                FIX NETWORK
-                                              </button>
-                                            </div>
-
-                                            {/* Protection Status */}
-                                            {order.isProtected && (
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3 col-span-2 sm:col-span-1">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                  <Shield className="w-4 h-4 text-green-400" />
-                                                  <span>Protection</span>
-                                                </div>
-                                                <p className="text-sm font-semibold text-green-400">
-                                                  Protected
-                                                </p>
-                                              </div>
-                                            )}
-                                          </div>
-
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                            {/* IP Address */}
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden">
-                                              <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                <Wifi className="w-4 h-4 text-emerald-400" />
-                                                <span>IP Address</span>
-                                              </div>
-                                              <p className="text-sm font-mono font-semibold text-white truncate px-1">
-                                                {order.ipAddress ||
-                                                  "Not assigned"}
-                                              </p>
-                                            </div>
-
-                                            {/* MAC Address */}
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
-                                              <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
-                                                <Activity className="w-4 h-4 text-purple-400" />
-                                                <span>MAC Address</span>
-                                              </div>
-
-                                              <p className="text-sm font-mono font-bold text-white uppercase tracking-wider mb-3 relative z-[1]">
-                                                {order.macAddress ||
-                                                  "Not available"}
-                                              </p>
-
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleRegenerateMac(order);
-                                                }}
-                                                disabled={
-                                                  macLoading[
-                                                    order.originalData?.vmId ||
-                                                      order.id
-                                                  ]
-                                                }
-                                                className="relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg border border-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
-                                              >
-                                                {macLoading[
-                                                  order.originalData?.vmId ||
-                                                    order.id
-                                                ] ? (
-                                                  <RefreshCw className="w-3 h-3 animate-spin" />
-                                                ) : (
-                                                  <RefreshCw className="w-3 h-3 group-hover/btn:rotate-180 transition-transform duration-500" />
-                                                )}
-                                                REGENERATE MAC
-                                              </button>
-                                            </div>
-                                          </div>
-
-                                          <div className="pt-4 border-t border-indigo-900/30">
-                                            <button
-                                              onClick={() =>
-                                                showDetailsModal(order)
-                                              }
-                                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
-                                            >
-                                              <FileText className="w-4 h-4" />
-                                              View Full Details
-                                            </button>
-                                          </div>
-                                        </div>
+                                    {detailsLoading ? (
+                                      <div className="flex flex-col items-center justify-center py-10">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+                                        <p className="text-gray-400">Loading server details...</p>
                                       </div>
-
-                                      {/* ── Billing Details Card ── */}
-                                      <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
-                                        <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                          <div className="p-2 bg-indigo-900/30 rounded-lg">
-                                            <FileText className="w-5 h-5 text-indigo-400" />
-                                          </div>
-                                          <h3 className="text-lg font-semibold text-indigo-300">
-                                            Billing & Location
-                                          </h3>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                          <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                            <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                              <IndianRupee className="w-4 h-4" />
-                                              <span>Monthly Cost</span>
-                                            </div>
-                                            <p className="text-2xl font-bold text-emerald-300">
-                                              {formatCurrency(order.priceTotal)}
-                                            </p>
-                                          </div>
-
-                                          <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
-                                                <Calendar className="w-4 h-4" />
-                                                <span>Created</span>
+                                    ) : (() => {
+                                      const details = orderDetails[order.originalData.vmId] || {};
+                                      return (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                                          {/* ── Server Specifications Card ── */}
+                                          <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
+                                            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                                              <div className="p-2 bg-indigo-900/30 rounded-lg">
+                                                <Server className="w-5 h-5 text-indigo-400" />
                                               </div>
-                                              <p className="text-sm font-medium text-white">
-                                                {formatDate(order.createdAt)}
-                                              </p>
+                                              <h3 className="text-lg font-semibold text-indigo-300">
+                                                Server Specifications
+                                              </h3>
                                             </div>
 
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
-                                                <Calendar className="w-4 h-4" />
-                                                <span>Expires</span>
-                                              </div>
-                                              <p className="text-sm font-medium text-white">
-                                                {formatDate(order.expiresAt)}
-                                              </p>
-                                            </div>
-                                          </div>
-
-                                          {(() => {
-                                            const renewConfig =
-                                              getRenewButtonConfig(order);
-                                            return (
-                                              renewConfig && (
-                                                <button
-                                                  onClick={() =>
-                                                    openUpgradeModal(order)
-                                                  }
-                                                  className={`mt-4 w-full text-white px-4 py-2 rounded-lg text-sm font-semibold ${renewConfig.color}`}
-                                                >
-                                                  {renewConfig.label}
-                                                </button>
-                                              )
-                                            );
-                                          })()}
-
-                                          {order.expiresAt && (
-                                            <div className="pt-3 border-t border-indigo-900/30">
-                                              <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                  <Clock className="w-4 h-4 text-yellow-400" />
-                                                  <span className="text-sm text-gray-400">
-                                                    Days Remaining
-                                                  </span>
+                                            <div className="space-y-4">
+                                              <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                    <Cpu className="w-4 h-4" />
+                                                    <span>CPU Cores</span>
+                                                  </div>
+                                                  <p className="text-xl font-bold text-white">
+                                                    {details.cores || 0}
+                                                    <span className="text-sm text-gray-400 ml-1">
+                                                      cores
+                                                    </span>
+                                                  </p>
                                                 </div>
-                                                <span className="text-lg font-bold text-white">
-                                                  {getDaysRemaining(
-                                                    order.expiresAt,
-                                                  )}{" "}
-                                                  days
-                                                </span>
+
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                    <MemoryStick className="w-4 h-4" />
+                                                    <span>RAM</span>
+                                                  </div>
+                                                  <p className="text-xl font-bold text-white">
+                                                    {details.ramMb
+                                                      ? `${Math.round(details.ramMb / 1024)}`
+                                                      : "N/A"}
+                                                    <span className="text-sm text-gray-400 ml-1">
+                                                      GB
+                                                    </span>
+                                                  </p>
+                                                </div>
                                               </div>
-                                            </div>
-                                          )}
 
-                                          <div className="pt-3 border-t border-indigo-900/30 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                              <span className="text-sm text-gray-400">
-                                                Plan Type
-                                              </span>
-                                              <span className="px-3 py-1 bg-indigo-900/30 rounded-full text-sm font-medium">
-                                                {order.planType || "Standard"}
-                                              </span>
-                                            </div>
-
-                                            <div className="flex items-center justify-between">
-                                              <span className="text-sm text-gray-400">
-                                                Server Location
-                                              </span>
-                                              <span className="px-3 py-1 bg-blue-900/30 text-blue-300 rounded-full text-sm font-medium">
-                                                {order.serverLocation ||
-                                                  "Unknown"}
-                                              </span>
-                                            </div>
-
-                                            {order.originalData?.assignedTo && (
                                               <div className="bg-[#0e1525]/50 rounded-lg p-3">
                                                 <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                  <User className="w-4 h-4 text-indigo-400" />
-                                                  <span>Assigned To</span>
+                                                  <HardDrive className="w-4 h-4" />
+                                                  <span>Storage</span>
                                                 </div>
-                                                <div className="text-sm text-white font-medium">
-                                                  {
-                                                    order.originalData
-                                                      .assignedTo.name
-                                                  }
-                                                </div>
-                                                <div className="text-xs text-gray-400">
-                                                  {
-                                                    order.originalData
-                                                      .assignedTo.email
-                                                  }
-                                                </div>
+                                                <p className="text-xl font-bold text-white">
+                                                  {details.diskGb ?? "N/A"}
+                                                  <span className="text-sm text-gray-400 ml-1">
+                                                    GB SSD
+                                                  </span>
+                                                </p>
                                               </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
 
-                                      {/* ── Connection & Controls Card ── */}
-                                      <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
-                                        {/* Server Password Setup */}
-                                        <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4">
-                                          <h4 className="flex text-sm font-semibold text-indigo-300 mb-2">
-                                            <Lock className="w-5 h-5 text-red-400 mr-1" />
-                                            Server Access Password
-                                          </h4>
-                                          <p className="text-xs text-gray-400 mb-3">
-                                            Set a password to enable VM actions
-                                            and remote access.
-                                          </p>
-                                          <form
-                                            onSubmit={(e) => {
-                                              e.preventDefault();
-                                              handleSavePassword(order);
-                                            }}
-                                            className="flex gap-2"
-                                          >
-                                            <input
-                                              type="password"
-                                              name={`vm-pass-setup-${order.id}`}
-                                              autoComplete="new-password"
-                                              placeholder="Enter password"
-                                              value={
-                                                passwordInputs[order.id] || ""
-                                              }
-                                              onChange={(e) =>
-                                                setPasswordInputs((prev) => ({
-                                                  ...prev,
-                                                  [order.id]: e.target.value,
-                                                }))
-                                              }
-                                              className="flex-1 bg-[#151c2f] border border-indigo-900/50 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-                                            />
-                                            <button
-                                              type="submit"
-                                              disabled={
-                                                passwordLoading[
-                                                  order.originalData?.vmId ||
-                                                    order.id
-                                                ]
-                                              }
-                                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg text-white text-sm font-semibold"
-                                            >
-                                              Save
-                                            </button>
-                                          </form>
-                                        </div>
-
-                                        {/* VM Password Viewer */}
-                                        <div className="bg-[#0e1525]/50 border border-indigo-900/40 rounded-lg p-4 mt-1">
-                                          <h4 className="text-sm font-semibold text-indigo-300 mb-3 flex items-center gap-2">
-                                            <Key className="w-5 h-5 text-yellow-400" />
-                                            VM Details
-                                          </h4>
-
-                                          <div className="space-y-3 text-sm">
-                                            {/* Username */}
-                                            <div className="flex items-center">
-                                              <span className="text-gray-400">
-                                                Username
-                                              </span>
-                                              <span className="font-semibold text-white ml-2">
-                                                {getDefaultUsername(
-                                                  order.osType,
-                                                )}
-                                              </span>
-                                            </div>
-
-                                            {/* Password */}
-                                            <div className="flex items-center">
-                                              <span className="text-gray-400">
-                                                Password
-                                              </span>
-                                              <div className="flex items-center justify-between ml-2 w-full">
-                                                {/* Password / Status */}
-                                                <div>
-                                                  {(() => {
-                                                    const vmId =
-                                                      order.originalData
-                                                        ?.vmId || order.id;
-                                                    return passwordFetching[
-                                                      vmId
-                                                    ] ? (
-                                                      <span className="text-gray-400 text-sm">
-                                                        Loading...
-                                                      </span>
-                                                    ) : vmPasswords[vmId] ? (
-                                                      <code className="bg-[#151c2f] px-1 py-1 rounded font-mono text-white">
-                                                        {passwordVisible[vmId]
-                                                          ? vmPasswords[vmId]
-                                                          : "••••••••"}
-                                                      </code>
-                                                    ) : (
-                                                      <span className="text-sm text-red-400">
-                                                        Password not set
-                                                      </span>
-                                                    );
-                                                  })()}
-                                                </div>
-
-                                                {/* Eye Button */}
-                                                {(() => {
-                                                  return (
-                                                    <button
-                                                      onClick={() =>
-                                                        canViewPassword(
-                                                          order,
-                                                        ) &&
-                                                        togglePasswordView(
-                                                          order,
-                                                        )
-                                                      }
-                                                      disabled={
-                                                        !canViewPassword(order)
-                                                      }
-                                                      className={`p-1.5 rounded transition ${
-                                                        canViewPassword(order)
-                                                          ? "hover:bg-indigo-900/30"
-                                                          : "opacity-40 cursor-not-allowed"
-                                                      }`}
-                                                    >
-                                                      <Eye className="w-4 h-4 text-indigo-400" />
-                                                    </button>
-                                                  );
-                                                })()}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 mt-4 sm:mb-6">
-                                          <div className="p-2 bg-indigo-900/30 rounded-lg">
-                                            <Zap className="w-5 h-5 text-indigo-400" />
-                                          </div>
-                                          <h3 className="text-lg font-semibold text-indigo-300">
-                                            Connection & Controls
-                                          </h3>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                          {order.ipAddress && (
-                                            <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                              <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                                  <Wifi className="w-4 h-4" />
-                                                  <span>IP Address</span>
-                                                </div>
-                                                <button
-                                                  onClick={() =>
-                                                    handleCopy(
-                                                      order.ipAddress,
-                                                      order.id,
-                                                    )
-                                                  }
-                                                  className="text-sm flex items-center gap-1 transition-all"
-                                                >
-                                                  {copiedIp === order.id ? (
-                                                    <>
-                                                      <Copy className="w-4 h-4 text-indigo-400" />
-                                                      <span className="text-indigo-400 font-medium">
-                                                        Copied
-                                                      </span>
-                                                    </>
-                                                  ) : (
-                                                    <>
-                                                      <Copy className="w-4 h-4 text-indigo-400" />
-                                                      <span className="text-indigo-400 hover:text-indigo-300">
-                                                        Copy
-                                                      </span>
-                                                    </>
-                                                  )}
-                                                </button>
-                                              </div>
-                                              <code className="text-base font-mono text-white break-all">
-                                                {order.ipAddress}
-                                              </code>
-                                            </div>
-                                          )}
-
-                                          {/* Connection Buttons */}
-                                          {order.ipAddress &&
-                                            order.liveState?.toUpperCase() ===
-                                              "RUNNING" && (
-                                              <div className="grid grid-cols-3 gap-3">
-                                                <button
-                                                  onClick={() =>
-                                                    handleSSH(order)
-                                                  }
-                                                  className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
-                                                >
-                                                  <Terminal className="w-4 h-4" />
-                                                  SSH
-                                                </button>
-
-                                                <button
-                                                  onClick={() =>
-                                                    toast.success(
-                                                      "Console access would open here",
-                                                    )
-                                                  }
-                                                  className="flex items-center justify-center gap-2 p-3 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-sm transition-colors"
-                                                >
-                                                  <Monitor className="w-4 h-4" />
-                                                  Console
-                                                </button>
-
-                                                <button
-                                                  onClick={() =>
-                                                    navigate(
-                                                      `/user/vms/${order.id}/performance`,
-                                                      {
-                                                        state: {
-                                                          userId:
-                                                            order.originalData
-                                                              .userId,
-                                                          serverId:
-                                                            order.originalData
-                                                              .serverId,
-                                                          vmName: order.vmName,
-                                                        },
-                                                      },
-                                                    )
-                                                  }
-                                                  className="flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
-                                                >
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
                                                   <Activity className="w-4 h-4" />
-                                                  Performance
-                                                </button>
+                                                  <span>VM ID</span>
+                                                </div>
+                                                <p className="text-sm font-semibold text-white font-mono">
+                                                  #{details.proxmoxVmid || "N/A"}
+                                                </p>
                                               </div>
-                                            )}
 
-                                          {/* Power Controls */}
-                                          <div className="pt-3 border-t border-indigo-900/30">
-                                            <h4 className="text-sm font-semibold text-white mb-3">
-                                              Power Controls
-                                            </h4>
-                                            <div className="grid grid-cols-2 gap-2">
-                                              <button
-                                                onClick={() =>
-                                                  handlePowerAction(
-                                                    order,
-                                                    "start",
+                                              <div className={`grid gap-4 grid-cols-2`}>
+                                                {/* ISO Name */}
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                    <FileText className="w-4 h-4 text-indigo-400" />
+                                                    <span>ISO</span>
+                                                  </div>
+                                                  <p className="text-sm font-semibold text-white">
+                                                    {order.isoName || "N/A"}
+                                                  </p>
+                                                </div>
+
+                                                {/* Network Reconfigure */}
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
+                                                  <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
+                                                    <Zap className="w-4 h-4 text-blue-400" />
+                                                    <span>Network Fix</span>
+                                                  </div>
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleReconfigureNetwork(order);
+                                                    }}
+                                                    disabled={networkLoading[order.originalData?.vmId || order.id]}
+                                                    className="mt-auto relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold rounded-lg border border-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                                  >
+                                                    {networkLoading[order.originalData?.vmId || order.id] ? (
+                                                      <RefreshCw className="w-3 h-3 animate-spin" />
+                                                    ) : (
+                                                      <Zap className="w-3 h-3 group-hover/btn:scale-110 transition-transform duration-300" />
+                                                    )}
+                                                    FIX NETWORK
+                                                  </button>
+                                                </div>
+
+                                                {/* Protection Status */}
+                                                {details.isProtected && (
+                                                  <div className="bg-[#0e1525]/50 rounded-lg p-3 col-span-2 sm:col-span-1">
+                                                    <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                      <Shield className="w-4 h-4 text-green-400" />
+                                                      <span>Protection</span>
+                                                    </div>
+                                                    <p className="text-sm font-semibold text-green-400">
+                                                      Protected
+                                                    </p>
+                                                  </div>
+                                                )}
+                                              </div>
+
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                                {/* IP Address */}
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden">
+                                                  <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                    <Wifi className="w-4 h-4 text-emerald-400" />
+                                                    <span>IP Address</span>
+                                                  </div>
+                                                  <p className="text-sm font-mono font-semibold text-white truncate px-1">
+                                                    {order.ipAddress || "Not assigned"}
+                                                  </p>
+                                                </div>
+
+                                                {/* MAC Address */}
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
+                                                  <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
+                                                    <Activity className="w-4 h-4 text-purple-400" />
+                                                    <span>MAC Address</span>
+                                                  </div>
+                                                  <p className="text-sm font-mono font-bold text-white uppercase tracking-wider mb-3 relative z-[1]">
+                                                    {details.macAddress || "Not available"}
+                                                  </p>
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleRegenerateMac(order);
+                                                    }}
+                                                    disabled={macLoading[order.originalData?.vmId || order.id]}
+                                                    className="relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg border border-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                                  >
+                                                    {macLoading[order.originalData?.vmId || order.id] ? (
+                                                      <RefreshCw className="w-3 h-3 animate-spin" />
+                                                    ) : (
+                                                      <RefreshCw className="w-3 h-3 group-hover/btn:rotate-180 transition-transform duration-500" />
+                                                    )}
+                                                    REGENERATE MAC
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {/* ── Billing Details Card ── */}
+                                          <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
+                                            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                                              <div className="p-2 bg-indigo-900/30 rounded-lg">
+                                                <FileText className="w-5 h-5 text-indigo-400" />
+                                              </div>
+                                              <h3 className="text-lg font-semibold text-indigo-300">
+                                                Billing & Location
+                                              </h3>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                  <IndianRupee className="w-4 h-4" />
+                                                  <span>Monthly Cost</span>
+                                                </div>
+                                                <p className="text-2xl font-bold text-emerald-300">
+                                                  {formatCurrency(order.priceTotal)}
+                                                </p>
+                                              </div>
+
+                                              <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                                                    <Calendar className="w-4 h-4" />
+                                                    <span>Created</span>
+                                                  </div>
+                                                  <p className="text-sm font-medium text-white">
+                                                    {formatDate(details.createdAt || order.createdAt)}
+                                                  </p>
+                                                </div>
+
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                                                    <MapPin className="w-4 h-4 text-orange-400" />
+                                                    <span>Location</span>
+                                                  </div>
+                                                  <p className="text-sm font-medium text-white">
+                                                    {details.serverName || order.vmName || "N/A"}
+                                                  </p>
+                                                </div>
+                                              </div>
+
+                                              {(() => {
+                                                const renewConfig = getRenewButtonConfig(order);
+                                                return (
+                                                  renewConfig && (
+                                                    <button
+                                                      onClick={() => openUpgradeModal(order)}
+                                                      className={`mt-4 w-full text-white px-4 py-2 rounded-lg text-sm font-semibold ${renewConfig.color}`}
+                                                    >
+                                                      {renewConfig.label}
+                                                    </button>
                                                   )
-                                                }
-                                                disabled={
-                                                  !canAction(
-                                                    order.liveState,
-                                                    "start",
-                                                  ) ||
-                                                  order.status !== "ACTIVE" ||
-                                                  !!powerLoading[
-                                                    order.originalData?.vmId ||
-                                                      order.id
-                                                  ]
-                                                }
-                                                className="flex items-center justify-center gap-2 p-2 bg-green-900/30 hover:bg-green-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-green-300 rounded text-sm transition-colors"
-                                              >
-                                                <Play className="w-4 h-4" />
-                                                Start
-                                              </button>
+                                                );
+                                              })()}
 
-                                              <button
-                                                onClick={() =>
-                                                  handlePowerAction(
-                                                    order,
-                                                    "stop",
-                                                  )
-                                                }
-                                                disabled={
-                                                  !canAction(
-                                                    order.liveState,
-                                                    "stop",
-                                                  ) ||
-                                                  order.status !== "ACTIVE" ||
-                                                  !!powerLoading[
-                                                    order.originalData?.vmId ||
-                                                      order.id
-                                                  ]
-                                                }
-                                                className="flex items-center justify-center gap-2 p-2 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-red-300 rounded text-sm transition-colors"
-                                              >
-                                                <Square className="w-4 h-4" />
-                                                Stop
-                                              </button>
+                                              {order.expiresAt && (
+                                                <div className="pt-3 border-t border-indigo-900/30">
+                                                  <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                      <Clock className="w-4 h-4 text-yellow-400" />
+                                                      <span className="text-sm text-gray-400">
+                                                        Days Remaining
+                                                      </span>
+                                                    </div>
+                                                    <span className="text-lg font-bold text-white">
+                                                      {getDaysRemaining(order.expiresAt)} days
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              )}
 
-                                              <button
-                                                onClick={() =>
-                                                  handlePowerAction(
-                                                    order,
-                                                    "reboot",
-                                                  )
-                                                }
-                                                disabled={
-                                                  !canAction(
-                                                    order.liveState,
-                                                    "reboot",
-                                                  ) ||
-                                                  order.status !== "ACTIVE" ||
-                                                  !!powerLoading[
-                                                    order.originalData?.vmId ||
-                                                      order.id
-                                                  ]
-                                                }
-                                                className="flex items-center justify-center gap-2 p-2 bg-purple-900/30 hover:bg-purple-900/50 disabled:opacity-30 disabled:cursor-not-allowed text-purple-300 rounded text-sm transition-colors"
-                                              >
-                                                <RefreshCw className="w-4 h-4" />
-                                                Reboot
-                                              </button>
+                                              <div className="pt-3 border-t border-indigo-900/30 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                  <span className="text-sm text-gray-400">
+                                                    Plan Type
+                                                  </span>
+                                                  <span className="px-3 py-1 bg-indigo-900/30 rounded-full text-sm font-medium">
+                                                    {order.planType || "Standard"}
+                                                  </span>
+                                                </div>
 
-                                              <button
-                                                onClick={() => {
-                                                  if (isRebuildBlockedTime()) {
-                                                    Swal.fire({
-                                                      icon: "warning",
-                                                      title:
-                                                        "Maintenance Window",
-                                                      text: "Rebuild is disabled between 9 AM and 11 AM (IST)",
-                                                      background: "#0e1525",
-                                                      color: "#e5e7eb",
-                                                    });
-                                                    return;
-                                                  }
-                                                  promptRebuildWithIso(order);
-                                                }}
-                                                disabled={
-                                                  !!powerLoading[
-                                                    order.originalData?.vmId ||
-                                                      order.id
-                                                  ] || isRebuildBlockedTime()
-                                                }
-                                                title={
-                                                  isRebuildBlockedTime()
-                                                    ? "Rebuild disabled from 9 AM to 11 AM"
-                                                    : "Rebuild server"
-                                                }
-                                                className={`flex items-center justify-center gap-2 p-2 rounded text-sm transition ${
-                                                  isRebuildBlockedTime()
-                                                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                                                    : "bg-orange-900/30 hover:bg-orange-900/50 text-orange-300"
-                                                }`}
-                                              >
-                                                <AlertCircle className="w-4 h-4" />
-                                                Rebuild
-                                              </button>
+                                                <div className="flex items-center justify-between">
+                                                  <span className="text-sm text-gray-400">
+                                                    Server Location
+                                                  </span>
+                                                  <span className="px-3 py-1 bg-blue-900/30 text-blue-300 rounded-full text-sm font-medium">
+                                                    {details.serverLocation || order.serverLocation || "Unknown"}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {/* ── Connection & Controls Card ── */}
+                                          <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
+                                            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                                              <div className="p-2 bg-indigo-900/30 rounded-lg">
+                                                <Lock className="w-5 h-5 text-indigo-400" />
+                                              </div>
+                                              <h3 className="text-lg font-semibold text-indigo-300">
+                                                Security & Connection
+                                              </h3>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                  <User className="w-4 h-4" />
+                                                  <span>Username</span>
+                                                </div>
+                                                <p className="text-sm font-semibold text-white font-mono">
+                                                  {getDefaultUsername(order.osType)}
+                                                </p>
+                                              </div>
+
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                  <Key className="w-4 h-4" />
+                                                  <span>Password</span>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                  <p className="text-sm font-semibold text-white font-mono truncate mr-2">
+                                                    {passwordVisible[order.id]
+                                                      ? details.password || "N/A"
+                                                      : "••••••••••••"}
+                                                  </p>
+                                                  <button
+                                                    onClick={() =>
+                                                      setPasswordVisible((prev) => ({
+                                                        ...prev,
+                                                        [order.id]: !prev[order.id],
+                                                      }))
+                                                    }
+                                                    className="p-1 hover:bg-white/10 rounded transition-colors"
+                                                  >
+                                                    {passwordVisible[order.id] ? (
+                                                      <EyeOff className="w-4 h-4 text-gray-400" />
+                                                    ) : (
+                                                      <Eye className="w-4 h-4 text-gray-400" />
+                                                    )}
+                                                  </button>
+                                                </div>
+                                              </div>
+
+                                              {order.ipAddress && order.liveState?.toUpperCase() === "RUNNING" && (
+                                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                                  <button
+                                                    onClick={() => handleSSH(order)}
+                                                    className="flex items-center justify-center gap-2 p-2 bg-[#0e1525] hover:bg-indigo-900/20 border border-indigo-900/50 rounded-lg text-indigo-300 text-xs transition-colors"
+                                                  >
+                                                    <Terminal className="w-4 h-4" />
+                                                    SSH
+                                                  </button>
+                                                  <button
+                                                    onClick={() => navigate(`/user/vms/${order.id}/performance`, {
+                                                      state: {
+                                                        userId: order.originalData.userId || accountStatus?.id,
+                                                        serverId: order.originalData.serverId,
+                                                        vmName: order.vmName,
+                                                      },
+                                                    })}
+                                                    className="flex items-center justify-center gap-2 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                                                  >
+                                                    <Activity className="w-4 h-4" />
+                                                    Perf
+                                                  </button>
+                                                </div>
+                                              )}
+
+                                              {/* Power Controls */}
+                                              <div className="pt-3 border-t border-indigo-900/30">
+                                                <div className="grid grid-cols-2 gap-2">
+                                                  <button
+                                                    onClick={() => handlePowerAction(order, "start")}
+                                                    disabled={!canAction(order.liveState, "start") || order.status !== "ACTIVE" || !!powerLoading[order.originalData?.vmId || order.id]}
+                                                    className="flex items-center justify-center gap-2 p-2 bg-green-900/30 hover:bg-green-900/50 disabled:opacity-30 text-green-300 rounded text-xs transition-colors"
+                                                  >
+                                                    <Play className="w-3 h-3" />
+                                                    Start
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handlePowerAction(order, "stop")}
+                                                    disabled={!canAction(order.liveState, "stop") || order.status !== "ACTIVE" || !!powerLoading[order.originalData?.vmId || order.id]}
+                                                    className="flex items-center justify-center gap-2 p-2 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-30 text-red-300 rounded text-xs transition-colors"
+                                                  >
+                                                    <Square className="w-3 h-3" />
+                                                    Stop
+                                                  </button>
+                                                </div>
+                                              </div>
                                             </div>
                                           </div>
                                         </div>
-                                      </div>
-                                      {/* ── end grid ── */}
-                                    </div>
+                                      );
+                                    })()}
                                   </div>
                                 </td>
                               </tr>
