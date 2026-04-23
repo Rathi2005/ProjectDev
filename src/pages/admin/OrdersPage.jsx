@@ -5,6 +5,7 @@ import { useAdminStats } from "../../hooks/useAdminStats";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVmActions } from "../../hooks/admin/useVmActions";
 import { fetchAvailableIps, changeVmIp } from "../../api/admin";
+import { fetchAdminOrderDetails } from "../../api/adminOrdersApi";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
@@ -125,33 +126,33 @@ export default function OrdersPage() {
   if (!isFetching) fetchIntentRef.current = false;
   const showTableLoader = isFetching && fetchIntentRef.current;
 
-  // Derive orders from React Query data — no useState copy, no re-render cascade
+  // Derive orders from React Query data
   const orders = useMemo(() => {
     const vmList = ordersData?.vms || [];
     return vmList.map((order) => ({
-      id: order.dbOrderId,
-      dbOrderId: order.dbOrderId,
-      serverId: order.serverId,
-      vmid: order.proxmoxVmid,
-      internalVmid: order.internalVmId,
-      isProtected: order.isProtected ?? false,
-      priceTotal: order.totalAmount,
+      id: order.orderId,
+      dbOrderId: order.orderId,
+      serverId: order.serverId, // Might be undefined in new API, but handle gracefully
+      vmid: order.proxmoxVmid, // Might be undefined in new API
+      internalVmid: order.vmId,
+      isProtected: order.isProtected ?? false, // Might be undefined
+      priceTotal: order.paidAmount,
       monthlyPrice: order.monthlyPrice,
       paidAmount: order.paidAmount,
-      vmName: order.vmName,
+      vmName: order.vmName, // Might be undefined
       isoName: order.os,
-      planType: order.planType,
-      cores: order.cores,
-      ramMb: order.ramMb,
-      diskGb: order.diskGb,
+      planType: order.serverPlan,
+      cores: order.cores, // Might be undefined
+      ramMb: order.ramMb, // Might be undefined
+      diskGb: order.diskGb, // Might be undefined
       ipAddress: order.ipAddress || "",
-      macAddress: order.macAddress || "N/A",
-      createdAt: order.createdAt,
+      macAddress: order.macAddress || "N/A", // Might be undefined
+      createdAt: order.createdAt || order.expiresAt,
       expiresAt: order.expiresAt,
-      status: order.status,
+      status: order.dbStatus,
       liveState: order.liveState,
-      password: order.password || "N/A",
-      isLocked: order.status?.toUpperCase() === "LOCKED",
+      password: order.password || "N/A", // Might be undefined
+      isLocked: order.isLocked || false,
       user: {
         firstName: order.customerName || "—",
         lastName: "",
@@ -179,6 +180,9 @@ export default function OrdersPage() {
     totalUsers: statsData?.users?.totalUsers || 0,
   }), [statsData]);
   const [expandedRow, setExpandedRow] = useState(null);
+  const [expandedInternalVmid, setExpandedInternalVmid] = useState(null);
+  const [orderDetails, setOrderDetails] = useState({});
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [selectedRevenuePeriod, setSelectedRevenuePeriod] = useState("all");
   const [copiedId, setCopiedId] = useState(null);
 
@@ -199,9 +203,46 @@ export default function OrdersPage() {
 
   // Debounce is now handled by useDebounce hook above (line 53)
 
-  const toggleRow = (id) => {
-    setExpandedRow(expandedRow === id ? null : id);
+  const toggleRow = async (id, internalVmid) => {
+    if (expandedRow === id) {
+      setExpandedRow(null);
+      setExpandedInternalVmid(null);
+      return;
+    }
+    setExpandedRow(id);
+    setExpandedInternalVmid(internalVmid);
+
+    // Fetch details if not already present
+    if (!orderDetails[internalVmid]) {
+      setDetailsLoading(true);
+      try {
+        const details = await fetchAdminOrderDetails(internalVmid);
+        setOrderDetails((prev) => ({ ...prev, [internalVmid]: details }));
+      } catch (err) {
+        toast.error("Failed to fetch VM details");
+        setExpandedRow(null);
+      } finally {
+        setDetailsLoading(false);
+      }
+    }
   };
+
+  // Poll details every 5 seconds for the expanded row
+  useEffect(() => {
+    if (!expandedInternalVmid) return;
+
+    const fetchDetails = async () => {
+      try {
+        const details = await fetchAdminOrderDetails(expandedInternalVmid);
+        setOrderDetails((prev) => ({ ...prev, [expandedInternalVmid]: details }));
+      } catch (err) {
+        console.error("Failed to poll VM details", err);
+      }
+    };
+
+    const intervalId = setInterval(fetchDetails, 5000);
+    return () => clearInterval(intervalId);
+  }, [expandedInternalVmid]);
 
   const sortConfigObj = {
     key: sortConfig?.key,
@@ -1618,7 +1659,7 @@ export default function OrdersPage() {
                           >
                             <td className="py-3 px-4 sm:px-6">
                               <button
-                                onClick={() => toggleRow(order.id)}
+                                onClick={() => toggleRow(order.id, order.internalVmid)}
                                 className="text-left w-full flex items-center gap-2 text-indigo-300 font-medium hover:text-indigo-200 transition-colors"
                               >
                                 {expandedRow === order.id ? (
@@ -1756,8 +1797,17 @@ export default function OrdersPage() {
                             <tr className="bg-[#0f172a] border-t border-indigo-900/30">
                               <td colSpan="12" className="p-0">
                                 <div className="p-4 sm:p-6">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                                    {/* Server Specifications Card */}
+                                  {detailsLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-10">
+                                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+                                      <p className="text-gray-400">Loading VM details...</p>
+                                    </div>
+                                  ) : (() => {
+                                    const details = orderDetails[order.internalVmid] || {};
+                                    return (
+                                    <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                                      {/* Server Specifications Card */}
                                     <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
                                       <div className="flex items-center gap-3 mb-4 sm:mb-6">
                                         <div className="p-2 bg-indigo-900/30 rounded-lg">
@@ -1776,7 +1826,7 @@ export default function OrdersPage() {
                                               <span>CPU Cores</span>
                                             </div>
                                             <p className="text-lg sm:text-xl font-bold text-white">
-                                              {order.cores || 0}
+                                              {details.cores || 0}
                                               <span className="text-xs sm:text-sm text-gray-400 ml-1">
                                                 cores
                                               </span>
@@ -1789,7 +1839,7 @@ export default function OrdersPage() {
                                               <span>RAM</span>
                                             </div>
                                             <p className="text-lg sm:text-xl font-bold text-white">
-                                              {order.ramMb || 0}
+                                              {details.ramMb || 0}
                                               <span className="text-xs sm:text-sm text-gray-400 ml-1">
                                                 MB
                                               </span>
@@ -1803,7 +1853,7 @@ export default function OrdersPage() {
                                             <span>Storage</span>
                                           </div>
                                           <p className="text-lg sm:text-xl font-bold text-white">
-                                            {order.diskGb || 0}
+                                            {details.diskGb || 0}
                                             <span className="text-xs sm:text-sm text-gray-400 ml-1">
                                               GB SSD
                                             </span>
@@ -1820,8 +1870,8 @@ export default function OrdersPage() {
                                           </p>
                                         </div>
 
-                                        {order.vmid !== null &&
-                                          order.vmid !== undefined && (
+                                        {details.proxmoxVmid !== null &&
+                                          details.proxmoxVmid !== undefined && (
                                             <div className="pt-3 border-t border-indigo-900/30">
                                               <div className="flex items-center justify-between gap-2">
                                                 <span className="text-xs sm:text-sm text-gray-400">
@@ -1830,13 +1880,13 @@ export default function OrdersPage() {
 
                                                 <div className="flex items-center gap-2">
                                                   <code className="bg-indigo-900/30 px-2 sm:px-3 py-1 rounded text-xs sm:text-sm font-mono">
-                                                    {order.vmid}
+                                                    {details.proxmoxVmid}
                                                   </code>
 
                                                   <button
                                                     onClick={() =>
                                                       handleVmidEdit(
-                                                        order.vmid,
+                                                        details.proxmoxVmid,
                                                         order.internalVmid,
                                                       )
                                                     }
@@ -1901,14 +1951,14 @@ export default function OrdersPage() {
                                               <div>
                                                 <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">MAC ADDRESS</p>
                                                 <code className="text-sm font-mono font-medium text-white">
-                                                  {order.macAddress || "N/A"}
+                                                  {details.macAddress || "N/A"}
                                                 </code>
                                               </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                              {order.macAddress && order.macAddress !== "N/A" && (
+                                              {details.macAddress && details.macAddress !== "N/A" && (
                                                 <button
-                                                  onClick={() => handleCopy(order.macAddress, order.id + "_MAC")}
+                                                  onClick={() => handleCopy(details.macAddress, order.id + "_MAC")}
                                                   className="p-2 hover:bg-indigo-500/10 rounded-lg text-gray-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0"
                                                   title="Copy MAC"
                                                 >
@@ -2002,14 +2052,14 @@ export default function OrdersPage() {
                                             <div>
                                               <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">VM PASSWORD</p>
                                               <code className="text-sm font-mono font-medium text-white">
-                                                {order.password}
+                                                {details.password}
                                               </code>
                                             </div>
                                           </div>
                                           <div className="flex items-center gap-2">
-                                            {order.password && order.password !== "N/A" && (
+                                            {details.password && details.password !== "N/A" && (
                                               <button
-                                                onClick={() => handleCopy(order.password, order.id + "_PWD")}
+                                                onClick={() => handleCopy(details.password, order.id + "_PWD")}
                                                 className="p-2 hover:bg-indigo-500/10 rounded-lg text-gray-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0"
                                                 title="Copy Password"
                                               >
@@ -2041,8 +2091,7 @@ export default function OrdersPage() {
                                               Parent Server Node
                                             </span>
                                             <code className="bg-indigo-900/30 px-2 py-1 rounded text-xs sm:text-sm font-mono">
-                                              {order.originalData
-                                                ?.parentServerNode || "N/A"}
+                                              {details.parentServerNode || "N/A"}
                                             </code>
                                           </div>
 
@@ -2051,8 +2100,7 @@ export default function OrdersPage() {
                                               Parent Server IP
                                             </span>
                                             <code className="bg-indigo-900/30 px-2 py-1 rounded text-xs sm:text-sm font-mono">
-                                              {order.originalData
-                                                ?.parentServerIp || "N/A"}
+                                              {details.parentServerIp || "N/A"}
                                             </code>
                                           </div>
                                         </div>
@@ -2163,8 +2211,8 @@ export default function OrdersPage() {
                                             {
                                               state: {
                                                 vmid: order.internalVmid,
-                                                serverId: order.serverId,
-                                                vmName: order.vmName,
+                                                serverId: details.parentServerId,
+                                                vmName: details.vmName,
                                               },
                                             },
                                           );
@@ -2269,7 +2317,7 @@ export default function OrdersPage() {
                                     </button>
 
                                     <button
-                                      onClick={() => handleReconfigureNetwork(order.vmid, order.id)}
+                                      onClick={() => handleReconfigureNetwork(order.internalVmid, order.id)}
                                       disabled={adminActionLoading[order.id]}
                                       className="flex-1 sm:flex-none px-3 py-2 border border-blue-500/40
       hover:bg-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent
@@ -2285,7 +2333,7 @@ export default function OrdersPage() {
                                           true,
                                         )
                                       }
-                                      disabled={order.isProtected}
+                                      disabled={details.isProtected}
                                       className="flex-1 sm:flex-none px-3 py-2 border border-emerald-500/40
       hover:bg-emerald-500/10 text-emerald-300 rounded-lg font-medium text-sm
       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -2300,7 +2348,7 @@ export default function OrdersPage() {
                                           false,
                                         )
                                       }
-                                      disabled={!order.isProtected}
+                                      disabled={!details.isProtected}
                                       className="flex-1 sm:flex-none px-3 py-2 border border-orange-500/40
       hover:bg-orange-500/10 text-orange-300 rounded-lg font-medium text-sm
       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -2315,9 +2363,11 @@ export default function OrdersPage() {
       hover:bg-red-700/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent
       text-red-400 rounded-lg font-medium text-sm"
                                     >
-                                      Destroy
                                     </button>
                                   </div>
+                                  </>
+                                  );
+                                  })()}
                                 </div>
                               </td>
                             </tr>
