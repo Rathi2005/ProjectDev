@@ -23,8 +23,16 @@ export const fetchUserMyOrders = async ({
   if (search) params.append("search", search);
 
   return apiClient(
-    `/api/users/orders/my-orders?${params}`,
+    `/api/users/orders/overview?${params}`,
     { signal },
+    { auth: "user" }
+  );
+};
+
+export const fetchUserOrderDetails = async (vmId) => {
+  return apiClient(
+    `/api/users/orders/${vmId}/details`,
+    {},
     { auth: "user" }
   );
 };

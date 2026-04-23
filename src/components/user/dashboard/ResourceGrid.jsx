@@ -50,7 +50,7 @@ const ResourceGrid = ({ statsData }) => {
     },
     {
       name: "Volumes",
-      count: Math.max(1, Math.round(statsData.totalDiskSizeGb / 100)), // At least 1 volume
+      count: statsData.totalVolumesCount ?? statsData.totalVmsCount ?? 0,
       icon: <FaHdd className="h-5 w-5" />,
       type: "volume",
       description: "Storage volumes",
@@ -165,17 +165,9 @@ const ResourceGrid = ({ statsData }) => {
               {/* Additional Details */}
               {!res.isComingSoon && res.type === "volume" && (
                 <div className="mt-3">
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>Storage Used</span>
-                    <span>{statsData.totalDiskSizeGb} GB</span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-1.5">
-                    <div
-                      className="bg-gradient-to-r from-purple-500 to-purple-600 h-1.5 rounded-full"
-                      style={{
-                        width: `${Math.min((statsData.totalDiskSizeGb / 1000) * 100, 100)}%`,
-                      }}
-                    ></div>
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <span>Allocated Storage</span>
+                    <span className="text-gray-300">{statsData.totalDiskSizeGb} GB</span>
                   </div>
                 </div>
               )}

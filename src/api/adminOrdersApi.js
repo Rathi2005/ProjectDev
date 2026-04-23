@@ -28,8 +28,16 @@ export const fetchAdminOrders = async ({
   if (statusFilter) params.append("status", statusFilter);
 
   return apiClient(
-    `/api/admin/vms?${params.toString()}`,
+    `/api/admin/orders-overview?${params.toString()}`,
     { signal },
+    { auth: "admin" }
+  );
+};
+
+export const fetchAdminOrderDetails = async (vmId) => {
+  return apiClient(
+    `/api/admin/orders/${vmId}/details`,
+    {},
     { auth: "admin" }
   );
 };
