@@ -228,13 +228,17 @@ export default function OrdersPage() {
     }
   };
 
-  const handleRefreshSingle = async (internalVmid) => {
+  const handleRefreshSingle = async (internalVmid, skipRefetch = false) => {
+    if (!internalVmid || detailsLoading) return;
+
     setDetailsLoading(true);
     try {
       const details = await fetchAdminOrderDetails(internalVmid);
       setOrderDetails((prev) => ({ ...prev, [internalVmid]: details }));
-      // Also invalidate main query to sync the table state (e.g. power state)
-      await refetchOrders();
+      if (!skipRefetch) {
+        // Also refresh main table state when manually syncing a single row
+        await refetchOrders();
+      }
     } catch (err) {
       console.error("Manual refresh of details failed", err);
     } finally {
@@ -248,7 +252,7 @@ export default function OrdersPage() {
     
     // 2. Refresh expanded row details if any
     if (expandedInternalVmid) {
-      handleRefreshSingle(expandedInternalVmid);
+      await handleRefreshSingle(expandedInternalVmid, true);
     }
   };
 
@@ -1830,8 +1834,13 @@ export default function OrdersPage() {
                                           </h3>
                                         </div>
                                         <button
-                                          onClick={() => handleRefreshSingle(order.internalVmid)}
-                                          className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-2 group"
+                                          onClick={detailsLoading ? undefined : () => handleRefreshSingle(order.internalVmid)}
+                                          disabled={detailsLoading}
+                                          className={`p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-2 group ${
+                                            detailsLoading
+                                              ? "opacity-50 cursor-not-allowed"
+                                              : "hover:bg-indigo-500/20"
+                                          }`}
                                           title="Refresh status"
                                         >
                                           <RefreshCw className={`w-3.5 h-3.5 ${detailsLoading ? "animate-spin" : ""}`} />

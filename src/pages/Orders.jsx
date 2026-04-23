@@ -59,6 +59,126 @@ import {
   HardDriveIcon,
 } from "lucide-react";
 
+
+const getStatusColor = (status) => {
+  switch (status?.toUpperCase()) {
+    case "ACTIVE":
+      return "text-green-400 bg-green-400/10 border border-green-400/20";
+    case "PENDING_PAYMENT":
+    case "PENDING":
+      return "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20";
+    case "CREATING":
+      return "text-blue-400 bg-blue-400/10 border border-blue-400/20";
+    case "FAILED":
+      return "text-red-400 bg-red-400/10 border border-red-400/20";
+    case "EXPIRED":
+      return "text-orange-400 bg-orange-400/10 border border-orange-400/20";
+    case "CANCELLED":
+      return "text-red-500 bg-red-500/10 border border-red-500/20";
+    default:
+      return "text-gray-400 bg-gray-700/10 border border-gray-700/20";
+  }
+};
+
+const getLiveStatusColor = (status) => {
+  switch (status) {
+    case "START":
+      return "text-green-400 bg-green-400/10 border border-green-400/20";
+    case "STOP":
+      return "text-gray-400 bg-gray-400/10 border border-gray-400/20";
+    case "REBOOT":
+    case "REBOOTING":
+      return "text-purple-400 bg-purple-400/10 border border-purple-400/20";
+    case "HIBERNATE":
+      return "text-indigo-400 bg-indigo-400/10 border border-indigo-400/20";
+    case "RESUME":
+      return "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20";
+    case "STARTING":
+    case "STOPPING":
+    case "MIGRATING":
+    case "REBUILDING":
+      return "text-blue-400 bg-blue-400/10 border border-blue-400/20";
+    case "SUSPENDED":
+      return "text-orange-400 bg-orange-400/10 border border-orange-400/20";
+    default:
+      return "text-yellow-400 bg-yellow-400/10 border border-yellow-400/20";
+  }
+};
+
+const normalizeLiveStatus = (status) => {
+  if (!status) return "UNKNOWN";
+  const s = status.toLowerCase();
+  if (s === "running") return "START";
+  if (s === "stopped") return "STOP";
+  if (s === "not_provisioned") return "NOT_PROVISIONED";
+  if (s === "hibernated/paused" || s === "hibernated" || s === "paused") return "HIBERNATE";
+  if (s === "starting") return "STARTING";
+  if (s === "stopping") return "STOPPING";
+  if (s === "rebooting") return "REBOOTING";
+  if (s === "migrating") return "MIGRATING";
+  if (s === "suspended") return "SUSPENDED";
+  if (s === "rebuilding") return "REBUILDING";
+  return status.toUpperCase();
+};
+
+const canAction = (liveStatus, action) => {
+  const status = normalizeLiveStatus(liveStatus);
+  const rules = {
+    START: ["stop", "reboot", "hibernate"],
+    STOP: ["start"],
+    HIBERNATE: ["resume"],
+    RESUME: ["stop"],
+    REBOOT: [],
+    STARTING: [],
+    STOPPING: [],
+    REBOOTING: [],
+    MIGRATING: [],
+    REBUILDING: [],
+    SUSPENDED: ["start"],
+    NOT_PROVISIONED: [],
+  };
+  return rules[status]?.includes(action) ?? false;
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const getDaysRemaining = (expiresAt) => {
+  if (!expiresAt) return 0;
+  const now = new Date();
+  const exp = new Date(expiresAt);
+  const diffTime = exp - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 0;
+};
+
+const getDefaultUsername = (osType) => {
+  if (!osType) return "root / Administrator";
+  const os = osType.toLowerCase();
+  if (os.includes("windows")) return "Administrator";
+  return "root";
+};
+
+const getRenewButtonConfig = (order) => {
+  if (order.status === "ACTIVE") {
+    return { label: "Renew / Upgrade", color: "bg-indigo-600 hover:bg-indigo-700" };
+  }
+  if (order.status === "PENDING_PAYMENT") {
+    return { label: "Complete Payment", color: "bg-yellow-600 hover:bg-yellow-700" };
+  }
+  if (order.status === "EXPIRED") {
+    return { label: "Renew Now", color: "bg-orange-600 hover:bg-orange-700" };
+  }
+  return null;
+};
+
 export default function UserOrdersPage() {
   // ─── React Query: SINGLE SOURCE OF TRUTH for orders ─────────────────────
   const queryClient = useQueryClient();
@@ -201,6 +321,12 @@ export default function UserOrdersPage() {
       currency: "INR",
       minimumFractionDigits: 2,
     }).format(amount || 0);
+  }, []);
+
+  const formatRamGb = useCallback((ramMb) => {
+    const numericRamMb = Number(ramMb);
+    if (!Number.isFinite(numericRamMb) || numericRamMb <= 0) return "0";
+    return Number((numericRamMb / 1024).toFixed(2)).toString();
   }, []);
 
   const getStatusText = useCallback((status) => {
@@ -1437,7 +1563,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                     <MemoryStick className="w-3 h-3 text-gray-400" />
                                     <span>
                                       {order.ramMb
-                                        ? `${order.ramMb / 1024}GB`
+                                        ? `${formatRamGb(order.ramMb)}GB`
                                         : "0GB"}{" "}
                                       RAM
                                     </span>
@@ -1571,9 +1697,9 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                     <span>RAM</span>
                                                   </div>
                                                   <p className="text-2xl font-bold text-white">
-                                                    {details.ramMb || 0}
+                                                    {formatRamGb(details.ramMb)}
                                                     <span className="text-sm text-gray-400 ml-1">
-                                                      MB
+                                                      GB
                                                     </span>
                                                   </p>
                                                 </div>
