@@ -1061,6 +1061,83 @@ export default function OrdersPage() {
     }
   };
 
+  // ---------- RECONFIGURE NETWORK HANDLER ----------
+  const handleReconfigureNetwork = async (vmid, orderId) => {
+    const adminToken = localStorage.getItem("adminToken");
+    if (!adminToken) {
+      DarkSwal.fire({
+        icon: "error",
+        title: "Authentication Required",
+        text: "Admin not authenticated",
+        timer: 3000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    const result = await DarkSwal.fire({
+      title: "Reconfigure Network",
+      html: "This will forcefully reconfigure and fix the network settings of the VM.<br><br>Continue?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, reconfigure",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    DarkSwal.fire({
+      title: "Processing",
+      text: "Initiating network reconfiguration...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        DarkSwal.showLoading();
+      },
+    });
+
+    try {
+      setAdminActionLoading((p) => ({ ...p, [orderId]: "reconfigure-network" }));
+
+      const res = await fetch(
+        `${BASE_URL}/api/admin/vms/${vmid}/reconfigure-network`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        },
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || await res.text() || "Network reconfiguration failed");
+      }
+
+      DarkSwal.close();
+      DarkSwal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Network reconfiguration initiated",
+        timer: 3000,
+        showConfirmButton: false,
+      });
+      await refetchOrders();
+    } catch (err) {
+      toast.error(err.message);
+      DarkSwal.fire({
+        icon: "error",
+        title: "Failed",
+        text: err.message || "Network reconfiguration failed",
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    } finally {
+      setAdminActionLoading((p) => ({ ...p, [orderId]: null }));
+    }
+  };
+
   // ------- IP ADDRESS CHANGE HANDLER --------
 
   const handleChangeIp = async (order) => {
@@ -2189,6 +2266,16 @@ export default function OrdersPage() {
       text-yellow-300 rounded-lg font-medium text-sm"
                                     >
                                       Easy Reboot
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleReconfigureNetwork(order.vmid, order.id)}
+                                      disabled={adminActionLoading[order.id]}
+                                      className="flex-1 sm:flex-none px-3 py-2 border border-blue-500/40
+      hover:bg-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent
+      text-blue-300 rounded-lg font-medium text-sm whitespace-nowrap"
+                                    >
+                                      Reconfigure Network
                                     </button>
 
                                     <button

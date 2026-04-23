@@ -111,6 +111,7 @@ export default function UserOrdersPage() {
   const [vmLockStatus, setVmLockStatus] = useState({});
   const [passwordLoading, setPasswordLoading] = useState({});
   const [macLoading, setMacLoading] = useState({});
+  const [networkLoading, setNetworkLoading] = useState({});
 
   // Repayment / upgrade modals
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -599,6 +600,64 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
       }
     },
     [fetchBasicIsos, handlePowerAction],
+  );
+
+  const handleReconfigureNetwork = useCallback(
+    async (order) => {
+      const vmId = order.originalData?.vmId || order.id;
+      if (networkLoading[vmId]) return;
+
+      const confirm = await DarkSwal.fire({
+        title: "Reconfigure Network?",
+        html: `
+        <div class="text-left space-y-3">
+          <p class="text-sm text-yellow-500 font-semibold flex items-center gap-2">
+            <span class="p-1 bg-yellow-500/10 rounded-full">⚠️</span>
+            Warning: This action will REBOOT your server.
+          </p>
+          <p class="text-sm text-gray-400">
+            This will forcefully reconfigure and fix the network settings of your VM if the IP stops responding or the MAC address gets detached.
+          </p>
+        </div>
+      `,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes, Reconfigure",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#ef4444",
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        setNetworkLoading((prev) => ({ ...prev, [vmId]: true }));
+
+        const data = await apiClient(
+          `/api/users/vms/${vmId}/reconfigure-network`,
+          { method: "POST" },
+          { auth: "user" },
+        );
+
+        invalidateOrders();
+        toast.success(data.message || "Network reconfiguration initiated.");
+
+        DarkSwal.fire({
+          icon: "success",
+          title: "Success",
+          text: data.message || "Network reconfiguration initiated. Your server will reboot shortly.",
+        });
+      } catch (err) {
+        toast.error(err.message);
+        DarkSwal.fire({
+          icon: "error",
+          title: "Operation Failed",
+          text: err.message,
+        });
+      } finally {
+        setNetworkLoading((prev) => ({ ...prev, [vmId]: false }));
+      }
+    },
+    [DarkSwal, networkLoading, invalidateOrders],
   );
 
   const handleRegenerateMac = useCallback(
@@ -1488,11 +1547,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                           </div>
 
                                           <div
-                                            className={`grid gap-4 ${
-                                              order.isProtected
-                                                ? "grid-cols-2"
-                                                : "grid-cols-1"
-                                            }`}
+                                            className={`grid gap-4 grid-cols-2`}
                                           >
                                             {/* ISO Name */}
                                             <div className="bg-[#0e1525]/50 rounded-lg p-3">
@@ -1505,9 +1560,43 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                               </p>
                                             </div>
 
+                                            {/* Network Reconfigure */}
+                                            <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
+                                              <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                                              <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
+                                                <Zap className="w-4 h-4 text-blue-400" />
+                                                <span>Network Fix</span>
+                                              </div>
+
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleReconfigureNetwork(order);
+                                                }}
+                                                disabled={
+                                                  networkLoading[
+                                                    order.originalData?.vmId ||
+                                                      order.id
+                                                  ]
+                                                }
+                                                className="mt-auto relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold rounded-lg border border-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                              >
+                                                {networkLoading[
+                                                  order.originalData?.vmId ||
+                                                    order.id
+                                                ] ? (
+                                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                  <Zap className="w-3 h-3 group-hover/btn:scale-110 transition-transform duration-300" />
+                                                )}
+                                                FIX NETWORK
+                                              </button>
+                                            </div>
+
                                             {/* Protection Status */}
                                             {order.isProtected && (
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3 col-span-2 sm:col-span-1">
                                                 <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
                                                   <Shield className="w-4 h-4 text-green-400" />
                                                   <span>Protection</span>
