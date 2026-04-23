@@ -42,6 +42,7 @@ import {
   Filter,
   X,
   Key,
+  RefreshCw,
 } from "lucide-react";
 import MacChangeModal from "../../components/admin/Orders/MacChangeModal";
 
@@ -59,7 +60,6 @@ export default function OrdersPage() {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [ipChangeLoading, setIpChangeLoading] = useState({});
   const [macModal, setMacModal] = useState({ isOpen: false, order: null });
-  const [pollInterval, setPollInterval] = useState(10000); // Default 10s
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -115,7 +115,6 @@ export default function OrdersPage() {
     rawSearch: searchQuery,
     sortBy: sortConfig?.key || "createdAt",
     sortDir: sortConfig?.direction || "desc",
-    pollInterval: pollInterval,
   });
 
   // ── User-intent loader tracking ──────────────────────────────────────
@@ -179,6 +178,8 @@ export default function OrdersPage() {
     totalDeletedVms: statsData?.deleted?.totalDeletedVms || 0,
     totalUsers: statsData?.users?.totalUsers || 0,
   }), [statsData]);
+
+
   const [expandedRow, setExpandedRow] = useState(null);
   const [expandedInternalVmid, setExpandedInternalVmid] = useState(null);
   const [orderDetails, setOrderDetails] = useState({});
@@ -227,37 +228,29 @@ export default function OrdersPage() {
     }
   };
 
-  // Poll details every 10 seconds for the expanded row
-  useEffect(() => {
-    if (!expandedInternalVmid) return;
+  const handleRefreshSingle = async (internalVmid) => {
+    setDetailsLoading(true);
+    try {
+      const details = await fetchAdminOrderDetails(internalVmid);
+      setOrderDetails((prev) => ({ ...prev, [internalVmid]: details }));
+      // Also invalidate main query to sync the table state (e.g. power state)
+      await refetchOrders();
+    } catch (err) {
+      console.error("Manual refresh of details failed", err);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
-    let isActive = true;
-    let timeoutId = null;
-
-    const pollDetails = async () => {
-      if (!isActive) return;
-      try {
-        const details = await fetchAdminOrderDetails(expandedInternalVmid);
-        if (isActive) {
-          setOrderDetails((prev) => ({ ...prev, [expandedInternalVmid]: details }));
-        }
-      } catch (err) {
-        console.error("Failed to poll VM details", err);
-      }
-      
-      if (isActive) {
-        timeoutId = setTimeout(pollDetails, 10000);
-      }
-    };
-
-    // Wait 10 seconds before the first background poll
-    timeoutId = setTimeout(pollDetails, 10000);
-
-    return () => {
-      isActive = false;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [expandedInternalVmid]);
+  const handleRefresh = async () => {
+    // 1. Refresh main table
+    await refetchOrders();
+    
+    // 2. Refresh expanded row details if any
+    if (expandedInternalVmid) {
+      handleRefreshSingle(expandedInternalVmid);
+    }
+  };
 
   const sortConfigObj = {
     key: sortConfig?.key,
@@ -1326,12 +1319,6 @@ export default function OrdersPage() {
       // Invalidate cache immediately
       queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
 
-      // Trigger Fast Polling (3s interval for 30s)
-      setPollInterval(3000);
-      setTimeout(() => {
-        setPollInterval(10000);
-      }, 30000);
-
       DarkSwal.fire({
         icon: "success",
         title: "Success",
@@ -1468,9 +1455,18 @@ export default function OrdersPage() {
               {/* Table Header */}
               <div className="p-4 sm:p-6 border-b border-indigo-900/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-semibold text-white">
-                  Order List
-                  </h2>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold text-white">
+                    Order List
+                    </h2>
+                    <button
+                      onClick={handleRefresh}
+                      className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg border border-indigo-500/20 transition-all group"
+                      title="Refresh Orders"
+                    >
+                      <Activity className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
+                    </button>
+                  </div>
                   <p className="text-sm text-gray-400 mt-1">
                     Showing {totalItems === 0 ? 0 : page * size + 1}–
                     {Math.min((page + 1) * size, totalItems)} of {totalItems}{" "}
@@ -1824,13 +1820,23 @@ export default function OrdersPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                       {/* Server Specifications Card */}
                                     <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
-                                      <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                        <div className="p-2 bg-indigo-900/30 rounded-lg">
-                                          <Server className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+                                      <div className="flex items-center justify-between mb-4 sm:mb-6">
+                                        <div className="flex items-center gap-3">
+                                          <div className="p-2 bg-indigo-900/30 rounded-lg">
+                                            <Server className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+                                          </div>
+                                          <h3 className="text-base sm:text-lg font-semibold text-indigo-300">
+                                            Server Specifications
+                                          </h3>
                                         </div>
-                                        <h3 className="text-base sm:text-lg font-semibold text-indigo-300">
-                                          Server Specifications
-                                        </h3>
+                                        <button
+                                          onClick={() => handleRefreshSingle(order.internalVmid)}
+                                          className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-2 group"
+                                          title="Refresh status"
+                                        >
+                                          <RefreshCw className={`w-3.5 h-3.5 ${detailsLoading ? "animate-spin" : ""}`} />
+                                          <span className="text-[10px] font-bold uppercase tracking-wider">Sync Status</span>
+                                        </button>
                                       </div>
 
                                       <div className="space-y-3 sm:space-y-4">
@@ -2378,6 +2384,7 @@ export default function OrdersPage() {
       hover:bg-red-700/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent
       text-red-400 rounded-lg font-medium text-sm"
                                     >
+                                      Destroy
                                     </button>
                                   </div>
                                   </>

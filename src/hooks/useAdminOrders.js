@@ -21,7 +21,7 @@ export const useAdminOrders = ({
       fetchAdminOrders({ page, size, statusFilter, search, searchBy, sortBy, sortDir, signal }),
     placeholderData: (previousData) => previousData,
     staleTime: 60 * 1000,
-    refetchInterval: isSearching ? false : pollInterval,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
   });
 };

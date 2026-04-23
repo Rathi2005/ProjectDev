@@ -55,6 +55,8 @@ import {
   ShieldOff,
   User,
   MapPin,
+  Globe,
+  HardDriveIcon,
 } from "lucide-react";
 
 export default function UserOrdersPage() {
@@ -142,6 +144,8 @@ export default function UserOrdersPage() {
 
   const [qrData, setQrData] = useState(null);
   const pollRef = useRef(null);
+
+
 
   // ─── Memoized constants ───────────────────────────────────────────────────
   const isWindows = useMemo(
@@ -382,37 +386,29 @@ export default function UserOrdersPage() {
     [expandedRow, orderDetails],
   );
 
-  // Poll details every 10 seconds for the expanded row (recursive timeout)
-  useEffect(() => {
-    if (!expandedRow) return;
+  const handleRefreshSingle = useCallback(async (vmId) => {
+    setDetailsLoading(true);
+    try {
+      const details = await fetchUserOrderDetails(vmId);
+      setOrderDetails((prev) => ({ ...prev, [vmId]: details }));
+      // Also invalidate main query to sync the table state (e.g. power state)
+      invalidateOrders();
+    } catch (err) {
+      console.error("Manual refresh of details failed", err);
+      toast.error("Failed to refresh status");
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, [invalidateOrders]);
 
-    let isActive = true;
-    let timeoutId = null;
-
-    const pollDetails = async () => {
-      if (!isActive) return;
-      try {
-        const details = await fetchUserOrderDetails(expandedRow);
-        if (isActive) {
-          setOrderDetails((prev) => ({ ...prev, [expandedRow]: details }));
-        }
-      } catch (err) {
-        console.error("Failed to poll VM details", err);
-      }
-
-      if (isActive) {
-        timeoutId = setTimeout(pollDetails, 10000);
-      }
-    };
-
-    // Wait 10 seconds before the first background poll
-    timeoutId = setTimeout(pollDetails, 10000);
-
-    return () => {
-      isActive = false;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [expandedRow]);
+  const handleRefresh = useCallback(async () => {
+    invalidateOrders();
+    if (expandedRow) {
+      // If a row is expanded, refresh its details too
+      const vmId = orders.find(o => o.id === expandedRow)?.originalData?.vmId;
+      if (vmId) handleRefreshSingle(vmId);
+    }
+  }, [expandedRow, orders, invalidateOrders, handleRefreshSingle]);
 
   const handleCopy = useCallback((text, vmId) => {
     navigator.clipboard.writeText(text);
@@ -1316,7 +1312,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                   New Server
                 </button>
                 <button
-                  onClick={() => setRefreshTrigger((prev) => prev + 1)}
+                  onClick={handleRefresh}
                   className="px-4 py-2.5 border border-indigo-900/50 hover:bg-indigo-900/20 text-indigo-300 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
                 >
                   <RefreshCw
@@ -1510,8 +1506,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                       <Lock className="w-4 h-4 text-red-400" />
                                     </div>
                                   )}
-
-                                  <button
+<button
                                     onClick={() => toggleRow(order.id, order.originalData.vmId)}
                                     className="p-1.5 hover:bg-indigo-900/30 rounded-lg transition-colors"
                                     title={
@@ -1558,11 +1553,11 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                             <div className="space-y-4">
                                               <div className="grid grid-cols-2 gap-4">
                                                 <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
                                                     <Cpu className="w-4 h-4" />
                                                     <span>CPU Cores</span>
                                                   </div>
-                                                  <p className="text-xl font-bold text-white">
+                                                  <p className="text-2xl font-bold text-white">
                                                     {details.cores || 0}
                                                     <span className="text-sm text-gray-400 ml-1">
                                                       cores
@@ -1571,133 +1566,98 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                 </div>
 
                                                 <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
                                                     <MemoryStick className="w-4 h-4" />
                                                     <span>RAM</span>
                                                   </div>
-                                                  <p className="text-xl font-bold text-white">
-                                                    {details.ramMb
-                                                      ? `${Math.round(details.ramMb / 1024)}`
-                                                      : "N/A"}
+                                                  <p className="text-2xl font-bold text-white">
+                                                    {details.ramMb || 0}
                                                     <span className="text-sm text-gray-400 ml-1">
-                                                      GB
+                                                      MB
                                                     </span>
                                                   </p>
                                                 </div>
                                               </div>
 
                                               <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                  <HardDrive className="w-4 h-4" />
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                                                  <HardDriveIcon className="w-4 h-4 text-indigo-400" />
                                                   <span>Storage</span>
                                                 </div>
-                                                <p className="text-xl font-bold text-white">
-                                                  {details.diskGb ?? "N/A"}
+                                                <p className="text-2xl font-bold text-white">
+                                                  {details.diskGb || 0}
                                                   <span className="text-sm text-gray-400 ml-1">
                                                     GB SSD
                                                   </span>
                                                 </p>
                                               </div>
 
-                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                  <Activity className="w-4 h-4" />
-                                                  <span>VM ID</span>
-                                                </div>
-                                                <p className="text-sm font-semibold text-white font-mono">
-                                                  #{details.proxmoxVmid || "N/A"}
-                                                </p>
-                                              </div>
-
-                                              <div className={`grid gap-4 grid-cols-2`}>
-                                                {/* ISO Name */}
+                                              <div className="grid grid-cols-2 gap-4">
                                                 <div className="bg-[#0e1525]/50 rounded-lg p-3">
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                    <FileText className="w-4 h-4 text-indigo-400" />
-                                                    <span>ISO</span>
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                                                    <Globe className="w-4 h-4" />
+                                                    <span>OS</span>
                                                   </div>
-                                                  <p className="text-sm font-semibold text-white">
-                                                    {order.isoName || "N/A"}
+                                                  <p className="text-sm font-medium text-white truncate">
+                                                    {details.osName || order.osType || "N/A"}
                                                   </p>
                                                 </div>
 
-                                                {/* Network Reconfigure */}
-                                                <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
-                                                  <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
-                                                    <Zap className="w-4 h-4 text-blue-400" />
-                                                    <span>Network Fix</span>
-                                                  </div>
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleReconfigureNetwork(order);
-                                                    }}
-                                                    disabled={networkLoading[order.originalData?.vmId || order.id]}
-                                                    className="mt-auto relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold rounded-lg border border-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
-                                                  >
-                                                    {networkLoading[order.originalData?.vmId || order.id] ? (
-                                                      <RefreshCw className="w-3 h-3 animate-spin" />
-                                                    ) : (
-                                                      <Zap className="w-3 h-3 group-hover/btn:scale-110 transition-transform duration-300" />
-                                                    )}
-                                                    FIX NETWORK
-                                                  </button>
-                                                </div>
-
-                                                {/* Protection Status */}
-                                                {details.isProtected && (
-                                                  <div className="bg-[#0e1525]/50 rounded-lg p-3 col-span-2 sm:col-span-1">
-                                                    <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                      <Shield className="w-4 h-4 text-green-400" />
-                                                      <span>Protection</span>
-                                                    </div>
-                                                    <p className="text-sm font-semibold text-green-400">
-                                                      Protected
-                                                    </p>
-                                                  </div>
-                                                )}
-                                              </div>
-
-                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                                {/* IP Address */}
-                                                <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden">
-                                                  <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-                                                    <Wifi className="w-4 h-4 text-emerald-400" />
+                                                <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                                                    <Wifi className="w-4 h-4" />
                                                     <span>IP Address</span>
                                                   </div>
-                                                  <p className="text-sm font-mono font-semibold text-white truncate px-1">
-                                                    {order.ipAddress || "Not assigned"}
+                                                  <p className="text-sm font-medium text-white truncate">
+                                                    {order.ipAddress || "N/A"}
                                                   </p>
                                                 </div>
+                                              </div>
 
-                                                {/* MAC Address */}
-                                                <div className="bg-[#0e1525]/50 rounded-lg p-3 group relative overflow-hidden flex flex-col isolation-auto">
-                                                  <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                                                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2 relative z-[1]">
-                                                    <Activity className="w-4 h-4 text-purple-400" />
+                                              <div className="bg-[#0e1525]/50 rounded-lg p-3">
+                                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                                                  <Activity className="w-4 h-4" />
+                                                  <span>Live Status</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                  <span
+                                                    className={`w-2 h-2 rounded-full ${
+                                                      (order.liveState?.toUpperCase() || "UNKNOWN") === "RUNNING"
+                                                        ? "bg-green-400 animate-pulse"
+                                                        : "bg-red-400"
+                                                    }`}
+                                                  ></span>
+                                                  <span className="text-sm font-medium text-white">
+                                                    {order.liveState?.toUpperCase() || "UNKNOWN"}
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              <div className="pt-3 border-t border-indigo-900/30">
+                                                <div className="flex items-center justify-between mb-2">
+                                                  <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wider font-bold">
+                                                    <Server className="w-3 h-3" />
                                                     <span>MAC Address</span>
                                                   </div>
-                                                  <p className="text-sm font-mono font-bold text-white uppercase tracking-wider mb-3 relative z-[1]">
-                                                    {details.macAddress || "Not available"}
-                                                  </p>
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleRegenerateMac(order);
-                                                    }}
-                                                    disabled={macLoading[order.originalData?.vmId || order.id]}
-                                                    className="relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg border border-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
-                                                  >
-                                                    {macLoading[order.originalData?.vmId || order.id] ? (
-                                                      <RefreshCw className="w-3 h-3 animate-spin" />
-                                                    ) : (
-                                                      <RefreshCw className="w-3 h-3 group-hover/btn:rotate-180 transition-transform duration-500" />
-                                                    )}
-                                                    REGENERATE MAC
-                                                  </button>
+                                                  <code className="text-[10px] bg-indigo-950/50 px-2 py-0.5 rounded text-indigo-300 border border-indigo-500/20 font-mono">
+                                                    {details.macAddress || "N/A"}
+                                                  </code>
                                                 </div>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRegenerateMac(order);
+                                                  }}
+                                                  disabled={macLoading[order.originalData?.vmId || order.id]}
+                                                  className="relative z-20 flex items-center justify-center gap-2 w-full py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-lg border border-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                                >
+                                                  {macLoading[order.originalData?.vmId || order.id] ? (
+                                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                                  ) : (
+                                                    <RefreshCw className="w-3 h-3 group-hover/btn:rotate-180 transition-transform duration-500" />
+                                                  )}
+                                                  REGENERATE MAC
+                                                </button>
                                               </div>
                                             </div>
                                           </div>
@@ -1800,13 +1760,23 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
                                           {/* ── Connection & Controls Card ── */}
                                           <div className="bg-gradient-to-br from-[#1a2337] to-[#151c2f] rounded-xl border border-indigo-900/50 p-4 sm:p-6">
-                                            <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                                              <div className="p-2 bg-indigo-900/30 rounded-lg">
-                                                <Lock className="w-5 h-5 text-indigo-400" />
+                                            <div className="flex items-center justify-between mb-4 sm:mb-6">
+                                              <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-indigo-900/30 rounded-lg">
+                                                  <Lock className="w-5 h-5 text-indigo-400" />
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-indigo-300">
+                                                  Security & Connection
+                                                </h3>
                                               </div>
-                                              <h3 className="text-lg font-semibold text-indigo-300">
-                                                Security & Connection
-                                              </h3>
+                                              <button
+                                                onClick={() => handleRefreshSingle(order.originalData.vmId)}
+                                                className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg border border-indigo-500/20 transition-all flex items-center gap-2 group"
+                                                title="Refresh status"
+                                              >
+                                                <RefreshCw className={`w-3.5 h-3.5 ${detailsLoading ? "animate-spin" : ""}`} />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">Sync Status</span>
+                                              </button>
                                             </div>
 
                                             <div className="space-y-4">

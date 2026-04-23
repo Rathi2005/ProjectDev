@@ -39,7 +39,7 @@ export const useUserOrders = ({
     enabled,
     placeholderData: (prev) => prev,    // keep previous data during pagination/key changes
     staleTime: 5_000,                   // 5s — orders are near-real-time data
-    refetchInterval: isSearching ? false : 8_000,  // 8s polling, paused during search
+    refetchInterval: false,  // Polling removed per user request to reduce DB load
     refetchIntervalInBackground: false,
     // CRITICAL: Do NOT retry network/CORS errors on background refetch.
     // The global retry in main.jsx already skips status=0, but this ensures
