@@ -1301,16 +1301,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
     })();
   }, [expandedRow, orders, vmLockStatus]);
 
-  // Fetch password when a row is expanded
-  useEffect(() => {
-    if (!expandedRow) return;
-    const order = orders.find((o) => o.id === expandedRow);
-    if (!order) return;
-    const vmId = order.originalData?.vmId || order.id;
-    if (!vmPasswords.hasOwnProperty(vmId)) {
-      fetchVmPassword(order);
-    }
-  }, [expandedRow, orders, vmPasswords, fetchVmPassword]);
+
 
   // Reset page to 1 whenever sort or search changes
   useEffect(() => {
@@ -1944,6 +1935,89 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   </button>
                                                 </div>
                                               </div>
+                                              <button
+                                                onClick={async () => {
+                                                  const { value: newPassword } = await DarkSwal.fire({
+                                                    title: 'Change VM Password',
+                                                    html: `
+                                                      <p style="color:#9ca3af;font-size:13px;margin-bottom:12px;">Enter a new password for your VM. It must be at least 8 characters with uppercase, lowercase, number & special character.</p>
+                                                    `,
+                                                    input: 'password',
+                                                    inputPlaceholder: 'Enter new password',
+                                                    showCancelButton: true,
+                                                    confirmButtonText: 'Update Password',
+                                                    cancelButtonText: 'Cancel',
+                                                    confirmButtonColor: '#4f46e5',
+                                                    cancelButtonColor: '#334155',
+                                                    inputAttributes: { autocomplete: 'new-password' },
+                                                    didOpen: () => {
+                                                      const input = Swal.getInput();
+                                                      if (input) {
+                                                        input.style.backgroundColor = '#151c2f';
+                                                        input.style.color = '#e5e7eb';
+                                                        input.style.border = '1px solid #4f46e5';
+                                                        input.style.borderRadius = '6px';
+                                                        input.style.padding = '10px';
+                                                        input.style.paddingRight = '40px';
+                                                        // wrap input in a relative container for the eye button
+                                                        const wrapper = input.parentElement;
+                                                        if (wrapper) {
+                                                          wrapper.style.position = 'relative';
+                                                          const eyeBtn = document.createElement('button');
+                                                          eyeBtn.type = 'button';
+                                                          eyeBtn.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#9ca3af;display:flex;align-items:center;';
+                                                          const eyeOpen = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+                                                          const eyeClosed = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+                                                          eyeBtn.innerHTML = eyeOpen;
+                                                          eyeBtn.addEventListener('click', () => {
+                                                            const isPassword = input.type === 'password';
+                                                            input.type = isPassword ? 'text' : 'password';
+                                                            eyeBtn.innerHTML = isPassword ? eyeClosed : eyeOpen;
+                                                          });
+                                                          wrapper.appendChild(eyeBtn);
+                                                        }
+                                                      }
+                                                    },
+                                                    inputValidator: (value) => {
+                                                      if (!value) return 'Password is required';
+                                                      const pattern = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+                                                      if (!pattern.test(value)) return 'Min 8 chars with uppercase, lowercase, number & special character.';
+                                                    },
+                                                  });
+                                                  if (!newPassword) return;
+                                                  const vmId = order.originalData?.vmId || order.id;
+                                                  const userId = order.originalData?.userId;
+                                                  try {
+                                                    setPasswordLoading((prev) => ({ ...prev, [vmId]: true }));
+                                                    await apiClient(
+                                                      `/api/users/${userId}/vms/${vmId}/password`,
+                                                      {
+                                                        method: 'PUT',
+                                                        body: JSON.stringify({ password: newPassword }),
+                                                      },
+                                                      { auth: 'user' },
+                                                    );
+                                                    toast.success('Password updated successfully');
+                                                    setVmPasswords((prev) => ({ ...prev, [vmId]: newPassword }));
+                                                    setPasswordVisible((prev) => ({ ...prev, [vmId]: true }));
+                                                    setTimeout(() => {
+                                                      setPasswordVisible((prev) => ({ ...prev, [vmId]: false }));
+                                                    }, 10000);
+                                                  } catch (err) {
+                                                    DarkSwal.fire({
+                                                      icon: 'error',
+                                                      title: 'Password Change Failed',
+                                                      text: err.message,
+                                                    });
+                                                  } finally {
+                                                    setPasswordLoading((prev) => ({ ...prev, [vmId]: false }));
+                                                  }
+                                                }}
+                                                disabled={order.status !== 'ACTIVE'}
+                                                className="text-indigo-400 hover:text-indigo-300 text-xs mt-1 hover:underline transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                              >
+                                                Change Password
+                                              </button>
 
                                               {order.ipAddress && order.liveState?.toUpperCase() === "RUNNING" && (
                                                 <div className="grid grid-cols-2 gap-2 mt-4">
@@ -1957,15 +2031,15 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                   <button
                                                     onClick={() => navigate(`/user/vms/${order.id}/performance`, {
                                                       state: {
-                                                        userId: order.originalData.userId || accountStatus?.id,
-                                                        serverId: order.originalData.serverId,
+                                                        userId: order.originalData?.userId || accountStatus?.id || accountStatus?.userId,
+                                                        serverId: order.originalData?.serverId,
                                                         vmName: order.vmName,
                                                       },
                                                     })}
                                                     className="flex items-center justify-center gap-2 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors"
                                                   >
                                                     <Activity className="w-4 h-4" />
-                                                    Perf
+                                                    Performance
                                                   </button>
                                                 </div>
                                               )}
@@ -1989,8 +2063,44 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
                                                     <Square className="w-3 h-3" />
                                                     Stop
                                                   </button>
+                                                  <button
+                                                    onClick={() => handlePowerAction(order, "reboot")}
+                                                    disabled={!canAction(order.liveState, "reboot") || order.status !== "ACTIVE" || !!powerLoading[order.originalData?.vmId || order.id]}
+                                                    className="flex items-center justify-center gap-2 p-2 bg-purple-900/30 hover:bg-purple-900/50 disabled:opacity-30 text-purple-300 rounded text-xs transition-colors"
+                                                  >
+                                                    <RefreshCw className="w-3 h-3" />
+                                                    Reboot
+                                                  </button>
+                                                  <button
+                                                    onClick={() => promptRebuildWithIso(order)}
+                                                    disabled={order.status !== "ACTIVE" || !!powerLoading[order.originalData?.vmId || order.id]}
+                                                    className="flex items-center justify-center gap-2 p-2 bg-orange-900/30 hover:bg-orange-900/50 disabled:opacity-30 text-orange-300 rounded text-xs transition-colors"
+                                                  >
+                                                    <HardDrive className="w-3 h-3" />
+                                                    Rebuild
+                                                  </button>
                                                 </div>
                                               </div>
+
+                                              {/* Reconfigure Network */}
+                                              <div className="pt-3 border-t border-indigo-900/30">
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleReconfigureNetwork(order);
+                                                  }}
+                                                  disabled={networkLoading[order.originalData?.vmId || order.id] || order.status !== "ACTIVE"}
+                                                  className="flex items-center justify-center gap-2 w-full py-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded-lg border border-yellow-500/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >
+                                                  {networkLoading[order.originalData?.vmId || order.id] ? (
+                                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                                  ) : (
+                                                    <Wifi className="w-3 h-3" />
+                                                  )}
+                                                  RECONFIGURE NETWORK
+                                                </button>
+                                              </div>
+
                                             </div>
                                           </div>
                                         </div>
