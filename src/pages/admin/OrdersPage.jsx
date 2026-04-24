@@ -1267,7 +1267,7 @@ export default function OrdersPage() {
       setAdminActionLoading((p) => ({ ...p, [orderId]: "reconfigure-network" }));
 
       const res = await fetch(
-        `${BASE_URL}/api/admin/vms/${vmid}/reconfigure-network`,
+        `${BASE_URL}/api/admin/${vmid}/reconfigure-network`,
         {
           method: "POST",
           headers: {
