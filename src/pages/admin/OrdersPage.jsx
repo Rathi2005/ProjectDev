@@ -44,10 +44,79 @@ import {
   X,
   Key,
   RefreshCw,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import MacChangeModal from "../../components/admin/Orders/MacChangeModal";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
+
+const LockActionDropdown = ({ isLocked, onToggle }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative inline-block text-left" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center justify-between w-[110px] px-2.5 py-1.5 text-xs font-semibold border rounded-lg transition-all duration-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-[#0e1525] ${
+          isLocked
+            ? "bg-red-500/10 border-red-500/40 text-red-400 hover:bg-red-500/20 focus:ring-red-500/50"
+            : "bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 focus:ring-emerald-500/50"
+        }`}
+      >
+        <span className="flex items-center gap-1.5">
+          {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          {isLocked ? "Locked" : "Unlocked"}
+        </span>
+        <ChevronDown className={`w-3 h-3 transition-transform duration-200 opacity-70 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 z-50 mt-1.5 w-36 origin-top-right rounded-xl bg-[#151c2f] border border-indigo-500/30 shadow-xl shadow-black/60 overflow-hidden backdrop-blur-xl">
+          <div className="py-1">
+            <button
+              onClick={() => {
+                onToggle(true);
+                setIsOpen(false);
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors ${
+                isLocked ? "bg-red-500/10 text-red-300 cursor-default" : "text-gray-300 hover:bg-indigo-500/10 hover:text-white"
+              }`}
+              disabled={isLocked}
+            >
+              <Lock className="w-4 h-4 text-red-400" />
+              Lock VM
+            </button>
+            <button
+              onClick={() => {
+                onToggle(false);
+                setIsOpen(false);
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors ${
+                !isLocked ? "bg-emerald-500/10 text-emerald-300 cursor-default" : "text-gray-300 hover:bg-indigo-500/10 hover:text-white"
+              }`}
+              disabled={!isLocked}
+            >
+              <Unlock className="w-4 h-4 text-emerald-400" />
+              Unlock VM
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const DarkSwal = Swal.mixin({
   background: "#1e2640",
@@ -135,7 +204,7 @@ export default function OrdersPage() {
       serverId: order.serverId ?? order.parentServerId ?? null,
       vmid: order.proxmoxVmid, // Might be undefined in new API
       internalVmid: order.vmId ?? order.internalVmid,
-      isProtected: order.isProtected ?? false, // Might be undefined
+      isProtected: order.protected ?? order.isProtected ?? false,
       priceTotal: order.paidAmount,
       monthlyPrice: order.monthlyPrice,
       paidAmount: order.paidAmount,
@@ -152,7 +221,7 @@ export default function OrdersPage() {
       status: order.dbStatus,
       liveState: order.liveState,
       password: order.password || "N/A", // Might be undefined
-      isLocked: order.isLocked || false,
+      isLocked: order.locked ?? order.isLocked ?? false,
       user: {
         firstName: order.customerName || "—",
         lastName: "",
@@ -279,6 +348,43 @@ export default function OrdersPage() {
     setPage(0); // reset pagination
   };
 
+  const resolveTargetOrderId = async (uiOrderId) => {
+    const order = orders.find((o) => o.id === uiOrderId);
+    if (!order) return uiOrderId;
+
+    const internalVmid = order.internalVmid || order.originalData?.vmId;
+    let details = orderDetails[internalVmid];
+
+    // Helper to strictly extract a numeric ID (ignoring "ORD-..." strings)
+    const extractNumeric = (...values) => {
+      for (const val of values) {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string' && /^\d+$/.test(val)) return Number(val);
+      }
+      return null;
+    };
+
+    let targetOrderId = extractNumeric(
+      details?.orderId,
+      details?.dbOrderId,
+      order.dbOrderId,
+      order.originalData?.dbOrderId,
+      order.originalData?.orderId
+    );
+
+    if (!targetOrderId && internalVmid) {
+      try {
+        details = await fetchAdminOrderDetails(internalVmid);
+        setOrderDetails((prev) => ({ ...prev, [internalVmid]: details }));
+        targetOrderId = extractNumeric(details?.orderId, details?.dbOrderId);
+      } catch (err) {
+        console.error("Failed to fetch details for order ID resolution", err);
+      }
+    }
+
+    return targetOrderId || uiOrderId;
+  };
+
   const [powerLoading, setPowerLoading] = useState({});
 
   const handlePowerAction = async (orderId, action) => {
@@ -306,8 +412,10 @@ export default function OrdersPage() {
     try {
       setPowerLoading((prev) => ({ ...prev, [orderId]: action }));
 
+      const targetOrderId = await resolveTargetOrderId(orderId);
+
       const res = await fetch(
-        `${BASE_URL}/api/admin/vms/order/${orderId}/power?action=${action}`,
+        `${BASE_URL}/api/admin/vms/order/${targetOrderId}/power?action=${action}`,
         {
           method: "POST",
           headers: {
@@ -385,8 +493,10 @@ export default function OrdersPage() {
     try {
       setAdminActionLoading((p) => ({ ...p, [orderId]: "easy-reboot" }));
 
+      const targetOrderId = await resolveTargetOrderId(orderId);
+
       const res = await fetch(
-        `${BASE_URL}/api/admin/vms/order/${orderId}/reboot-easy`,
+        `${BASE_URL}/api/admin/vms/order/${targetOrderId}/reboot-easy`,
         {
           method: "POST",
           headers: {
@@ -423,11 +533,11 @@ export default function OrdersPage() {
   // ---------- REBUILD HANDLER ----------
   const [selectedIso, setSelectedIso] = useState("");
 
-  const fetchBasicIsos = async (serverId) => {
+  const fetchBasicIsos = async (zoneId) => {
     const adminToken = localStorage.getItem("adminToken");
 
     const res = await fetch(
-      `${BASE_URL}/api/admin/servers/${serverId}/isos/details`,
+      `${BASE_URL}/api/admin/zones/${zoneId}/isos`,
       {
         headers: {
           Authorization: `Bearer ${adminToken}`,
@@ -441,7 +551,7 @@ export default function OrdersPage() {
       throw new Error(errText || "Failed to fetch ISOs");
     }
 
-    return await res.json(); // [{ id, iso, vmid, server }]
+    return await res.json();
   };
 
   const promptRebuildWithIso = async (orderId) => {
@@ -471,14 +581,61 @@ export default function OrdersPage() {
         return;
       }
 
-      // Fetch available ISOs
-      const isos = await fetchBasicIsos(order.serverId);
+      const internalVmid = order.internalVmid || order.originalData?.vmId;
+      let details = orderDetails[internalVmid];
 
-      if (!isos.length) {
+      let zoneId =
+        order.originalData?.zoneId ||
+        order.originalData?.zone?.id ||
+        details?.zoneId ||
+        details?.zone?.id ||
+        details?.server?.zoneId ||
+        details?.server?.zone?.id ||
+        details?.parentServerId ||
+        order.serverId;
+
+      if (!zoneId && internalVmid) {
+        try {
+          details = await fetchAdminOrderDetails(internalVmid);
+          setOrderDetails((prev) => ({ ...prev, [internalVmid]: details }));
+          
+          zoneId =
+            details?.zoneId ||
+            details?.zone?.id ||
+            details?.server?.zoneId ||
+            details?.server?.zone?.id ||
+            details?.data?.zoneId ||
+            details?.data?.zone?.id ||
+            details?.data?.server?.zoneId ||
+            details?.data?.server?.zone?.id ||
+            details?.parentServerId ||
+            order.serverId;
+        } catch (err) {
+          console.error("Failed to fetch order details", err);
+        }
+      }
+
+      if (!zoneId) {
+        DarkSwal.fire({
+          icon: "error",
+          title: "Zone ID Missing",
+          text: "Unable to find Zone ID for this VM. Please refresh details.",
+          timer: 3000,
+          showConfirmButton: false,
+        });
+        return;
+      }
+
+      // Fetch available ISOs
+      const isos = await fetchBasicIsos(zoneId);
+      
+      let isosList = Array.isArray(isos) ? isos : (isos?.data || []);
+
+      if (!isosList || !isosList.length) {
         DarkSwal.fire({
           icon: "warning",
           title: "No ISOs Available",
-          text: "No ISO images available for this server",
+          text: "No ISO images available for this zone",
           background: "#1e2640",
           color: "#ffffff",
         });
@@ -487,8 +644,8 @@ export default function OrdersPage() {
 
       // Create ISO options for dropdown
       const isoOptions = {};
-      isos.forEach((i) => {
-        isoOptions[i.id] = i.iso;
+      isosList.forEach((i) => {
+        isoOptions[i.id] = i.isoName || i.iso || i.osType || `ISO ${i.id}`;
       });
 
       // Show ISO selection dialog
@@ -538,12 +695,15 @@ export default function OrdersPage() {
       try {
         setAdminActionLoading((p) => ({ ...p, [orderId]: "rebuild" }));
 
+        const targetOrderId = await resolveTargetOrderId(orderId);
+
         const res = await fetch(
-          `${BASE_URL}/api/admin/vms/order/${orderId}/rebuild?isoId=${isoId}`,
+          `${BASE_URL}/api/admin/vms/order/${targetOrderId}/rebuild?isoId=${isoId}`,
           {
             method: "POST",
             headers: {
               Authorization: `Bearer ${adminToken}`,
+              "Content-Length": "0",
             },
           },
         );
@@ -640,8 +800,10 @@ export default function OrdersPage() {
     try {
       setAdminActionLoading((p) => ({ ...p, [orderId]: "destroy" }));
 
+      const targetOrderId = await resolveTargetOrderId(orderId);
+
       const res = await fetch(
-        `${BASE_URL}/api/admin/vms/order/${orderId}/remove`,
+        `${BASE_URL}/api/admin/vms/order/${targetOrderId}/remove`,
         {
           method: "DELETE",
           headers: {
@@ -679,12 +841,15 @@ export default function OrdersPage() {
     const adminToken = localStorage.getItem("adminToken");
 
     try {
+      const targetOrderId = await resolveTargetOrderId(orderId);
       const res = await fetch(
-        `${BASE_URL}/api/admin/vms/order/${orderId}/lock?lock=${lock}`,
+        `${BASE_URL}/api/admin/vms/order/${targetOrderId}/lock?lock=${lock}`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+            "Content-Length": "0"
           },
         },
       );
@@ -1267,7 +1432,7 @@ export default function OrdersPage() {
       setAdminActionLoading((p) => ({ ...p, [orderId]: "reconfigure-network" }));
 
       const res = await fetch(
-        `${BASE_URL}/api/admin/${vmid}/reconfigure-network`,
+        `${BASE_URL}/api/admin/vms/${vmid}/reconfigure-network`,
         {
           method: "POST",
           headers: {
@@ -1858,35 +2023,12 @@ export default function OrdersPage() {
                             </td>
                             <td className="py-3 px-4 sm:px-6">
                               <div className="flex items-center gap-2">
-                                <select
-                                  value={order.isLocked ? "locked" : "unlocked"}
-                                  onChange={(e) =>
-                                    handleVmLockToggle(
-                                      order.id,
-                                      e.target.value === "locked",
-                                    )
+                                <LockActionDropdown
+                                  isLocked={order.isLocked}
+                                  onToggle={(newLockState) =>
+                                    handleVmLockToggle(order.id, newLockState)
                                   }
-                                  className={`px-2 py-1 rounded text-xs border appearance-none cursor-pointer
-        ${
-          order.isLocked
-            ? "bg-red-950/30 border-red-800 text-red-200 focus:ring-red-600 focus:ring-1 focus:outline-none"
-            : "bg-emerald-950/30 border-emerald-800 text-emerald-200 focus:ring-emerald-600 focus:ring-1 focus:outline-none"
-        }
-      `}
-                                >
-                                  <option
-                                    value="locked"
-                                    className="bg-gray-900 text-gray-100"
-                                  >
-                                    Lock
-                                  </option>
-                                  <option
-                                    value="unlocked"
-                                    className="bg-gray-900 text-gray-100"
-                                  >
-                                    Unlock
-                                  </option>
-                                </select>
+                                />
 
                                 {order.isProtected && (
                                   <div title="Termination Protection Enabled">

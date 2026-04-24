@@ -289,7 +289,7 @@ export default function UserOrdersPage() {
   const getDefaultUsername = useCallback((osType) => {
     if (!osType) return "root";
     const normalized = osType.toUpperCase();
-    if (normalized === "WINDOWS") return "Administrator";
+    if (normalized.includes("WINDOWS")) return "Administrator";
     return "root";
   }, []);
 
@@ -661,21 +661,37 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         return;
       }
 
-      const vmId = order.originalData.vmId;
+      const vmId = order.originalData?.vmId || order.id || order.vmId;
+      // Backend securely overrides userId via JWT, so we can use '0' as a fallback for route matching
+      const userId =
+        order.userId ||
+        order.originalData?.userId ||
+        accountStatus?.id ||
+        accountStatus?.userId ||
+        "0";
+
+      if (!vmId) {
+        DarkSwal.fire({
+          icon: "error",
+          title: "Action Failed",
+          text: "Missing VM details. Please refresh and try again.",
+        });
+        return;
+      }
 
       try {
         setPowerLoading((prev) => ({ ...prev, [vmId]: action }));
-
-        const userId = order.originalData.userId || accountStatus?.id;
         let url = "";
+        let options = { method: "POST", headers: {} };
 
         if (action === "rebuild") {
           url = `/api/users/${userId}/vms/${vmId}/rebuild?isoId=${isoId}`;
+          options.headers["Content-Length"] = "0";
         } else {
           url = `/api/users/${userId}/vms/${vmId}/control?action=${action}`;
         }
 
-        await apiClient(url, { method: "POST" }, { auth: "user" });
+        await apiClient(url, options, { auth: "user" });
 
         DarkSwal.fire({
           icon: "success",
@@ -700,24 +716,76 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         setPowerLoading((prev) => ({ ...prev, [vmId]: null }));
       }
     },
-    [DarkSwal, invalidateOrders],
+    [DarkSwal, accountStatus, invalidateOrders],
   );
 
-  const fetchBasicIsos = useCallback(async (serverId) => {
+  const fetchAvailableIsos = useCallback(async (zoneId) => {
+    return apiClient(
+      `/api/users/zones/${zoneId}/isos`,
+      { method: "GET" },
+      { auth: "user" }
+    );
+  }, []);
+
+  const fetchAvailableIsosByServer = useCallback(async (serverId) => {
     return apiClient(
       `/api/users/servers/${serverId}/isos/basic`,
-      {},
-      { auth: "user" },
+      { method: "GET" },
+      { auth: "user" }
     );
   }, []);
 
   const promptRebuildWithIso = useCallback(
     async (order) => {
       try {
-        const serverId = order.originalData.serverId;
-        const isos = await fetchBasicIsos(serverId);
+        const vmId = order.originalData?.vmId || order.id;
+        let details = orderDetails[vmId];
 
-        if (!isos.length) {
+        let zoneId =
+          order.originalData?.zoneId ||
+          order.originalData?.zone?.id ||
+          details?.zoneId ||
+          details?.zone?.id ||
+          details?.server?.zoneId ||
+          details?.server?.zone?.id;
+
+        // Force fetch if details missing OR zoneId still missing from cached details
+        if (!zoneId && vmId) {
+          try {
+            details = await fetchUserOrderDetails(vmId);
+            setOrderDetails((prev) => ({ ...prev, [vmId]: details }));
+            
+            // Re-evaluate zoneId with fresh details
+            zoneId =
+              details?.zoneId ||
+              details?.zone?.id ||
+              details?.server?.zoneId ||
+              details?.server?.zone?.id ||
+              details?.data?.zoneId ||
+              details?.data?.zone?.id ||
+              details?.data?.server?.zoneId ||
+              details?.data?.server?.zone?.id;
+          } catch (err) {
+            console.error("Failed to fetch order details", err);
+          }
+        }
+
+        if (!zoneId) {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "Zone ID is missing for this VM. Please refresh details.",
+            background: "#0e1525",
+            color: "#e5e7eb",
+          });
+          return;
+        }
+
+        const isos = await fetchAvailableIsos(zoneId);
+
+        let isosList = Array.isArray(isos) ? isos : (isos?.data || []);
+
+        if (!isosList || !isosList.length) {
           Swal.fire({
             icon: "warning",
             title: "No ISOs Available",
@@ -728,8 +796,8 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         }
 
         const isoOptions = {};
-        isos.forEach((i) => {
-          isoOptions[i.id] = i.iso;
+        isosList.forEach((i) => {
+          isoOptions[i.id] = i.isoName || i.iso || i.osType || `ISO ${i.id}`;
         });
 
         const { value: isoId } = await Swal.fire({
@@ -776,7 +844,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
         });
       }
     },
-    [fetchBasicIsos, handlePowerAction],
+    [fetchAvailableIsos, fetchAvailableIsosByServer, handlePowerAction, orderDetails],
   );
 
   const handleReconfigureNetwork = useCallback(
