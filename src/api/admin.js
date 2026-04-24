@@ -26,7 +26,19 @@ export const exportAuditLogs = async () => {
 };
 
 export const fetchAvailableIps = async (serverId) => {
-  return apiClient(`/api/admin/vms/${serverId}/available-ips`, {}, { auth: "admin" });
+  if (serverId === undefined || serverId === null || serverId === "") {
+    throw new Error("Missing server ID for available IP lookup.");
+  }
+
+  return apiClient(
+    `/api/admin/vms/${serverId}/available-ips`,
+    {
+      headers: {
+        "X-Reseller-Domain": window.location.hostname,
+      },
+    },
+    { auth: "admin" }
+  );
 };
 
 export const changeVmIp = async (internalVmid, newIpId) => {
@@ -35,6 +47,9 @@ export const changeVmIp = async (internalVmid, newIpId) => {
     {
       method: "POST",
       body: JSON.stringify({ newIpId: Number(newIpId) }),
+      headers: {
+        "X-Reseller-Domain": window.location.hostname,
+      },
     },
     { auth: "admin" }
   );

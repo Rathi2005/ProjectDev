@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useVmActions } from "../../hooks/admin/useVmActions";
 import { fetchAvailableIps, changeVmIp } from "../../api/admin";
 import { fetchAdminOrderDetails } from "../../api/adminOrdersApi";
+import { apiClient } from "../../lib/apiClient";
 import Header from "../../components/admin/adminHeader";
 import Footer from "../../components/user/Footer";
 import Swal from "sweetalert2";
@@ -129,11 +130,11 @@ export default function OrdersPage() {
   const orders = useMemo(() => {
     const vmList = ordersData?.vms || [];
     return vmList.map((order) => ({
-      id: order.orderId,
-      dbOrderId: order.orderId,
-      serverId: order.serverId, // Might be undefined in new API, but handle gracefully
+      id: order.orderId ?? order.id,
+      dbOrderId: order.dbOrderId ?? order.orderId ?? order.id,
+      serverId: order.serverId ?? order.parentServerId ?? null,
       vmid: order.proxmoxVmid, // Might be undefined in new API
-      internalVmid: order.vmId,
+      internalVmid: order.vmId ?? order.internalVmid,
       isProtected: order.isProtected ?? false, // Might be undefined
       priceTotal: order.paidAmount,
       monthlyPrice: order.monthlyPrice,
@@ -210,6 +211,14 @@ export default function OrdersPage() {
       setExpandedInternalVmid(null);
       return;
     }
+
+    if (!internalVmid) {
+      toast.error("VM details are unavailable for this order.");
+      setExpandedRow(id);
+      setExpandedInternalVmid(null);
+      return;
+    }
+
     setExpandedRow(id);
     setExpandedInternalVmid(internalVmid);
 
@@ -721,6 +730,54 @@ export default function OrdersPage() {
 
     if (!newExpiry) return;
 
+    const normalizedExpiry = toIsoLocalDateTime(newExpiry);
+    if (!normalizedExpiry) {
+      DarkSwal.fire({
+        icon: "error",
+        title: "Update Failed",
+        text: "Invalid date format. Use yyyy-MM-ddTHH:mm:ss.",
+      });
+      return;
+    }
+
+    const candidateOrderIds = [];
+    const addCandidateOrderId = (value) => {
+      const numeric = toNumericId(value);
+      if (numeric && !candidateOrderIds.includes(numeric)) {
+        candidateOrderIds.push(numeric);
+      }
+    };
+
+    let details = orderDetails[order.internalVmid] || null;
+    if (order.internalVmid) {
+      try {
+        const fetchedDetails = await fetchAdminOrderDetails(order.internalVmid);
+        if (fetchedDetails) {
+          setOrderDetails((prev) => ({ ...prev, [order.internalVmid]: fetchedDetails }));
+          details = fetchedDetails;
+        }
+      } catch {
+        // Best-effort lookup only; fallback candidates from overview will still be tried.
+      }
+    }
+
+    // Priority order: details payload first (most authoritative), then overview payload.
+    addCandidateOrderId(details?.dbOrderId);
+    addCandidateOrderId(details?.orderId);
+    addCandidateOrderId(order.originalData?.dbOrderId);
+    addCandidateOrderId(order.originalData?.orderId);
+    addCandidateOrderId(order.dbOrderId);
+    addCandidateOrderId(order.id);
+
+    if (candidateOrderIds.length === 0) {
+      DarkSwal.fire({
+        icon: "error",
+        title: "Update Failed",
+        text: "Invalid order ID for expiry update.",
+      });
+      return;
+    }
+
     try {
       DarkSwal.fire({
         title: "Updating Expiry",
@@ -729,34 +786,65 @@ export default function OrdersPage() {
         didOpen: () => DarkSwal.showLoading(),
       });
 
-      const res = await fetch(`${BASE_URL}/api/admin/vms/update-expiry`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify({
-          orderId: order.id,
-          newExpiryDate: newExpiry.replace("T", " ") + ":00",
-        }),
-      });
+      let data = null;
+      let lastError = null;
 
-      if (!res.ok) throw new Error(await res.text());
+      for (const candidateOrderId of candidateOrderIds) {
+        try {
+          data = await apiClient(
+            "/api/admin/vms/update-expiry",
+            {
+              method: "PUT",
+              body: JSON.stringify({
+                orderId: candidateOrderId,
+                newExpiryDate: normalizedExpiry,
+              }),
+              headers: {
+                "X-Reseller-Domain": window.location.hostname,
+              },
+            },
+            { auth: "admin" },
+          );
+          break;
+        } catch (err) {
+          lastError = err;
+          const isLastCandidate =
+            candidateOrderId === candidateOrderIds[candidateOrderIds.length - 1];
+
+          // Backend sometimes returns generic 400 bodies; keep trying remaining
+          // order-id candidates for 400 unless this is the final candidate.
+          const shouldTryNextCandidate = err?.status === 400 && !isLastCandidate;
+
+          if (!shouldTryNextCandidate) {
+            break;
+          }
+        }
+      }
+
+      if (!data) {
+        throw lastError || new Error("Failed to update expiry");
+      }
 
       DarkSwal.close();
       DarkSwal.fire({
         icon: "success",
         title: "Expiry Updated",
-        text: "Order expiry updated successfully",
+        text: data?.message || "Order expiry updated successfully",
         timer: 3000,
         showConfirmButton: false,
       });
       await refetchOrders();
     } catch (err) {
+      console.error("Update expiry failed", {
+        candidateOrderIds,
+        newExpiryDate: normalizedExpiry,
+        error: err?.data || err?.message || err,
+      });
+
       DarkSwal.fire({
         icon: "error",
         title: "Update Failed",
-        text: err.message || "Failed to update expiry",
+        text: err?.data?.error || err?.message || "Failed to update expiry",
       });
     }
   };
@@ -1037,6 +1125,31 @@ export default function OrdersPage() {
     }).format(amount || 0);
   };
 
+  const toNumericId = (...candidates) => {
+    for (const candidate of candidates) {
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        return candidate;
+      }
+
+      if (typeof candidate === "string") {
+        const trimmed = candidate.trim();
+        if (!trimmed) continue;
+        if (/^\d+$/.test(trimmed)) {
+          return Number(trimmed);
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const toIsoLocalDateTime = (value) => {
+    if (!value || typeof value !== "string") return null;
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?/);
+    if (!match) return null;
+    return `${match[1]} ${match[2]}:${match[3] ?? "00"}`;
+  };
+
   const getPaymentMethod = (order) => {
     // Check for payment method in the order data
     if (order.paymentMethod) return order.paymentMethod;
@@ -1154,7 +1267,7 @@ export default function OrdersPage() {
       setAdminActionLoading((p) => ({ ...p, [orderId]: "reconfigure-network" }));
 
       const res = await fetch(
-        `${BASE_URL}/api/admin/vms/${vmid}/reconfigure-network`,
+        `${BASE_URL}/api/admin/${vmid}/reconfigure-network`,
         {
           method: "POST",
           headers: {
@@ -1164,8 +1277,15 @@ export default function OrdersPage() {
       );
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || await res.text() || "Network reconfiguration failed");
+        const errorText = await res.text();
+        let errorMsg = "Network reconfiguration failed";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMsg = errorData.error || errorData.message || errorMsg;
+        } catch {
+          errorMsg = errorText || errorMsg;
+        }
+        throw new Error(errorMsg);
       }
 
       DarkSwal.close();
@@ -1209,8 +1329,24 @@ export default function OrdersPage() {
         return;
       }
 
+      const details = orderDetails[order.internalVmid] || {};
+      const resolvedServerId =
+        order.serverId ??
+        order.originalData?.serverId ??
+        details.parentServerId ??
+        details.serverId;
+
+      if (resolvedServerId === undefined || resolvedServerId === null || resolvedServerId === "") {
+        DarkSwal.fire({
+          icon: "warning",
+          title: "Server ID Missing",
+          text: "Unable to resolve server ID for IP allocation. Open VM details and try again.",
+        });
+        return;
+      }
+
       // Fetch available IPs for the server
-      const ips = await fetchAvailableIps(order.serverId);
+      const ips = await fetchAvailableIps(resolvedServerId);
 
       if (!ips.length) {
         DarkSwal.fire({
@@ -1315,10 +1451,20 @@ export default function OrdersPage() {
 
       if (!confirmResult.isConfirmed) return;
 
+      const resolvedInternalVmid = order.internalVmid ?? order.originalData?.vmId;
+      if (resolvedInternalVmid === undefined || resolvedInternalVmid === null || resolvedInternalVmid === "") {
+        DarkSwal.fire({
+          icon: "error",
+          title: "VM ID Missing",
+          text: "Unable to resolve VM ID for IP change.",
+        });
+        return;
+      }
+
       setIpChangeLoading((prev) => ({ ...prev, [order.id]: true }));
 
       // Call the API to change IP
-      await changeVmIp(order.internalVmid, selectedIpId);
+      await changeVmIp(resolvedInternalVmid, selectedIpId);
 
       // Invalidate cache immediately
       queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
@@ -2428,7 +2574,7 @@ export default function OrdersPage() {
                               </p>
                             </div>
                             <button
-                              onClick={() => toggleRow(order.id)}
+                              onClick={() => toggleRow(order.id, order.internalVmid)}
                               className="p-1 hover:bg-indigo-900/30 rounded"
                             >
                               {expandedRow === order.id ? (
