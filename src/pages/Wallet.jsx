@@ -4,8 +4,12 @@ import Footer from "./../components/user/Footer";
 import toast from "react-hot-toast";
 // import PaymentFlow from "./../components/payment/PaymentFlow";
 
-import { walletTopUp, verifyPayment } from "../services/PaymentService";
 import PaytmQRModal from "../components/payment/PaytmQRModal";
+import {
+  walletTopUp,
+  verifyPayment,
+  getGateways,
+} from "../services/PaymentService";
 import { useRef } from "react";
 
 import {
@@ -50,6 +54,7 @@ export default function WalletPage() {
   const [qrData, setQrData] = useState(null);
   const pollRef = useRef(null);
   const [loading, setLoading] = useState(false);
+  const [gateways, setGateways] = useState([]);
 
   const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -57,6 +62,7 @@ export default function WalletPage() {
   useEffect(() => {
     fetchWalletData();
     fetchWalletLogs();
+    fetchGatewayOptions();
   }, []);
 
   const fetchWalletData = async () => {
@@ -116,7 +122,13 @@ export default function WalletPage() {
         attempts++;
         const res = await verifyPayment(paymentId, "PAYTM");
 
-        const successStates = ["SUCCESS", "COMPLETED", "PAID", "WALLET_TOPPED_UP", "PAID_AND_PROVISIONING"];
+        const successStates = [
+          "SUCCESS",
+          "COMPLETED",
+          "PAID",
+          "WALLET_TOPPED_UP",
+          "PAID_AND_PROVISIONING",
+        ];
         const failureStates = ["FAILED", "CANCELLED", "EXPIRED"];
 
         if (successStates.includes(res.status)) {
@@ -141,6 +153,16 @@ export default function WalletPage() {
     }, 3000);
   };
 
+  const fetchGatewayOptions = async () => {
+    try {
+      const data = await getGateways();
+      console.log("Gateways API:", data);
+      setGateways(data);
+    } catch (err) {
+      console.error("Failed to load gateways:", err);
+    }
+  };
+
   const handleAddFunds = async () => {
     if (!amount || Number(amount) <= 0) {
       toast.error("Please enter a valid amount");
@@ -150,18 +172,17 @@ export default function WalletPage() {
     try {
       setLoading(true); // add loading state if not present: const [loading, setLoading] = useState(false);
       const data = await walletTopUp(amount, gateway?.type);
-
       // Case 1: Paytm QR
       if (data.paymentUrl === "PAYTM_QR_FLOW") {
         const resolvedPaymentId = data.paymentId || data.id || data.orderId;
-        
+
         setShowAddFunds(false);
         setQrData({
           upiString: data.upiString,
           paymentId: resolvedPaymentId,
           amount: Number(amount),
         });
-        
+
         if (resolvedPaymentId) {
           startPolling(resolvedPaymentId);
         } else {
@@ -174,7 +195,7 @@ export default function WalletPage() {
       // Case 2: Cashfree
       if (data.paymentSessionId) {
         const cashfree = window.Cashfree({
-          mode: gateway?.mode?.toLowerCase() || "sandbox",
+          mode: gateway?.mode?.toLowerCase(),
         });
         cashfree.checkout({
           paymentSessionId: data.paymentSessionId,
@@ -523,23 +544,24 @@ export default function WalletPage() {
                   <div className="mt-6 space-y-4">
                     {/* Gateway Selector */}
                     <div className="grid grid-cols-2 gap-3">
-                      {["CASHFREE", "PAYTM"].map((gw) => (
+                      {gateways.map((gw) => (
                         <button
-                          key={gw}
+                          key={gw.type}
                           onClick={() =>
                             setGateway({
-                              type: gw,
-                              mode:
-                                gw === "CASHFREE" ? "SANDBOX" : "PRODUCTION",
+                              type: gw.type,
+                              mode: gw.mode,
                             })
                           }
                           className={`py-2 rounded-xl border text-sm font-medium transition-all ${
-                            gateway?.type === gw
+                            gateway?.type === gw.type
                               ? "border-indigo-500 bg-indigo-900/30 text-indigo-300"
                               : "border-gray-700 text-gray-400 hover:bg-gray-800"
                           }`}
                         >
-                          {gw === "CASHFREE" ? "💳 Cashfree" : "📱 Paytm / UPI"}
+                          {gw.type === "CASHFREE"
+                            ? "Cashfree"
+                            : "Paytm / UPI"}
                         </button>
                       ))}
                     </div>
