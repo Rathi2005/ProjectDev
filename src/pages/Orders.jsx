@@ -797,7 +797,7 @@ ${JSON.stringify(order.originalData ?? order, null, 2)}
 
         const isoOptions = {};
         isosList.forEach((i) => {
-          isoOptions[i.id] = i.isoName || i.iso || i.osType || `ISO ${i.id}`;
+          isoOptions[i.id] = i.name || i.iso || i.osType || `ISO ${i.id}`;
         });
 
         const { value: isoId } = await Swal.fire({

@@ -216,7 +216,7 @@ export default function OrdersPage() {
       diskGb: order.diskGb, // Might be undefined
       ipAddress: order.ipAddress || "",
       macAddress: order.macAddress || "N/A", // Might be undefined
-      createdAt: order.createdAt || order.expiresAt,
+      createdAt: order.createdAt,
       expiresAt: order.expiresAt,
       status: order.dbStatus,
       liveState: order.liveState,
@@ -2319,7 +2319,7 @@ export default function OrdersPage() {
                                               <span>Created</span>
                                             </div>
                                             <p className="text-xs sm:text-sm font-medium text-white">
-                                              {formatDate(order.createdAt)}
+                                              {formatDate(details.createdAt)}
                                             </p>
                                           </div>
 
