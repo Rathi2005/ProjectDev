@@ -220,7 +220,7 @@ export default function AdminPaymentGatewaySettings() {
               {/* Secret */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">
-                  {activeGateway === "PAYTM" ? "Merchant Key" : "Client Secret"}
+                  {activeGateway === "PAYTM" ? "UPI ID" : "Client Secret"}
                 </label>
                 <div className="relative">
                   <input
